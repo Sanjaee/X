@@ -53,7 +53,7 @@ export function LeftNavRail({
   ];
 
 
-  const { unreadNotifCount } = useRealtime();
+  const { unreadNotifCount, unreadMessageCount } = useRealtime();
 
   return (
     <header className="sticky top-0 h-screen flex flex-col justify-between items-end xl:items-start px-2 sm:px-4 py-3 select-none border-r border-border w-[68px] xl:w-[275px]">
@@ -74,7 +74,12 @@ export function LeftNavRail({
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
-            const hasBadge = item.label === "Notifications" && unreadNotifCount > 0;
+            const badgeCount =
+              item.label === "Notifications"
+                ? unreadNotifCount
+                : item.label === "Messages"
+                ? unreadMessageCount
+                : 0;
 
             return (
               <Link
@@ -87,9 +92,9 @@ export function LeftNavRail({
               >
                 <div className="relative flex items-center justify-center">
                   <Icon className={cn("w-7 h-7 stroke-[2]", isActive && "stroke-[2.5]")} />
-                  {hasBadge && (
+                  {badgeCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-brand text-white text-[11px] font-extrabold px-1.5 py-0.2 rounded-full min-w-[18px] text-center shadow-md animate-pulse">
-                      {unreadNotifCount > 99 ? "99+" : unreadNotifCount}
+                      {badgeCount > 99 ? "99+" : badgeCount}
                     </span>
                   )}
                 </div>

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
-import { Message, Notification } from "@/types";
+import { Message, Notification, Conversation } from "@/types";
+import { apiRequest } from "@/lib/api";
 
 interface TypingEvent {
   conversation_id: string;
@@ -19,6 +20,9 @@ interface RealtimeContextType {
   lastMessage: Message | null;
   unreadNotifCount: number;
   setUnreadNotifCount: React.Dispatch<React.SetStateAction<number>>;
+  unreadMessageCount: number;
+  setUnreadMessageCount: React.Dispatch<React.SetStateAction<number>>;
+  refreshCounts: () => Promise<void>;
 }
 
 const RealtimeContext = createContext<RealtimeContextType | null>(null);
@@ -28,9 +32,42 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({});
   const [lastMessage, setLastMessage] = useState<Message | null>(null);
   const [unreadNotifCount, setUnreadNotifCount] = useState<number>(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState<number>(0);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const backoffRef = useRef<number>(1000);
+
+  // Refresh counts from REST API
+  const refreshCounts = useCallback(async () => {
+    if (typeof window === "undefined") return;
+    const token = localStorage.getItem("x_session_token");
+    if (!token) {
+      setUnreadNotifCount(0);
+      setUnreadMessageCount(0);
+      return;
+    }
+
+    try {
+      const [notifRes, convsRes] = await Promise.allSettled([
+        apiRequest<{ unread_count: number }>("/notifications/unread-count"),
+        apiRequest<{ conversations: Conversation[] }>("/conversations"),
+      ]);
+
+      if (notifRes.status === "fulfilled" && typeof notifRes.value.unread_count === "number") {
+        setUnreadNotifCount(notifRes.value.unread_count);
+      }
+
+      if (convsRes.status === "fulfilled" && Array.isArray(convsRes.value.conversations)) {
+        const totalUnreadMsg = convsRes.value.conversations.reduce(
+          (acc, c) => acc + (c.unread_count || 0),
+          0
+        );
+        setUnreadMessageCount(totalUnreadMsg);
+      }
+    } catch (e) {
+      console.warn("Failed to refresh unread counts", e);
+    }
+  }, []);
 
   const connect = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -42,7 +79,6 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     }
 
     const host = window.location.hostname;
-    // In local docker setup, API is reverse proxied via port 80/current host or :8080 directly
     const port = window.location.port ? `:${window.location.port}` : "";
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${host}${port}/api/v1/ws?token=${encodeURIComponent(token)}`;
@@ -54,6 +90,8 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       ws.onopen = () => {
         setIsConnected(true);
         backoffRef.current = 1000;
+        refreshCounts();
+
         // Heartbeat
         const pingInterval = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
@@ -69,6 +107,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
           const data = JSON.parse(event.data);
           if (data.type === "message.created") {
             setLastMessage(data.payload as Message);
+            setUnreadMessageCount((prev) => prev + 1);
           } else if (data.type === "typing.updated") {
             const typingData = data.payload as TypingEvent;
             setTypingUsers((prev) => ({
@@ -103,28 +142,54 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error("Failed to establish WebSocket connection", e);
     }
-  }, []);
+  }, [refreshCounts]);
 
+  // Initial connect and listeners for auth state changes
   useEffect(() => {
     connect();
 
-    // Listen for storage changes in case user logs in/out in another tab
     const handleStorage = (e: StorageEvent) => {
       if (e.key === "x_session_token") {
         if (wsRef.current) {
           wsRef.current.close();
         }
         connect();
+        refreshCounts();
       }
     };
+
+    const handleAuthChange = () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+      connect();
+      refreshCounts();
+    };
+
     window.addEventListener("storage", handleStorage);
+    window.addEventListener("x_auth_state_change", handleAuthChange);
 
     return () => {
       window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("x_auth_state_change", handleAuthChange);
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
       if (wsRef.current) wsRef.current.close();
     };
-  }, [connect]);
+  }, [connect, refreshCounts]);
+
+  // Standard X Tab Title synchronization: "(N) X" or "(N) Current Title"
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const totalUnread = unreadNotifCount + unreadMessageCount;
+    const cleanTitle = document.title.replace(/^\(\d+\)\s*/, "");
+
+    if (totalUnread > 0) {
+      document.title = `(${totalUnread}) ${cleanTitle || "X"}`;
+    } else {
+      document.title = cleanTitle || "X";
+    }
+  }, [unreadNotifCount, unreadMessageCount]);
 
   const sendWS = useCallback((type: string, payload: any) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -156,6 +221,9 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
         lastMessage,
         unreadNotifCount,
         setUnreadNotifCount,
+        unreadMessageCount,
+        setUnreadMessageCount,
+        refreshCounts,
       }}
     >
       {children}

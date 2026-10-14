@@ -1514,7 +1514,7 @@ func (r *PostgresRepository) GetConversations(ctx context.Context, userID uuid.U
 	}
 
 	query := `
-		SELECT c.id, c.is_group, c.name, c.created_at, c.updated_at,
+		SELECT c.id, c.is_group, COALESCE(c.name, ''), c.created_at, c.updated_at,
 		       other_u.id, other_u.username, other_p.display_name, other_p.avatar_url, other_u.is_verified, other_u.verified_type,
 		       COALESCE(
 		           (SELECT COUNT(*) FROM messages m
@@ -1588,7 +1588,7 @@ func (r *PostgresRepository) GetConversations(ctx context.Context, userID uuid.U
 func (r *PostgresRepository) GetOrCreateConversation(ctx context.Context, userA, userB uuid.UUID) (*domain.Conversation, error) {
 	// Look for existing 1-on-1 conversation
 	qFind := `
-		SELECT c.id, c.is_group, c.name, c.created_at, c.updated_at
+		SELECT c.id, c.is_group, COALESCE(c.name, ''), c.created_at, c.updated_at
 		FROM conversations c
 		JOIN conversation_members m1 ON m1.conversation_id = c.id AND m1.user_id = $1
 		JOIN conversation_members m2 ON m2.conversation_id = c.id AND m2.user_id = $2
@@ -1630,7 +1630,7 @@ func (r *PostgresRepository) GetOrCreateConversation(ctx context.Context, userA,
 
 func (r *PostgresRepository) GetConversationByID(ctx context.Context, convID, userID uuid.UUID) (*domain.Conversation, error) {
 	q := `
-		SELECT c.id, c.is_group, c.name, c.created_at, c.updated_at,
+		SELECT c.id, c.is_group, COALESCE(c.name, ''), c.created_at, c.updated_at,
 		       other_u.id, other_u.username, other_p.display_name, other_p.avatar_url, other_u.is_verified, other_u.verified_type
 		FROM conversations c
 		JOIN conversation_members my_m ON my_m.conversation_id = c.id AND my_m.user_id = $2

@@ -9,14 +9,15 @@ import {
   Image as ImageIcon,
   Loader2,
   Check,
-  CheckCheck,
   Plus,
   ArrowLeft,
   X,
   AlertCircle,
+  Search,
 } from "lucide-react";
 import { LeftNavRail } from "@/components/layout/LeftNavRail";
 import { AuthModal } from "@/components/auth/AuthModal";
+import { VerifiedBadge } from "@/components/common/VerifiedBadge";
 import { Conversation, Message, User } from "@/types";
 import { apiRequest } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ export default function MessagesPage() {
   const [searching, setSearching] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [sidebarSearchQuery, setSidebarSearchQuery] = useState("");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -48,25 +50,38 @@ export default function MessagesPage() {
     sendTyping,
     typingUsers,
     lastMessage,
+    refreshCounts,
+    setUnreadMessageCount,
   } = useRealtime();
 
   // Load current user
-  useEffect(() => {
+  const loadCurrentUser = useCallback(() => {
     apiRequest<User>("/me")
       .then((u) => setCurrentUser(u))
       .catch(() => setCurrentUser(null));
   }, []);
+
+  useEffect(() => {
+    loadCurrentUser();
+
+    const handleAuthChange = () => {
+      loadCurrentUser();
+    };
+    window.addEventListener("x_auth_state_change", handleAuthChange);
+    return () => window.removeEventListener("x_auth_state_change", handleAuthChange);
+  }, [loadCurrentUser]);
 
   // Load conversations
   const loadConversations = useCallback(async () => {
     try {
       setLoadingConvs(true);
       const res = await apiRequest<{ conversations: Conversation[] }>("/conversations");
-      setConversations(res.conversations || []);
-      if (!activeConvId && res.conversations && res.conversations.length > 0) {
-        setActiveConvId(res.conversations[0].id);
+      const list = res.conversations || [];
+      setConversations(list);
+      if (!activeConvId && list.length > 0) {
+        setActiveConvId(list[0].id);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("Failed to load conversations", e);
     } finally {
       setLoadingConvs(false);
@@ -93,7 +108,14 @@ export default function MessagesPage() {
       .then((res) => {
         setMessages(res.messages || []);
         // Mark conversation as read
-        apiRequest(`/conversations/${activeConvId}/read`, { method: "POST" }).catch(() => {});
+        apiRequest(`/conversations/${activeConvId}/read`, { method: "POST" })
+          .then(() => {
+            refreshCounts();
+            setConversations((prev) =>
+              prev.map((c) => (c.id === activeConvId ? { ...c, unread_count: 0 } : c))
+            );
+          })
+          .catch(() => {});
       })
       .catch((err) => {
         console.error("Failed to load messages", err);
@@ -107,17 +129,21 @@ export default function MessagesPage() {
       unsubscribeFromConversation(activeConvId);
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
-  }, [activeConvId, subscribeToConversation, unsubscribeFromConversation]);
+  }, [activeConvId, subscribeToConversation, unsubscribeFromConversation, refreshCounts]);
 
   // Handle incoming realtime message
   useEffect(() => {
     if (!lastMessage) return;
 
-    // If message is for currently active conversation
     if (lastMessage.conversation_id === activeConvId) {
       setMessages((prev) => {
-        // Prevent duplicate if already in state (e.g. from optimistic send)
-        if (prev.some((m) => m.id === lastMessage.id || (m.client_message_id && m.client_message_id === lastMessage.client_message_id))) {
+        if (
+          prev.some(
+            (m) =>
+              m.id === lastMessage.id ||
+              (m.client_message_id && m.client_message_id === lastMessage.client_message_id)
+          )
+        ) {
           return prev.map((m) =>
             m.client_message_id === lastMessage.client_message_id ? lastMessage : m
           );
@@ -125,19 +151,27 @@ export default function MessagesPage() {
         return [...prev, lastMessage];
       });
 
-      // Mark as read
-      apiRequest(`/conversations/${activeConvId}/read`, { method: "POST" }).catch(() => {});
+      // Mark as read immediately since user is on this conversation
+      apiRequest(`/conversations/${activeConvId}/read`, { method: "POST" })
+        .then(() => refreshCounts())
+        .catch(() => {});
     }
 
     // Update conversation preview in sidebar
     setConversations((prev) =>
       prev.map((c) =>
         c.id === lastMessage.conversation_id
-          ? { ...c, last_message: lastMessage, updated_at: lastMessage.created_at }
+          ? {
+              ...c,
+              last_message: lastMessage,
+              updated_at: lastMessage.created_at,
+              unread_count:
+                c.id === activeConvId ? 0 : (c.unread_count || 0) + 1,
+            }
           : c
       )
     );
-  }, [lastMessage, activeConvId]);
+  }, [lastMessage, activeConvId, refreshCounts]);
 
   // Auto-scroll to bottom of chat
   useEffect(() => {
@@ -167,7 +201,8 @@ export default function MessagesPage() {
     if (!activeConvId || !messageInput.trim() || sendingMessage) return;
 
     const content = messageInput.trim();
-    const clientMsgId = "client_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9);
+    const clientMsgId =
+      "client_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9);
     setMessageInput("");
     setErrorMessage(null);
 
@@ -186,13 +221,16 @@ export default function MessagesPage() {
 
     try {
       setSendingMessage(true);
-      const savedMsg = await apiRequest<Message>(`/conversations/${activeConvId}/messages`, {
-        method: "POST",
-        body: JSON.stringify({
-          content,
-          client_message_id: clientMsgId,
-        }),
-      });
+      const savedMsg = await apiRequest<Message>(
+        `/conversations/${activeConvId}/messages`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            content,
+            client_message_id: clientMsgId,
+          }),
+        }
+      );
 
       // Reconcile optimistic message
       setMessages((prev) =>
@@ -200,7 +238,6 @@ export default function MessagesPage() {
       );
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to send message");
-      // Remove or mark failed
     } finally {
       setSendingMessage(false);
     }
@@ -215,8 +252,12 @@ export default function MessagesPage() {
     }
     setSearching(true);
     try {
-      const res = await apiRequest<{ users: User[] }>(`/search?type=users&q=${encodeURIComponent(query)}`);
-      setSearchResults(res.users || []);
+      const res = await apiRequest<{ users: User[] }>(
+        `/search?type=users&q=${encodeURIComponent(query)}`
+      );
+      // Filter out self
+      const filtered = (res.users || []).filter((u) => u.id !== currentUser?.id);
+      setSearchResults(filtered);
     } catch (e) {
       console.error("Search failed", e);
     } finally {
@@ -224,29 +265,51 @@ export default function MessagesPage() {
     }
   };
 
-  // Start new conversation
+  // Start new conversation or select existing one
   const startConversationWith = async (targetUser: User) => {
     try {
+      setErrorMessage(null);
       const conv = await apiRequest<Conversation>("/conversations", {
         method: "POST",
         body: JSON.stringify({ recipient_id: targetUser.id }),
       });
-      conv.other_member = targetUser;
+
+      const fullConv: Conversation = {
+        ...conv,
+        other_member: targetUser,
+      };
+
       setConversations((prev) => {
-        const exists = prev.find((c) => c.id === conv.id);
-        if (exists) return prev;
-        return [conv, ...prev];
+        const idx = prev.findIndex((c) => c.id === conv.id);
+        if (idx >= 0) {
+          const updated = [...prev];
+          updated[idx] = { ...updated[idx], other_member: targetUser };
+          return updated;
+        }
+        return [fullConv, ...prev];
       });
+
       setActiveConvId(conv.id);
       setNewChatModalOpen(false);
       setSearchQuery("");
       setSearchResults([]);
     } catch (e: any) {
+      console.error("Could not start conversation", e);
       setErrorMessage(e.message || "Could not start conversation");
     }
   };
 
   const activeConv = conversations.find((c) => c.id === activeConvId);
+
+  // Filter conversations for left rail search
+  const filteredConversations = conversations.filter((c) => {
+    if (!sidebarSearchQuery.trim()) return true;
+    const q = sidebarSearchQuery.toLowerCase();
+    const name = (c.other_member?.display_name || "").toLowerCase();
+    const handle = (c.other_member?.username || "").toLowerCase();
+    const lastMsg = (c.last_message?.content || "").toLowerCase();
+    return name.includes(q) || handle.includes(q) || lastMsg.includes(q);
+  });
 
   return (
     <div className="min-h-screen bg-background text-foreground flex justify-center">
@@ -258,8 +321,13 @@ export default function MessagesPage() {
 
         {/* 2-Column Messages Container */}
         <div className="flex-1 flex border-r border-border min-h-screen">
-          {/* Conversation List Column */}
-          <div className="w-full sm:w-[380px] border-r border-border flex flex-col">
+          {/* Conversation List Column (Visible on desktop; on mobile hidden if a conversation is open) */}
+          <div
+            className={cn(
+              "w-full sm:w-[380px] border-r border-border flex flex-col",
+              activeConvId ? "hidden sm:flex" : "flex"
+            )}
+          >
             <header className="sticky top-0 bg-background/80 backdrop-blur-md border-b border-border z-20 flex items-center justify-between px-4 h-[53px]">
               <h1 className="font-extrabold text-[20px]">Messages</h1>
               <div className="flex items-center gap-1">
@@ -272,12 +340,48 @@ export default function MessagesPage() {
                     <Plus className="w-5 h-5" />
                   </button>
                 )}
-                <button className="p-2 hover:bg-subtle rounded-full text-foreground transition-colors">
+                <button
+                  title="Settings"
+                  className="p-2 hover:bg-subtle rounded-full text-foreground transition-colors"
+                >
                   <Settings className="w-5 h-5" />
                 </button>
               </div>
             </header>
 
+            {/* Standard X Search Bar in Messages Sidebar */}
+            {currentUser && conversations.length > 0 && (
+              <div className="p-3 border-b border-border">
+                <div className="relative flex items-center">
+                  <Search className="w-4 h-4 text-muted absolute left-3 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search Direct Messages"
+                    value={sidebarSearchQuery}
+                    onChange={(e) => setSidebarSearchQuery(e.target.value)}
+                    className="w-full bg-card rounded-full py-2 pl-9 pr-4 text-sm outline-none border border-border focus:border-brand text-foreground placeholder:text-muted transition-colors"
+                  />
+                  {sidebarSearchQuery && (
+                    <button
+                      onClick={() => setSidebarSearchQuery("")}
+                      className="absolute right-3 text-muted hover:text-foreground"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Global Error Banner */}
+            {errorMessage && !activeConv && (
+              <div className="bg-red-500/10 border-b border-red-500/20 px-4 py-2.5 flex items-center gap-2 text-red-500 text-xs">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
+            {/* Conversation List */}
             <div className="flex-1 flex flex-col overflow-y-auto divide-y divide-border">
               {loadingConvs ? (
                 <div className="flex justify-center p-8 text-brand">
@@ -296,11 +400,15 @@ export default function MessagesPage() {
                     Log in
                   </button>
                 </div>
-              ) : conversations.length === 0 ? (
+              ) : filteredConversations.length === 0 ? (
                 <div className="text-center py-12 px-4">
-                  <h3 className="font-bold text-[18px] mb-2">No messages yet</h3>
+                  <h3 className="font-bold text-[18px] mb-2">
+                    {sidebarSearchQuery ? "No matches found" : "No messages yet"}
+                  </h3>
                   <p className="text-muted text-[14px] mb-4">
-                    Send a message to start a conversation with anyone on X.
+                    {sidebarSearchQuery
+                      ? `No conversations match "${sidebarSearchQuery}". Start a new chat!`
+                      : "Send a message to start a conversation with anyone on X."}
                   </p>
                   <button
                     onClick={() => setNewChatModalOpen(true)}
@@ -310,9 +418,11 @@ export default function MessagesPage() {
                   </button>
                 </div>
               ) : (
-                conversations.map((c) => {
+                filteredConversations.map((c) => {
                   const other = c.other_member;
                   const isSelected = c.id === activeConvId;
+                  const hasUnread = (c.unread_count || 0) > 0;
+
                   return (
                     <div
                       key={c.id}
@@ -332,14 +442,30 @@ export default function MessagesPage() {
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-[15px] truncate">
-                            {other?.display_name || other?.username || "Conversation"}
+                          <span
+                            className={cn(
+                              "text-[15px] truncate flex items-center gap-1",
+                              hasUnread ? "font-black text-foreground" : "font-bold text-foreground"
+                            )}
+                          >
+                            <span>{other?.display_name || other?.username || "Conversation"}</span>
+                            {other?.is_verified && (
+                              <VerifiedBadge type={other.verified_type} />
+                            )}
                           </span>
+                          {hasUnread && (
+                            <span className="w-2.5 h-2.5 bg-brand rounded-full shrink-0" />
+                          )}
                         </div>
                         <span className="text-[14px] text-muted truncate block">
                           @{other?.username || "user"}
                         </span>
-                        <p className="text-[14px] text-muted truncate mt-0.5">
+                        <p
+                          className={cn(
+                            "text-[14px] truncate mt-0.5",
+                            hasUnread ? "font-bold text-foreground" : "text-muted"
+                          )}
+                        >
                           {c.last_message?.content || "No messages yet"}
                         </p>
                       </div>
@@ -350,27 +476,49 @@ export default function MessagesPage() {
             </div>
           </div>
 
-          {/* Active Chat Column */}
-          <div className="hidden sm:flex flex-1 flex-col justify-between h-screen">
+          {/* Active Chat Column (Hidden on mobile if no conversation is open) */}
+          <div
+            className={cn(
+              "flex-1 flex flex-col justify-between h-screen",
+              !activeConvId ? "hidden sm:flex" : "flex"
+            )}
+          >
             {activeConv ? (
               <>
                 {/* Chat Header */}
                 <div className="h-[53px] border-b border-border px-4 flex items-center justify-between bg-background/80 backdrop-blur-md">
                   <div className="flex items-center gap-3">
+                    {/* Mobile Back Button to conversation list */}
+                    <button
+                      onClick={() => setActiveConvId(null)}
+                      className="sm:hidden p-1.5 -ml-2 hover:bg-subtle rounded-full text-foreground transition-colors"
+                      title="Back to conversations"
+                    >
+                      <ArrowLeft className="w-5 h-5" />
+                    </button>
+
                     <img
                       src={
                         activeConv.other_member?.avatar_url ||
                         "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"
                       }
                       alt="Avatar"
-                      className="w-8 h-8 rounded-full object-cover"
+                      className="w-8 h-8 rounded-full object-cover border border-border"
                     />
                     <div>
                       <Link
                         href={`/${activeConv.other_member?.username || ""}`}
-                        className="font-bold text-[16px] hover:underline block leading-tight"
+                        className="font-bold text-[16px] hover:underline flex items-center gap-1 leading-tight"
                       >
-                        {activeConv.other_member?.display_name || activeConv.other_member?.username}
+                        <span>
+                          {activeConv.other_member?.display_name ||
+                            activeConv.other_member?.username}
+                        </span>
+                        {activeConv.other_member?.is_verified && (
+                          <VerifiedBadge
+                            type={activeConv.other_member.verified_type}
+                          />
+                        )}
                       </Link>
                       <span className="text-[12px] text-muted">
                         @{activeConv.other_member?.username}
@@ -387,7 +535,7 @@ export default function MessagesPage() {
                   </div>
                 )}
 
-                {/* Chat Body */}
+                {/* Chat Messages Body */}
                 <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3">
                   {loadingMessages ? (
                     <div className="flex justify-center p-8 text-brand">
@@ -395,7 +543,9 @@ export default function MessagesPage() {
                     </div>
                   ) : messages.length === 0 ? (
                     <div className="text-center py-12 text-muted">
-                      <p>Say hello to @{activeConv.other_member?.username}!</p>
+                      <p>
+                        Say hello to @{activeConv.other_member?.username}!
+                      </p>
                     </div>
                   ) : (
                     messages.map((m) => {
@@ -433,7 +583,9 @@ export default function MessagesPage() {
                   {/* Realtime Ephemeral Typing Indicator */}
                   {typingUsers[activeConv.id] && (
                     <div className="self-start bg-card border border-border px-3 py-2 rounded-2xl rounded-tl-sm text-xs text-muted flex items-center gap-1.5 animate-pulse">
-                      <span>{activeConv.other_member?.display_name || "User"} is typing</span>
+                      <span>
+                        {activeConv.other_member?.display_name || "User"} is typing
+                      </span>
                       <span className="flex gap-0.5">
                         <span className="w-1 h-1 bg-muted rounded-full animate-bounce" />
                         <span className="w-1 h-1 bg-muted rounded-full animate-bounce [animation-delay:0.2s]" />
@@ -479,7 +631,7 @@ export default function MessagesPage() {
                   Select a message
                 </h3>
                 <p className="max-w-xs text-sm">
-                  Choose from your existing conversations, start a new one, or just keep swimming.
+                  Choose from your existing conversations, start a new one, or search for people.
                 </p>
                 {currentUser && (
                   <button
@@ -494,7 +646,7 @@ export default function MessagesPage() {
           </div>
         </div>
 
-        {/* New Chat Modal */}
+        {/* New Chat Modal (Standard X style) */}
         {newChatModalOpen && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-background border border-border rounded-2xl w-full max-w-lg max-h-[80vh] flex flex-col shadow-2xl">
@@ -509,15 +661,25 @@ export default function MessagesPage() {
               </div>
 
               <div className="p-3 border-b border-border">
-                <input
-                  type="text"
-                  placeholder="Search people"
-                  value={searchQuery}
-                  onChange={(e) => handleSearchUsers(e.target.value)}
-                  className="w-full bg-card rounded-full py-2 px-4 text-sm outline-none border border-border focus:border-brand"
-                  autoFocus
-                />
+                <div className="relative flex items-center">
+                  <Search className="w-4 h-4 text-muted absolute left-3 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search people by username or name"
+                    value={searchQuery}
+                    onChange={(e) => handleSearchUsers(e.target.value)}
+                    className="w-full bg-card rounded-full py-2 pl-9 pr-4 text-sm outline-none border border-border focus:border-brand text-foreground placeholder:text-muted"
+                    autoFocus
+                  />
+                </div>
               </div>
+
+              {errorMessage && (
+                <div className="bg-red-500/10 border-b border-red-500/20 px-4 py-2 flex items-center gap-2 text-red-500 text-xs">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
 
               <div className="flex-1 overflow-y-auto divide-y divide-border min-h-[200px]">
                 {searching ? (
@@ -528,12 +690,16 @@ export default function MessagesPage() {
                   <div className="text-center p-8 text-muted text-sm">
                     No users found matching &ldquo;{searchQuery}&rdquo;
                   </div>
+                ) : searchResults.length === 0 ? (
+                  <div className="text-center p-8 text-muted text-sm">
+                    Search for a username or name to start chatting
+                  </div>
                 ) : (
                   searchResults.map((u) => (
                     <div
                       key={u.id}
                       onClick={() => startConversationWith(u)}
-                      className="flex items-center gap-3 p-3 hover:bg-subtle cursor-pointer transition-colors"
+                      className="flex items-center gap-3 p-3.5 hover:bg-subtle cursor-pointer transition-colors"
                     >
                       <img
                         src={
@@ -541,11 +707,16 @@ export default function MessagesPage() {
                           "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"
                         }
                         alt={u.display_name}
-                        className="w-10 h-10 rounded-full object-cover"
+                        className="w-10 h-10 rounded-full object-cover border border-border"
                       />
-                      <div>
-                        <div className="font-bold text-sm">{u.display_name}</div>
-                        <div className="text-xs text-muted">@{u.username}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-sm truncate flex items-center gap-1">
+                          <span>{u.display_name}</span>
+                          {u.is_verified && (
+                            <VerifiedBadge type={u.verified_type} />
+                          )}
+                        </div>
+                        <div className="text-xs text-muted truncate">@{u.username}</div>
                       </div>
                     </div>
                   ))
@@ -558,7 +729,10 @@ export default function MessagesPage() {
         <AuthModal
           isOpen={authModalOpen}
           onClose={() => setAuthModalOpen(false)}
-          onSuccess={(u) => setCurrentUser(u)}
+          onSuccess={(u) => {
+            setCurrentUser(u);
+            loadConversations();
+          }}
         />
       </div>
     </div>
