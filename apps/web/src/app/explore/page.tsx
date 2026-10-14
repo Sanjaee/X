@@ -46,14 +46,14 @@ export default function ExplorePage() {
           {/* Top Search Header */}
           <header className="sticky top-0 bg-background/80 backdrop-blur-md border-b border-border z-20 flex flex-col">
             <div className="flex items-center gap-3 px-4 h-[53px]">
-              <form onSubmit={handleSearch} className="flex-1 relative flex items-center bg-card rounded-full border border-transparent focus-within:border-brand focus-within:bg-background transition-colors">
+              <form onSubmit={handleSearch} className="flex-1 relative flex items-center bg-transparent rounded-full border border-border focus-within:border-brand focus-within:bg-background transition-colors">
                 <Search className="w-5 h-5 text-muted absolute left-4 pointer-events-none" />
                 <input
                   type="text"
                   placeholder="Search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="w-full bg-transparent py-2 pl-12 pr-4 text-[15px] outline-none placeholder:text-muted rounded-full"
+                  className="w-full bg-transparent py-2 pl-12 pr-4 text-[15px] outline-none placeholder:text-muted rounded-full text-foreground"
                 />
               </form>
               <button className="p-2 hover:bg-subtle rounded-full text-foreground transition-colors">

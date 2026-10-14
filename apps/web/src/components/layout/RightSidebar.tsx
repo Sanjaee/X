@@ -47,7 +47,7 @@ export function RightSidebar({ onSearch }: RightSidebarProps) {
     <aside className="hidden lg:block w-[350px] xl:w-[420px] px-6 py-3 select-none">
       {/* Search Bar */}
       <div className="sticky top-0 bg-background/80 backdrop-blur-md pt-1 pb-3 z-10">
-        <div className="relative flex items-center bg-card rounded-full border border-transparent focus-within:border-brand focus-within:bg-background transition-colors">
+        <div className="relative flex items-center bg-transparent rounded-full border border-border focus-within:border-brand focus-within:bg-background transition-colors">
           <Search className="w-5 h-5 text-muted absolute left-4 pointer-events-none" />
           <input
             type="text"
@@ -55,25 +55,28 @@ export function RightSidebar({ onSearch }: RightSidebarProps) {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full bg-transparent py-3 pl-12 pr-4 text-[15px] outline-none placeholder:text-muted rounded-full"
+            className="w-full bg-transparent py-2.5 pl-12 pr-4 text-[15px] outline-none placeholder:text-muted rounded-full text-foreground"
           />
         </div>
       </div>
 
       {/* Subscribe to Premium Card */}
-      <div className="bg-card rounded-2xl p-4 border border-border mb-4">
-        <h2 className="font-extrabold text-[20px] leading-6 mb-2">Subscribe to Premium</h2>
-        <p className="text-[15px] leading-5 text-muted mb-3">
+      <div className="bg-transparent rounded-2xl p-4 border border-border mb-4">
+        <h2 className="font-extrabold text-[20px] leading-6 mb-1 text-foreground">Subscribe to Premium</h2>
+        <p className="text-[15px] leading-5 text-foreground mb-3 font-normal">
           Subscribe to unlock new features and if eligible, receive a creator revenue share.
         </p>
-        <button className="bg-brand hover:bg-brand-hover text-white font-bold py-2 px-5 rounded-full text-[15px] transition-colors">
+        <Link
+          href="/premium"
+          className="inline-block bg-brand hover:bg-brand-hover text-white font-bold py-2 px-5 rounded-full text-[15px] transition-colors"
+        >
           Subscribe
-        </button>
+        </Link>
       </div>
 
       {/* What's Happening / Trends */}
-      <div className="bg-card rounded-2xl border border-border mb-4 overflow-hidden">
-        <h2 className="font-extrabold text-[20px] leading-6 p-4">What's happening</h2>
+      <div className="bg-transparent rounded-2xl border border-border mb-4 overflow-hidden">
+        <h2 className="font-extrabold text-[20px] leading-6 px-4 pt-3 pb-2 text-foreground">What's happening</h2>
         <div className="flex flex-col">
           {trends.map((t) => (
             <div
@@ -82,20 +85,26 @@ export function RightSidebar({ onSearch }: RightSidebarProps) {
             >
               <div>
                 <span className="text-[13px] text-muted leading-4 block">{t.category}</span>
-                <span className="text-[15px] font-bold leading-5 block">{t.topic}</span>
-                <span className="text-[13px] text-muted leading-4 block">{formatNumber(t.posts)} posts</span>
+                <span className="text-[15px] font-bold text-foreground leading-5 block mt-0.5">{t.topic}</span>
+                <span className="text-[13px] text-muted leading-4 block mt-0.5">{formatNumber(t.posts)} posts</span>
               </div>
               <button className="text-muted hover:text-foreground p-1 hover:bg-subtle rounded-full">
                 <MoreHorizontal className="w-4 h-4" />
               </button>
             </div>
           ))}
+          <Link
+            href="/explore"
+            className="px-4 py-3 text-brand text-[15px] hover:bg-subtle transition-colors block"
+          >
+            Show more
+          </Link>
         </div>
       </div>
 
       {/* Who to Follow */}
-      <div className="bg-card rounded-2xl border border-border mb-4 overflow-hidden">
-        <h2 className="font-extrabold text-[20px] leading-6 p-4">Who to follow</h2>
+      <div className="bg-transparent rounded-2xl border border-border mb-4 overflow-hidden">
+        <h2 className="font-extrabold text-[20px] leading-6 px-4 pt-3 pb-2 text-foreground">Who to follow</h2>
         <div className="flex flex-col">
           {suggestedUsers.map((u) => (
             <div
@@ -106,7 +115,7 @@ export function RightSidebar({ onSearch }: RightSidebarProps) {
                 <img src={u.avatar} alt={u.name} className="w-10 h-10 rounded-full object-cover border border-border" />
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1">
-                    <span className="font-bold text-[15px] leading-5 hover:underline">{u.name}</span>
+                    <span className="font-bold text-[15px] leading-5 text-foreground hover:underline">{u.name}</span>
                     {u.verified && (
                       <CheckCircle2 className="w-4 h-4 fill-brand text-background inline" />
                     )}
@@ -119,6 +128,12 @@ export function RightSidebar({ onSearch }: RightSidebarProps) {
               </button>
             </div>
           ))}
+          <Link
+            href="/explore"
+            className="px-4 py-3 text-brand text-[15px] hover:bg-subtle transition-colors block"
+          >
+            Show more
+          </Link>
         </div>
       </div>
 
