@@ -1,0 +1,37 @@
+# Environment variables & secrets
+.env
+.env*.local
+*.env
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js build output
+.next/
+out/
+build/
+dist/
+
+# Go build binaries
+server
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+services/api/server
+
+# Data directories & uploaded media
+data/
+uploads/
+api_uploads/
+postgres_data/
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log

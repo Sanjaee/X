@@ -1,0 +1,784 @@
+openapi: 3.0.3
+info:
+  title: X / Microblogging Platform REST API
+  description: Versioned RESTful API contract for the X independent reconstruction.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development API server
+  - url: https://api.microblog.local/api/v1
+    description: Production environment
+
+paths:
+  /auth/register:
+    post:
+      summary: Register a new account
+      operationId: register
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password, display_name]
+              properties:
+                username:
+                  type: string
+                  example: johndoe
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: P@ssw0rd123!
+                display_name:
+                  type: string
+                  example: John Doe
+      responses:
+        '201':
+          description: User registered successfully
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/login:
+    post:
+      summary: Login with credentials
+      operationId: login
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identifier, password]
+              properties:
+                identifier:
+                  type: string
+                  description: Username or email address
+                  example: johndoe
+                password:
+                  type: string
+                  format: password
+                  example: P@ssw0rd123!
+      responses:
+        '200':
+          description: Login successful
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /auth/logout:
+    post:
+      summary: Terminate current session
+      operationId: logout
+      tags: [Authentication]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Logged out successfully
+
+  /me:
+    get:
+      summary: Get authenticated user details
+      operationId: getMe
+      tags: [Account]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /me/profile:
+    patch:
+      summary: Update user profile
+      operationId: updateProfile
+      tags: [Account]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                display_name:
+                  type: string
+                bio:
+                  type: string
+                avatar_url:
+                  type: string
+                banner_url:
+                  type: string
+                location:
+                  type: string
+                website:
+                  type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /users/{username}:
+    get:
+      summary: Get public user profile
+      operationId: getUserByUsername
+      tags: [Users]
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /users/{username}/posts:
+    get:
+      summary: Get timeline of posts published by user
+      operationId: getUserPosts
+      tags: [Users, Posts]
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tab
+          in: query
+          schema:
+            type: string
+            enum: [posts, replies, media, likes]
+            default: posts
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostFeedResponse'
+
+  /users/{username}/follow:
+    post:
+      summary: Follow user
+      operationId: followUser
+      tags: [Social Graph]
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FollowStatus'
+    delete:
+      summary: Unfollow user
+      operationId: unfollowUser
+      tags: [Social Graph]
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FollowStatus'
+
+  /posts:
+    post:
+      summary: Publish a new post
+      operationId: createPost
+      tags: [Posts]
+      security:
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                  maxLength: 280
+                  example: Hello world from our reconstructed X platform!
+                media_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                reply_to_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                quote_post_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+
+  /posts/{postId}:
+    get:
+      summary: Get post detail with ancestry and metrics
+      operationId: getPostById
+      tags: [Posts]
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    delete:
+      summary: Delete post (author or moderator only)
+      operationId: deletePost
+      tags: [Posts]
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted successfully
+
+  /posts/{postId}/likes:
+    post:
+      summary: Like a post
+      operationId: likePost
+      tags: [Interactions]
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InteractionStatus'
+    delete:
+      summary: Unlike a post
+      operationId: unlikePost
+      tags: [Interactions]
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InteractionStatus'
+
+  /posts/{postId}/reposts:
+    post:
+      summary: Repost a post
+      operationId: repost
+      tags: [Interactions]
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InteractionStatus'
+    delete:
+      summary: Undo repost
+      operationId: undoRepost
+      tags: [Interactions]
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InteractionStatus'
+
+  /posts/{postId}/bookmarks:
+    post:
+      summary: Bookmark a post
+      operationId: bookmarkPost
+      tags: [Interactions]
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InteractionStatus'
+    delete:
+      summary: Remove bookmark
+      operationId: removeBookmark
+      tags: [Interactions]
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InteractionStatus'
+
+  /feed:
+    get:
+      summary: Get timeline feed
+      operationId: getFeed
+      tags: [Feed]
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [for_you, following]
+            default: for_you
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostFeedResponse'
+
+  /search:
+    get:
+      summary: Search posts, users, or hashtags
+      operationId: search
+      tags: [Search]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [top, latest, users, hashtags]
+            default: top
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  posts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Post'
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserProfile'
+                  next_cursor:
+                    type: string
+                    nullable: true
+
+  /notifications:
+    get:
+      summary: List user notifications
+      operationId: getNotifications
+      tags: [Notifications]
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notifications:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Notification'
+                  next_cursor:
+                    type: string
+                    nullable: true
+
+  /notifications/read:
+    patch:
+      summary: Mark notifications as read
+      operationId: markNotificationsRead
+      tags: [Notifications]
+      security:
+        - CookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  unread_count:
+                    type: integer
+                    example: 0
+
+  /media/upload:
+    post:
+      summary: Upload media file (image / video)
+      operationId: uploadMedia
+      tags: [Media]
+      security:
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaObject'
+
+components:
+  securitySchemes:
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: session_token
+    BearerAuth:
+      type: http
+      scheme: bearer
+
+  schemas:
+    User:
+      type: object
+      required: [id, username, email, display_name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+        display_name:
+          type: string
+        bio:
+          type: string
+        avatar_url:
+          type: string
+        banner_url:
+          type: string
+        is_verified:
+          type: boolean
+        followers_count:
+          type: integer
+        following_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    UserProfile:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            is_following:
+              type: boolean
+            is_followed_by:
+              type: boolean
+
+    Post:
+      type: object
+      required: [id, author, content, created_at, likes_count, reposts_count, replies_count]
+      properties:
+        id:
+          type: string
+          format: uuid
+        author:
+          $ref: '#/components/schemas/User'
+        content:
+          type: string
+        media:
+          type: array
+          items:
+            $ref: '#/components/schemas/MediaObject'
+        reply_to_id:
+          type: string
+          format: uuid
+          nullable: true
+        parent_post:
+          $ref: '#/components/schemas/Post'
+        likes_count:
+          type: integer
+        reposts_count:
+          type: integer
+        replies_count:
+          type: integer
+        views_count:
+          type: integer
+        is_liked:
+          type: boolean
+        is_reposted:
+          type: boolean
+        is_bookmarked:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    MediaObject:
+      type: object
+      required: [id, url, media_type]
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+        media_type:
+          type: string
+          enum: [image, video, gif]
+        width:
+          type: integer
+          nullable: true
+        height:
+          type: integer
+          nullable: true
+
+    PostFeedResponse:
+      type: object
+      required: [posts]
+      properties:
+        posts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Post'
+        next_cursor:
+          type: string
+          nullable: true
+
+    AuthResponse:
+      type: object
+      required: [user, session_token]
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        session_token:
+          type: string
+
+    InteractionStatus:
+      type: object
+      required: [status, count]
+      properties:
+        status:
+          type: boolean
+        count:
+          type: integer
+
+    FollowStatus:
+      type: object
+      required: [is_following, followers_count]
+      properties:
+        is_following:
+          type: boolean
+        followers_count:
+          type: integer
+
+    Notification:
+      type: object
+      required: [id, actor, type, is_read, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        actor:
+          $ref: '#/components/schemas/User'
+        type:
+          type: string
+          enum: [like, reply, repost, mention, follow]
+        post:
+          $ref: '#/components/schemas/Post'
+        is_read:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+  responses:
+    ValidationError:
+      description: Invalid request parameters or payload
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error, details]
+            properties:
+              error:
+                type: string
+                example: Validation failed
+              details:
+                type: object
+    UnauthorizedError:
+      description: Authentication required or invalid session
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error:
+                type: string
+                example: Unauthorized
+    NotFoundError:
+      description: Requested resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error:
+                type: string
+                example: Resource not found

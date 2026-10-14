@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #0f1419;
+  --card: #f7f9f9;
+  --border: #eff3f4;
+  --muted: #536471;
+  --hover-subtle: rgba(15, 20, 25, 0.08);
+
+  --layout-width-rail-icon: 88px;
+  --layout-width-rail-labeled: 275px;
+  --layout-width-primary: 600px;
+  --layout-width-right: 420px;
+  --sticky-header-height: 53px;
+}
+
+:root.dark, [data-theme="dark"] {
+  --background: #000000;
+  --foreground: #e7e9ea;
+  --card: #16181c;
+  --border: #2f3336;
+  --muted: #71767b;
+  --hover-subtle: rgba(231, 233, 234, 0.1);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  overflow-y: scroll;
+}
+
+/* Custom engagement pill button hover */
+.x-engagement-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  transition: all 0.15s ease-in-out;
+  border-radius: 9999px;
+  padding: 6px 8px;
+}
+
+.x-engagement-btn:hover {
+  cursor: pointer;
+}
+
+/* Hide scrollbar */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

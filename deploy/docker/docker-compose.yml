@@ -1,0 +1,102 @@
+services:
+  proxy:
+    image: nginx:alpine
+    container_name: x-proxy
+    ports:
+      - "80:80"
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - web
+      - api
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/Dockerfile.api
+    container_name: x-api
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:supersecretpassword30charslong123@postgres:5432/media_prod?sslmode=disable}
+      REDIS_URL: ${REDIS_URL:-redis://:supersecretredispass@redis:6379}
+      STORAGE_DIR: /app/data/uploads
+      APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      PLISIO_API_KEY: ${PLISIO_API_KEY}
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
+      R2_BUCKET: ${R2_BUCKET:-lostmedia}
+      R2_ENDPOINT: ${R2_ENDPOINT}
+      R2_PUBLIC_DOMAIN: ${R2_PUBLIC_DOMAIN}
+    volumes:
+      - api_uploads:/app/data/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/Dockerfile.web
+    container_name: x-web
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080/api/v1
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost}
+      BACKEND_URL: ${BACKEND_URL:-http://localhost/api}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
+      PLISIO_API_KEY: ${PLISIO_API_KEY}
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: x-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-supersecretpassword30charslong123}
+      POSTGRES_DB: ${DB_NAME:-media_prod}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../../services/api/migrations/000001_initial_schema.up.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+      - ../../services/api/migrations/000002_subscriptions.up.sql:/docker-entrypoint-initdb.d/02_subscriptions.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d media_prod"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: x-redis
+    command: redis-server --requirepass supersecretredispass
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "supersecretredispass", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  api_uploads:
