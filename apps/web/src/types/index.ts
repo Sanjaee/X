@@ -51,10 +51,58 @@ export interface Notification {
   recipient_id: string;
   actor_id: string;
   actor: User;
-  type: 'like' | 'reply' | 'repost' | 'mention' | 'follow';
+  type: 'like' | 'reply' | 'repost' | 'mention' | 'follow' | 'follow_request' | 'dm';
   post_id?: string;
   post?: Post;
+  entity_type?: string;
+  entity_id?: string;
   is_read: boolean;
+  created_at: string;
+}
+
+export interface SocialRelationship {
+  target_user_id: string;
+  is_following: boolean;
+  is_followed_by: boolean;
+  is_mutual: boolean;
+  is_blocked: boolean;
+  is_blocked_by: boolean;
+  is_muted: boolean;
+  has_pending_follow_request: boolean;
+  is_private: boolean;
+}
+
+export interface FollowRequest {
+  id: string;
+  requester_id: string;
+  requester?: User;
+  target_id: string;
+  target?: User;
+  status: 'pending' | 'accepted' | 'rejected' | 'cancelled';
+  created_at: string;
+}
+
+export interface Conversation {
+  id: string;
+  is_group: boolean;
+  title?: string;
+  other_member?: User;
+  last_message?: Message;
+  unread_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Message {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  sender?: User;
+  client_message_id?: string;
+  content: string;
+  message_type: 'text' | 'media';
+  media?: MediaObject;
+  reply_to_id?: string;
   created_at: string;
 }
 

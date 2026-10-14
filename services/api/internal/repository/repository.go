@@ -39,6 +39,29 @@ type Repository interface {
 	// Social Graph
 	FollowUser(ctx context.Context, followerID, followingID uuid.UUID) (bool, int, error)
 	UnfollowUser(ctx context.Context, followerID, followingID uuid.UUID) (bool, int, error)
+	GetFollowers(ctx context.Context, userID, viewerID uuid.UUID, limit int, cursor string) ([]domain.User, string, error)
+	GetFollowing(ctx context.Context, userID, viewerID uuid.UUID, limit int, cursor string) ([]domain.User, string, error)
+	GetMutualConnections(ctx context.Context, userID, viewerID uuid.UUID, limit int) ([]domain.User, error)
+	GetSocialRelationship(ctx context.Context, viewerID, targetID uuid.UUID) (*domain.SocialRelationship, error)
+	BlockUser(ctx context.Context, blockerID, blockedID uuid.UUID) error
+	UnblockUser(ctx context.Context, blockerID, blockedID uuid.UUID) error
+	MuteUser(ctx context.Context, muterID, mutedID uuid.UUID) error
+	UnmuteUser(ctx context.Context, muterID, mutedID uuid.UUID) error
+	IsBlocked(ctx context.Context, userA, userB uuid.UUID) (bool, error)
+
+	// Follow Requests
+	CreateFollowRequest(ctx context.Context, req *domain.FollowRequest) error
+	GetFollowRequests(ctx context.Context, targetID uuid.UUID) ([]domain.FollowRequest, error)
+	RespondFollowRequest(ctx context.Context, requestID, targetID uuid.UUID, accept bool) error
+	CancelFollowRequest(ctx context.Context, requesterID, targetID uuid.UUID) error
+
+	// Direct Messaging
+	GetConversations(ctx context.Context, userID uuid.UUID, limit int, cursor string) ([]domain.Conversation, error)
+	GetOrCreateConversation(ctx context.Context, userA, userB uuid.UUID) (*domain.Conversation, error)
+	GetConversationByID(ctx context.Context, convID, userID uuid.UUID) (*domain.Conversation, error)
+	GetMessages(ctx context.Context, convID, userID uuid.UUID, limit int, beforeID *uuid.UUID) ([]domain.Message, error)
+	CreateMessage(ctx context.Context, msg *domain.Message) error
+	MarkConversationRead(ctx context.Context, convID, userID uuid.UUID, messageID *uuid.UUID) error
 
 	// Search
 	SearchPosts(ctx context.Context, query string, viewerID *uuid.UUID, cursor string, limit int) ([]domain.Post, string, error)
@@ -47,7 +70,15 @@ type Repository interface {
 	// Notifications
 	CreateNotification(ctx context.Context, n *domain.Notification) error
 	GetNotifications(ctx context.Context, userID uuid.UUID, cursor string, limit int) ([]domain.Notification, string, error)
+	GetNotificationsWithTab(ctx context.Context, userID uuid.UUID, tab string, cursor string, limit int) ([]domain.Notification, string, error)
+	GetUnreadNotificationsCount(ctx context.Context, userID uuid.UUID) (int, error)
 	MarkNotificationsRead(ctx context.Context, userID uuid.UUID) error
+	MarkNotificationRead(ctx context.Context, notifID, userID uuid.UUID) error
+
+	// Outbox Events
+	CreateOutboxEvent(ctx context.Context, event *domain.OutboxEvent) error
+	GetPendingOutboxEvents(ctx context.Context, batchSize int) ([]domain.OutboxEvent, error)
+	MarkOutboxEventPublished(ctx context.Context, id uuid.UUID) error
 
 	// Media
 	CreateMediaObject(ctx context.Context, media *domain.MediaObject) error

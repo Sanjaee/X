@@ -32,6 +32,13 @@ type MemoryRepository struct {
 	reposts       map[string]time.Time // "postID:userID"
 	bookmarks     map[string]time.Time // "postID:userID"
 	follows       map[string]time.Time // "followerID:followingID"
+	blocks        map[string]time.Time // "blockerID:blockedID"
+	mutes         map[string]time.Time // "muterID:mutedID"
+	followReqs    map[uuid.UUID]*domain.FollowRequest
+	conversations map[uuid.UUID]*domain.Conversation
+	convMembers   map[uuid.UUID][]uuid.UUID
+	messages      map[uuid.UUID]*domain.Message
+	outboxEvents  map[uuid.UUID]*domain.OutboxEvent
 	notifications map[uuid.UUID]*domain.Notification
 
 	// Subscriptions & Verification (Section 6A)
@@ -55,6 +62,13 @@ func NewMemoryRepository() *MemoryRepository {
 		reposts:       make(map[string]time.Time),
 		bookmarks:     make(map[string]time.Time),
 		follows:       make(map[string]time.Time),
+		blocks:        make(map[string]time.Time),
+		mutes:         make(map[string]time.Time),
+		followReqs:    make(map[uuid.UUID]*domain.FollowRequest),
+		conversations: make(map[uuid.UUID]*domain.Conversation),
+		convMembers:   make(map[uuid.UUID][]uuid.UUID),
+		messages:      make(map[uuid.UUID]*domain.Message),
+		outboxEvents:  make(map[uuid.UUID]*domain.OutboxEvent),
 		notifications: make(map[uuid.UUID]*domain.Notification),
 		plans:         make(map[string]*domain.SubscriptionPlan),
 		subs:          make(map[uuid.UUID]*domain.Subscription),
@@ -938,5 +952,395 @@ func (r *MemoryRepository) UpdateUserVerification(ctx context.Context, userID uu
 		return nil
 	}
 	return ErrNotFound
+}
+
+func (r *MemoryRepository) GetFollowers(ctx context.Context, userID, viewerID uuid.UUID, limit int, cursor string) ([]domain.User, string, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var users []domain.User
+	for key := range r.follows {
+		parts := strings.Split(key, ":")
+		if len(parts) == 2 && parts[1] == userID.String() {
+			followerUUID, err := uuid.Parse(parts[0])
+			if err == nil {
+				if u, ok := r.users[followerUUID]; ok {
+					userCopy := *u
+					_, userCopy.IsFollowing = r.follows[viewerID.String()+":"+u.ID.String()]
+					_, userCopy.IsFollowedBy = r.follows[u.ID.String()+":"+viewerID.String()]
+					users = append(users, userCopy)
+				}
+			}
+		}
+	}
+	return users, "", nil
+}
+
+func (r *MemoryRepository) GetFollowing(ctx context.Context, userID, viewerID uuid.UUID, limit int, cursor string) ([]domain.User, string, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var users []domain.User
+	for key := range r.follows {
+		parts := strings.Split(key, ":")
+		if len(parts) == 2 && parts[0] == userID.String() {
+			followingUUID, err := uuid.Parse(parts[1])
+			if err == nil {
+				if u, ok := r.users[followingUUID]; ok {
+					userCopy := *u
+					_, userCopy.IsFollowing = r.follows[viewerID.String()+":"+u.ID.String()]
+					_, userCopy.IsFollowedBy = r.follows[u.ID.String()+":"+viewerID.String()]
+					users = append(users, userCopy)
+				}
+			}
+		}
+	}
+	return users, "", nil
+}
+
+func (r *MemoryRepository) GetMutualConnections(ctx context.Context, userID, viewerID uuid.UUID, limit int) ([]domain.User, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var users []domain.User
+	for _, u := range r.users {
+		_, vFollows := r.follows[viewerID.String()+":"+u.ID.String()]
+		_, tFollows := r.follows[userID.String()+":"+u.ID.String()]
+		if vFollows && tFollows {
+			userCopy := *u
+			userCopy.IsFollowing = true
+			users = append(users, userCopy)
+			if len(users) >= limit {
+				break
+			}
+		}
+	}
+	return users, nil
+}
+
+func (r *MemoryRepository) GetSocialRelationship(ctx context.Context, viewerID, targetID uuid.UUID) (*domain.SocialRelationship, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	rel := &domain.SocialRelationship{
+		TargetUserID: targetID,
+	}
+
+	targetUser, ok := r.users[targetID]
+	if !ok {
+		return nil, ErrNotFound
+	}
+	rel.IsPrivate = targetUser.IsPrivate
+
+	_, rel.IsFollowing = r.follows[viewerID.String()+":"+targetID.String()]
+	_, rel.IsFollowedBy = r.follows[targetID.String()+":"+viewerID.String()]
+	rel.IsMutual = rel.IsFollowing && rel.IsFollowedBy
+
+	_, rel.IsBlocked = r.blocks[viewerID.String()+":"+targetID.String()]
+	_, rel.IsBlockedBy = r.blocks[targetID.String()+":"+viewerID.String()]
+	_, rel.IsMuted = r.mutes[viewerID.String()+":"+targetID.String()]
+
+	for _, req := range r.followReqs {
+		if req.RequesterID == viewerID && req.TargetID == targetID && req.Status == "pending" {
+			rel.HasPendingFollowRequest = true
+			break
+		}
+	}
+
+	return rel, nil
+}
+
+func (r *MemoryRepository) BlockUser(ctx context.Context, blockerID, blockedID uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.blocks[blockerID.String()+":"+blockedID.String()] = time.Now()
+	delete(r.follows, blockerID.String()+":"+blockedID.String())
+	delete(r.follows, blockedID.String()+":"+blockerID.String())
+	return nil
+}
+
+func (r *MemoryRepository) UnblockUser(ctx context.Context, blockerID, blockedID uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	delete(r.blocks, blockerID.String()+":"+blockedID.String())
+	return nil
+}
+
+func (r *MemoryRepository) MuteUser(ctx context.Context, muterID, mutedID uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.mutes[muterID.String()+":"+mutedID.String()] = time.Now()
+	return nil
+}
+
+func (r *MemoryRepository) UnmuteUser(ctx context.Context, muterID, mutedID uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	delete(r.mutes, muterID.String()+":"+mutedID.String())
+	return nil
+}
+
+func (r *MemoryRepository) IsBlocked(ctx context.Context, userA, userB uuid.UUID) (bool, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	_, b1 := r.blocks[userA.String()+":"+userB.String()]
+	_, b2 := r.blocks[userB.String()+":"+userA.String()]
+	return b1 || b2, nil
+}
+
+func (r *MemoryRepository) CreateFollowRequest(ctx context.Context, req *domain.FollowRequest) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if req.ID == uuid.Nil {
+		req.ID = uuid.New()
+	}
+	if req.Status == "" {
+		req.Status = "pending"
+	}
+	req.CreatedAt = time.Now()
+	req.UpdatedAt = time.Now()
+	r.followReqs[req.ID] = req
+	return nil
+}
+
+func (r *MemoryRepository) GetFollowRequests(ctx context.Context, targetID uuid.UUID) ([]domain.FollowRequest, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var reqs []domain.FollowRequest
+	for _, req := range r.followReqs {
+		if req.TargetID == targetID && req.Status == "pending" {
+			reqCopy := *req
+			if u, ok := r.users[req.RequesterID]; ok {
+				reqCopy.Requester = u
+			}
+			reqs = append(reqs, reqCopy)
+		}
+	}
+	return reqs, nil
+}
+
+func (r *MemoryRepository) RespondFollowRequest(ctx context.Context, requestID, targetID uuid.UUID, accept bool) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	req, ok := r.followReqs[requestID]
+	if !ok || req.TargetID != targetID {
+		return ErrNotFound
+	}
+
+	if accept {
+		req.Status = "accepted"
+		r.follows[req.RequesterID.String()+":"+req.TargetID.String()] = time.Now()
+	} else {
+		req.Status = "rejected"
+	}
+	req.UpdatedAt = time.Now()
+	return nil
+}
+
+func (r *MemoryRepository) CancelFollowRequest(ctx context.Context, requesterID, targetID uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for id, req := range r.followReqs {
+		if req.RequesterID == requesterID && req.TargetID == targetID && req.Status == "pending" {
+			delete(r.followReqs, id)
+			break
+		}
+	}
+	return nil
+}
+
+func (r *MemoryRepository) GetConversations(ctx context.Context, userID uuid.UUID, limit int, cursor string) ([]domain.Conversation, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var convs []domain.Conversation
+	for _, c := range r.conversations {
+		members := r.convMembers[c.ID]
+		isMember := false
+		var otherID uuid.UUID
+		for _, m := range members {
+			if m == userID {
+				isMember = true
+			} else {
+				otherID = m
+			}
+		}
+		if isMember {
+			cCopy := *c
+			if otherU, ok := r.users[otherID]; ok {
+				cCopy.OtherMember = otherU
+			}
+			convs = append(convs, cCopy)
+		}
+	}
+	return convs, nil
+}
+
+func (r *MemoryRepository) GetOrCreateConversation(ctx context.Context, userA, userB uuid.UUID) (*domain.Conversation, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, c := range r.conversations {
+		if !c.IsGroup {
+			members := r.convMembers[c.ID]
+			if len(members) == 2 {
+				if (members[0] == userA && members[1] == userB) || (members[0] == userB && members[1] == userA) {
+					return c, nil
+				}
+			}
+		}
+	}
+
+	newC := &domain.Conversation{
+		ID:        uuid.New(),
+		IsGroup:   false,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	r.conversations[newC.ID] = newC
+	r.convMembers[newC.ID] = []uuid.UUID{userA, userB}
+	return newC, nil
+}
+
+func (r *MemoryRepository) GetConversationByID(ctx context.Context, convID, userID uuid.UUID) (*domain.Conversation, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	c, ok := r.conversations[convID]
+	if !ok {
+		return nil, ErrNotFound
+	}
+	members := r.convMembers[convID]
+	isMember := false
+	var otherID uuid.UUID
+	for _, m := range members {
+		if m == userID {
+			isMember = true
+		} else {
+			otherID = m
+		}
+	}
+	if !isMember {
+		return nil, ErrNotFound
+	}
+
+	cCopy := *c
+	if otherU, ok := r.users[otherID]; ok {
+		cCopy.OtherMember = otherU
+	}
+	return &cCopy, nil
+}
+
+func (r *MemoryRepository) GetMessages(ctx context.Context, convID, userID uuid.UUID, limit int, beforeID *uuid.UUID) ([]domain.Message, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var msgs []domain.Message
+	for _, m := range r.messages {
+		if m.ConversationID == convID {
+			mCopy := *m
+			if sender, ok := r.users[m.SenderID]; ok {
+				mCopy.Sender = sender
+			}
+			msgs = append(msgs, mCopy)
+		}
+	}
+	return msgs, nil
+}
+
+func (r *MemoryRepository) CreateMessage(ctx context.Context, msg *domain.Message) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if msg.ID == uuid.Nil {
+		msg.ID = uuid.New()
+	}
+	msg.CreatedAt = time.Now()
+	r.messages[msg.ID] = msg
+	if c, ok := r.conversations[msg.ConversationID]; ok {
+		c.UpdatedAt = time.Now()
+		c.LastMessage = msg
+	}
+	return nil
+}
+
+func (r *MemoryRepository) MarkConversationRead(ctx context.Context, convID, userID uuid.UUID, messageID *uuid.UUID) error {
+	return nil
+}
+
+func (r *MemoryRepository) GetNotificationsWithTab(ctx context.Context, userID uuid.UUID, tab string, cursor string, limit int) ([]domain.Notification, string, error) {
+	return r.GetNotifications(ctx, userID, cursor, limit)
+}
+
+func (r *MemoryRepository) GetUnreadNotificationsCount(ctx context.Context, userID uuid.UUID) (int, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	count := 0
+	for _, n := range r.notifications {
+		if n.RecipientID == userID && !n.IsRead {
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (r *MemoryRepository) MarkNotificationRead(ctx context.Context, notifID, userID uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if n, ok := r.notifications[notifID]; ok && n.RecipientID == userID {
+		n.IsRead = true
+	}
+	return nil
+}
+
+func (r *MemoryRepository) CreateOutboxEvent(ctx context.Context, event *domain.OutboxEvent) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if event.ID == uuid.Nil {
+		event.ID = uuid.New()
+	}
+	event.CreatedAt = time.Now()
+	r.outboxEvents[event.ID] = event
+	return nil
+}
+
+func (r *MemoryRepository) GetPendingOutboxEvents(ctx context.Context, batchSize int) ([]domain.OutboxEvent, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var events []domain.OutboxEvent
+	for _, e := range r.outboxEvents {
+		if e.Status == "pending" {
+			events = append(events, *e)
+			if len(events) >= batchSize {
+				break
+			}
+		}
+	}
+	return events, nil
+}
+
+func (r *MemoryRepository) MarkOutboxEventPublished(ctx context.Context, id uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if e, ok := r.outboxEvents[id]; ok {
+		e.Status = "published"
+		now := time.Now()
+		e.PublishedAt = &now
+	}
+	return nil
 }
 

@@ -101,12 +101,52 @@ Access the application at [http://localhost](http://localhost).
 
 ---
 
-## 5. Running Verification Tests
+---
 
-Run the unified test suite:
+## 5. REA Social Graph, Realtime DMs & Notification Architecture
+
+### A. REA Passive Observation & Evidence Matrix
+* **Social Graph (VERIFIED)**: Bilateral relationship controls distinguish hard **Block** (dissolves follows in both directions and prevents mutual views/interactions) from soft **Mute** (retains follow relationship but hides actor posts from timeline). Follow requests for private accounts (`is_private = true`) enter a `pending` state requiring explicit authorization.
+* **Direct Messaging (VERIFIED/PROPOSED)**: Realtime 1:1 messaging enforces idempotency via client-generated `client_message_id`. Typing indicators are strictly ephemeral, stored in Redis with a 4-second TTL, and never written to relational storage.
+* **Notifications & Outbox (PROPOSED)**: Follows the **Transactional Outbox Pattern** in PostgreSQL (`outbox_events`). Database mutations and outbox records commit in the same transaction, which an asynchronous worker fans out to Redis and connected WebSocket clients.
+
+### B. Realtime WebSocket Gateway & Contracts
+* **Endpoint**: `/api/v1/ws` (supports Bearer Authorization header or `?token=<session_token>` query parameter for browsers).
+* **Client-to-Server Events**:
+  * `subscribe`: `{ "conversation_id": "uuid" }`
+  * `unsubscribe`: `{ "conversation_id": "uuid" }`
+  * `typing`: `{ "conversation_id": "uuid", "is_typing": true|false }`
+  * `ping`: Heartbeat
+* **Server-to-Client Broadcasts**:
+  * `message.created`: Delivers newly published messages to active subscribers.
+  * `message.read`: Live delivery and read receipt confirmations.
+  * `typing.updated`: Ephemeral typing presence scoped to conversation members.
+  * `notification.created` / `notification.count.updated`: Realtime badge updates without page refreshes.
+
+### C. Database Migrations
+1. `000001_initial_schema.up.sql`: Base tables (`users`, `posts`, `media_objects`, `likes`, `reposts`, `bookmarks`, `follows`, `notifications`).
+2. `000002_monetization_and_verification.up.sql`: Subscriptions, orders, billing history, and verification applications.
+3. `000003_social_messaging_realtime.up.sql`: `follow_requests`, `conversation_read_states`, `message_reactions`, `notification_preferences`, `outbox_events`, composite indexes, and relational constraints.
+
+---
+
+## 6. Running Verification Tests
+
+Run the backend test suite:
 ```powershell
-./scripts/test.ps1
+cd services/api
+go test -v ./...
 ```
-This runs:
-1. Go unit & integration tests (`TestHealthCheck`, `TestAuthAndPostingFlow`).
-2. Next.js strict TypeScript check and production page generation (`npm run build`).
+This tests:
+1. `TestHealthCheck`: Liveness and readiness endpoints.
+2. `TestAuthAndPostingFlow`: Registration, login, posting, liking, and bookmarking.
+3. `TestSubscriptionsAndBadges`: Monetization orders and badge verification.
+4. `TestSocialGraph_FollowUnfollowBlockMute`: Follow/unfollow, relationship checks, block dissolution, and mute isolation.
+5. `TestFollowRequest_PrivateAccount`: Private account follow request creation, recipient inbox, and acceptance flow.
+6. `TestDirectMessaging_IdempotencyAndFlow`: Conversation creation, idempotent message delivery, read receipts, and block restriction enforcement.
+
+Verify frontend production build:
+```powershell
+cd apps/web
+npm run build
+```

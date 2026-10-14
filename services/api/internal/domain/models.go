@@ -99,11 +99,40 @@ type Notification struct {
 	RecipientID uuid.UUID  `json:"recipient_id"`
 	ActorID     uuid.UUID  `json:"actor_id"`
 	Actor       *User      `json:"actor,omitempty"`
-	Type        string     `json:"type"` // 'like', 'reply', 'repost', 'mention', 'follow'
+	Type        string     `json:"type"` // 'like', 'reply', 'repost', 'mention', 'follow', 'follow_request', 'dm'
 	PostID      *uuid.UUID `json:"post_id,omitempty"`
 	Post        *Post      `json:"post,omitempty"`
+	EntityType  string     `json:"entity_type,omitempty"`
+	EntityID    *uuid.UUID `json:"entity_id,omitempty"`
+	DedupeKey   string     `json:"dedupe_key,omitempty"`
 	IsRead      bool       `json:"is_read"`
+	ReadAt      *time.Time `json:"read_at,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
+}
+
+// FollowRequest represents a pending connection request for private accounts
+type FollowRequest struct {
+	ID          uuid.UUID `json:"id"`
+	RequesterID uuid.UUID `json:"requester_id"`
+	Requester   *User     `json:"requester,omitempty"`
+	TargetID    uuid.UUID `json:"target_id"`
+	Target      *User     `json:"target,omitempty"`
+	Status      string    `json:"status"` // 'pending', 'accepted', 'rejected', 'cancelled'
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// SocialRelationship summarizes bilateral state between two accounts
+type SocialRelationship struct {
+	TargetUserID           uuid.UUID `json:"target_user_id"`
+	IsFollowing            bool      `json:"is_following"`
+	IsFollowedBy           bool      `json:"is_followed_by"`
+	IsMutual               bool      `json:"is_mutual"`
+	IsBlocked              bool      `json:"is_blocked"`
+	IsBlockedBy            bool      `json:"is_blocked_by"`
+	IsMuted                bool      `json:"is_muted"`
+	HasPendingFollowRequest bool     `json:"has_pending_follow_request"`
+	IsPrivate              bool      `json:"is_private"`
 }
 
 // Conversation represents a DM chat channel
@@ -115,18 +144,60 @@ type Conversation struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 	LastMessage *Message  `json:"last_message,omitempty"`
 	Members     []User    `json:"members,omitempty"`
+	OtherMember *User     `json:"other_member,omitempty"`
+	UnreadCount int       `json:"unread_count"`
 }
 
 // Message represents a single chat entry
 type Message struct {
-	ID             uuid.UUID    `json:"id"`
-	ConversationID uuid.UUID    `json:"conversation_id"`
-	SenderID       uuid.UUID    `json:"sender_id"`
-	Sender         *User        `json:"sender,omitempty"`
-	Content        string       `json:"content"`
-	MediaID        *uuid.UUID   `json:"media_id,omitempty"`
-	Media          *MediaObject `json:"media,omitempty"`
-	CreatedAt      time.Time    `json:"created_at"`
+	ID              uuid.UUID         `json:"id"`
+	ConversationID  uuid.UUID         `json:"conversation_id"`
+	SenderID        uuid.UUID         `json:"sender_id"`
+	Sender          *User             `json:"sender,omitempty"`
+	ClientMessageID string            `json:"client_message_id,omitempty"`
+	Content         string            `json:"content"`
+	MessageType     string            `json:"message_type"` // 'text', 'media', 'post_share'
+	ReplyToID       *uuid.UUID        `json:"reply_to_id,omitempty"`
+	ReplyTo         *Message          `json:"reply_to,omitempty"`
+	MediaID         *uuid.UUID        `json:"media_id,omitempty"`
+	Media           *MediaObject      `json:"media,omitempty"`
+	Reactions       []MessageReaction `json:"reactions,omitempty"`
+	EditedAt        *time.Time        `json:"edited_at,omitempty"`
+	DeletedAt       *time.Time        `json:"deleted_at,omitempty"`
+	CreatedAt       time.Time         `json:"created_at"`
+}
+
+// MessageReaction represents an emoji reaction on a message
+type MessageReaction struct {
+	ID        uuid.UUID `json:"id"`
+	MessageID uuid.UUID `json:"message_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Emoji     string    `json:"emoji"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// NotificationPreferences holds user notification settings
+type NotificationPreferences struct {
+	UserID        uuid.UUID `json:"user_id"`
+	EmailDMs      bool      `json:"email_dms"`
+	EmailFollows  bool      `json:"email_follows"`
+	PushDMs       bool      `json:"push_dms"`
+	PushMentions  bool      `json:"push_mentions"`
+	PushLikes     bool      `json:"push_likes"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+// OutboxEvent represents an atomic event record for guaranteed asynchronous delivery
+type OutboxEvent struct {
+	ID            uuid.UUID              `json:"id"`
+	EventType     string                 `json:"event_type"`
+	AggregateType string                 `json:"aggregate_type"`
+	AggregateID   uuid.UUID              `json:"aggregate_id"`
+	Payload       map[string]interface{} `json:"payload"`
+	Status        string                 `json:"status"` // 'pending', 'published', 'failed'
+	RetryCount    int                    `json:"retry_count"`
+	CreatedAt     time.Time              `json:"created_at"`
+	PublishedAt   *time.Time             `json:"published_at,omitempty"`
 }
 
 // UserSettings represents configuration preferences

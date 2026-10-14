@@ -19,7 +19,7 @@ import (
 func setupTestRouter() (*chi.Mux, repository.Repository) {
 	repo := repository.NewMemoryRepository()
 	tmpDir, _ := os.MkdirTemp("", "media_test")
-	h := handler.NewHandler(repo, tmpDir, nil, nil)
+	h := handler.NewHandler(repo, tmpDir, nil, nil, nil, nil)
 
 	r := chi.NewRouter()
 

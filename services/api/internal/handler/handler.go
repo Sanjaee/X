@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -20,10 +21,12 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/x-reconstruction/api/internal/domain"
 	"github.com/x-reconstruction/api/internal/media"
 	"github.com/x-reconstruction/api/internal/middleware"
 	"github.com/x-reconstruction/api/internal/payment"
+	"github.com/x-reconstruction/api/internal/realtime"
 	"github.com/x-reconstruction/api/internal/repository"
 )
 
@@ -32,15 +35,19 @@ type Handler struct {
 	storageDir string
 	mediaSvc   *media.MediaService
 	plisioSvc  *payment.PlisioService
+	hub        *realtime.Hub
+	rdb        *redis.Client
 }
 
-func NewHandler(repo repository.Repository, storageDir string, mediaSvc *media.MediaService, plisioSvc *payment.PlisioService) *Handler {
+func NewHandler(repo repository.Repository, storageDir string, mediaSvc *media.MediaService, plisioSvc *payment.PlisioService, hub *realtime.Hub, rdb *redis.Client) *Handler {
 	_ = os.MkdirAll(storageDir, 0755)
 	return &Handler{
 		repo:       repo,
 		storageDir: storageDir,
 		mediaSvc:   mediaSvc,
 		plisioSvc:  plisioSvc,
+		hub:        hub,
+		rdb:        rdb,
 	}
 }
 
@@ -1364,5 +1371,616 @@ func (h *Handler) GetUserBadges(w http.ResponseWriter, r *http.Request) {
 		"verified_type": targetUser.VerifiedType,
 		"badges":        badges,
 	})
+}
+
+// ==========================================
+// REALTIME WEBSOCKET & OUTBOX WORKER
+// ==========================================
+
+func (h *Handler) ServeWebSocket(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		token := r.URL.Query().Get("token")
+		if token != "" {
+			hash := sha256.Sum256([]byte(token))
+			tokenHash := hex.EncodeToString(hash[:])
+			session, err := h.repo.GetSessionByTokenHash(r.Context(), tokenHash)
+			if err == nil && session != nil && session.ExpiresAt.After(time.Now()) {
+				u, err := h.repo.GetUserByID(r.Context(), session.UserID, nil)
+				if err == nil && u != nil {
+					user = u
+				}
+			}
+		}
+	}
+
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	if h.hub != nil {
+		realtime.ServeWS(h.hub, w, r, user.ID)
+	}
+}
+
+func (h *Handler) StartOutboxWorker(ctx context.Context) {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			events, err := h.repo.GetPendingOutboxEvents(ctx, 20)
+			if err != nil || len(events) == 0 {
+				continue
+			}
+
+			for _, e := range events {
+				if h.hub != nil {
+					switch e.EventType {
+					case "notification.created":
+						if recipientStr, ok := e.Payload["recipient_id"].(string); ok {
+							if recID, err := uuid.Parse(recipientStr); err == nil {
+								h.hub.BroadcastToUser(recID, "notification.created", e.Payload)
+								count, _ := h.repo.GetUnreadNotificationsCount(ctx, recID)
+								h.hub.BroadcastToUser(recID, "notification.count.updated", map[string]int{"unread_count": count})
+							}
+						}
+					case "message.created":
+						if convStr, ok := e.Payload["conversation_id"].(string); ok {
+							if convID, err := uuid.Parse(convStr); err == nil {
+								h.hub.BroadcastToConversation(convID, nil, "message.created", e.Payload)
+							}
+						}
+					}
+				}
+				_ = h.repo.MarkOutboxEventPublished(ctx, e.ID)
+			}
+		}
+	}
+}
+
+// ==========================================
+// SOCIAL GRAPH: FOLLOWERS, FOLLOWING, MUTUALS, BLOCK, MUTE, REQUESTS
+// ==========================================
+
+func (h *Handler) GetFollowers(w http.ResponseWriter, r *http.Request) {
+	targetUsername := chi.URLParam(r, "username")
+	target, err := h.repo.GetUserByUsername(r.Context(), targetUsername, nil)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	viewerID := uuid.Nil
+	if u := middleware.GetUserFromContext(r.Context()); u != nil {
+		viewerID = u.ID
+	}
+
+	users, nextCursor, err := h.repo.GetFollowers(r.Context(), target.ID, viewerID, 30, "")
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to get followers")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"users":       users,
+		"next_cursor": nextCursor,
+	})
+}
+
+func (h *Handler) GetFollowing(w http.ResponseWriter, r *http.Request) {
+	targetUsername := chi.URLParam(r, "username")
+	target, err := h.repo.GetUserByUsername(r.Context(), targetUsername, nil)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	viewerID := uuid.Nil
+	if u := middleware.GetUserFromContext(r.Context()); u != nil {
+		viewerID = u.ID
+	}
+
+	users, nextCursor, err := h.repo.GetFollowing(r.Context(), target.ID, viewerID, 30, "")
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to get following")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"users":       users,
+		"next_cursor": nextCursor,
+	})
+}
+
+func (h *Handler) GetMutualConnections(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeJSON(w, http.StatusOK, map[string]interface{}{"mutuals": []domain.User{}})
+		return
+	}
+
+	targetUsername := chi.URLParam(r, "username")
+	target, err := h.repo.GetUserByUsername(r.Context(), targetUsername, nil)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	mutuals, err := h.repo.GetMutualConnections(r.Context(), target.ID, user.ID, 5)
+	if err != nil {
+		mutuals = []domain.User{}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"mutuals": mutuals})
+}
+
+func (h *Handler) GetSocialRelationship(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	targetUsername := chi.URLParam(r, "username")
+	target, err := h.repo.GetUserByUsername(r.Context(), targetUsername, nil)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	rel, err := h.repo.GetSocialRelationship(r.Context(), user.ID, target.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to get relationship")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, rel)
+}
+
+func (h *Handler) BlockUser(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	targetUsername := chi.URLParam(r, "username")
+	target, err := h.repo.GetUserByUsername(r.Context(), targetUsername, nil)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	if err := h.repo.BlockUser(r.Context(), user.ID, target.ID); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"status": "blocked", "is_blocked": true})
+}
+
+func (h *Handler) UnblockUser(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	targetUsername := chi.URLParam(r, "username")
+	target, err := h.repo.GetUserByUsername(r.Context(), targetUsername, nil)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	if err := h.repo.UnblockUser(r.Context(), user.ID, target.ID); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"status": "unblocked", "is_blocked": false})
+}
+
+func (h *Handler) MuteUser(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	targetUsername := chi.URLParam(r, "username")
+	target, err := h.repo.GetUserByUsername(r.Context(), targetUsername, nil)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	if err := h.repo.MuteUser(r.Context(), user.ID, target.ID); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"status": "muted", "is_muted": true})
+}
+
+func (h *Handler) UnmuteUser(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	targetUsername := chi.URLParam(r, "username")
+	target, err := h.repo.GetUserByUsername(r.Context(), targetUsername, nil)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	if err := h.repo.UnmuteUser(r.Context(), user.ID, target.ID); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"status": "unmuted", "is_muted": false})
+}
+
+// Follow Requests
+func (h *Handler) CreateFollowRequest(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	targetUsername := chi.URLParam(r, "username")
+	target, err := h.repo.GetUserByUsername(r.Context(), targetUsername, nil)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	req := &domain.FollowRequest{
+		RequesterID: user.ID,
+		TargetID:    target.ID,
+	}
+
+	if err := h.repo.CreateFollowRequest(r.Context(), req); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to create follow request")
+		return
+	}
+
+	_ = h.repo.CreateNotification(r.Context(), &domain.Notification{
+		RecipientID: target.ID,
+		ActorID:     user.ID,
+		Type:        "follow_request",
+	})
+
+	writeJSON(w, http.StatusCreated, map[string]interface{}{
+		"status":                     "requested",
+		"has_pending_follow_request": true,
+	})
+}
+
+func (h *Handler) GetFollowRequests(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	reqs, err := h.repo.GetFollowRequests(r.Context(), user.ID)
+	if err != nil {
+		reqs = []domain.FollowRequest{}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"requests": reqs})
+}
+
+func (h *Handler) RespondFollowRequest(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	requestID, err := uuid.Parse(chi.URLParam(r, "requestId"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request id")
+		return
+	}
+
+	var body struct {
+		Action string `json:"action"` // 'accept' or 'reject'
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+
+	accept := body.Action == "accept"
+	if err := h.repo.RespondFollowRequest(r.Context(), requestID, user.ID, accept); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to respond to request")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": body.Action})
+}
+
+func (h *Handler) CancelFollowRequest(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	targetUsername := chi.URLParam(r, "username")
+	target, err := h.repo.GetUserByUsername(r.Context(), targetUsername, nil)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	_ = h.repo.CancelFollowRequest(r.Context(), user.ID, target.ID)
+	writeJSON(w, http.StatusOK, map[string]interface{}{"status": "cancelled", "has_pending_follow_request": false})
+}
+
+// ==========================================
+// DIRECT MESSAGING
+// ==========================================
+
+func (h *Handler) GetConversations(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	convs, err := h.repo.GetConversations(r.Context(), user.ID, 30, "")
+	if err != nil {
+		convs = []domain.Conversation{}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"conversations": convs})
+}
+
+func (h *Handler) CreateConversation(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	var body struct {
+		RecipientID string `json:"recipient_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+
+	recipientID, err := uuid.Parse(body.RecipientID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid recipient id")
+		return
+	}
+
+	isBlocked, _ := h.repo.IsBlocked(r.Context(), user.ID, recipientID)
+	if isBlocked {
+		writeError(w, http.StatusForbidden, "cannot message this user")
+		return
+	}
+
+	conv, err := h.repo.GetOrCreateConversation(r.Context(), user.ID, recipientID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to create conversation")
+		return
+	}
+
+	if otherU, err := h.repo.GetUserByID(r.Context(), recipientID, nil); err == nil {
+		conv.OtherMember = otherU
+	}
+
+	writeJSON(w, http.StatusCreated, conv)
+}
+
+func (h *Handler) GetConversationByID(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	convID, err := uuid.Parse(chi.URLParam(r, "conversationId"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid conversation id")
+		return
+	}
+
+	conv, err := h.repo.GetConversationByID(r.Context(), convID, user.ID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "conversation not found")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, conv)
+}
+
+func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	convID, err := uuid.Parse(chi.URLParam(r, "conversationId"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid conversation id")
+		return
+	}
+
+	var beforeID *uuid.UUID
+	if bStr := r.URL.Query().Get("before"); bStr != "" {
+		if bUUID, err := uuid.Parse(bStr); err == nil {
+			beforeID = &bUUID
+		}
+	}
+
+	messages, err := h.repo.GetMessages(r.Context(), convID, user.ID, 50, beforeID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"messages": messages})
+}
+
+func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	convID, err := uuid.Parse(chi.URLParam(r, "conversationId"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid conversation id")
+		return
+	}
+
+	conv, err := h.repo.GetConversationByID(r.Context(), convID, user.ID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "conversation not found or access denied")
+		return
+	}
+
+	if conv.OtherMember != nil {
+		isBlocked, _ := h.repo.IsBlocked(r.Context(), conv.OtherMember.ID, user.ID)
+		if isBlocked {
+			writeError(w, http.StatusForbidden, "cannot message this user")
+			return
+		}
+		isBlockedByMe, _ := h.repo.IsBlocked(r.Context(), user.ID, conv.OtherMember.ID)
+		if isBlockedByMe {
+			writeError(w, http.StatusForbidden, "cannot message a blocked user")
+			return
+		}
+	}
+
+	var body struct {
+		Content         string     `json:"content"`
+		ClientMessageID string     `json:"client_message_id"`
+		MediaID         *uuid.UUID `json:"media_id"`
+		ReplyToID       *uuid.UUID `json:"reply_to_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid payload")
+		return
+	}
+
+	if strings.TrimSpace(body.Content) == "" && body.MediaID == nil {
+		writeError(w, http.StatusBadRequest, "message cannot be empty")
+		return
+	}
+
+	msg := &domain.Message{
+		ID:              uuid.New(),
+		ConversationID:  convID,
+		SenderID:        user.ID,
+		Sender:          user,
+		Content:         body.Content,
+		ClientMessageID: body.ClientMessageID,
+		MediaID:         body.MediaID,
+		ReplyToID:       body.ReplyToID,
+		MessageType:     "text",
+	}
+	if body.MediaID != nil {
+		msg.MessageType = "media"
+	}
+
+	if err := h.repo.CreateMessage(r.Context(), msg); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to save message")
+		return
+	}
+
+	if h.hub != nil {
+		h.hub.BroadcastToConversation(convID, nil, "message.created", msg)
+	}
+
+	_ = h.repo.CreateOutboxEvent(r.Context(), &domain.OutboxEvent{
+		EventType:     "message.created",
+		AggregateType: "conversation",
+		AggregateID:   convID,
+		Payload: map[string]interface{}{
+			"message_id":      msg.ID.String(),
+			"conversation_id": convID.String(),
+			"sender_id":       user.ID.String(),
+			"content":         msg.Content,
+		},
+	})
+
+	writeJSON(w, http.StatusCreated, msg)
+}
+
+func (h *Handler) MarkConversationRead(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	convID, err := uuid.Parse(chi.URLParam(r, "conversationId"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid conversation id")
+		return
+	}
+
+	var body struct {
+		MessageID *uuid.UUID `json:"message_id"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+
+	_ = h.repo.MarkConversationRead(r.Context(), convID, user.ID, body.MessageID)
+
+	if h.hub != nil {
+		h.hub.BroadcastToConversation(convID, &user.ID, "message.read", map[string]interface{}{
+			"conversation_id": convID.String(),
+			"reader_id":       user.ID.String(),
+			"read_at":         time.Now().UTC().Format(time.RFC3339),
+		})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// Extra Notification Handlers
+func (h *Handler) GetUnreadNotificationsCount(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	count, _ := h.repo.GetUnreadNotificationsCount(r.Context(), user.ID)
+	writeJSON(w, http.StatusOK, map[string]interface{}{"unread_count": count})
+}
+
+func (h *Handler) MarkNotificationRead(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	notifID, err := uuid.Parse(chi.URLParam(r, "notificationId"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid notification id")
+		return
+	}
+
+	_ = h.repo.MarkNotificationRead(r.Context(), notifID, user.ID)
+	count, _ := h.repo.GetUnreadNotificationsCount(r.Context(), user.ID)
+	writeJSON(w, http.StatusOK, map[string]interface{}{"status": "ok", "unread_count": count})
 }
 

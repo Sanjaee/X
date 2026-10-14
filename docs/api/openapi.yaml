@@ -240,6 +240,275 @@ paths:
               schema:
                 $ref: '#/components/schemas/FollowStatus'
 
+  /users/{username}/followers:
+    get:
+      summary: List user followers with cursor pagination
+      operationId: getFollowers
+      tags: [Social Graph]
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  followers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  next_cursor:
+                    type: string
+                    nullable: true
+
+  /users/{username}/following:
+    get:
+      summary: List accounts followed by user
+      operationId: getFollowing
+      tags: [Social Graph]
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  following:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  next_cursor:
+                    type: string
+                    nullable: true
+
+  /users/{username}/mutuals:
+    get:
+      summary: Get shared mutual connections between viewer and target
+      operationId: getMutualConnections
+      tags: [Social Graph]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mutuals:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+
+  /users/{username}/relationship:
+    get:
+      summary: Get bilateral social relationship state
+      operationId: getSocialRelationship
+      tags: [Social Graph]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialRelationship'
+
+  /users/{username}/block:
+    post:
+      summary: Block user (dissolves follow and forbids interactions)
+      operationId: blockUser
+      tags: [Social Graph]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User blocked successfully
+    delete:
+      summary: Unblock user
+      operationId: unblockUser
+      tags: [Social Graph]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User unblocked successfully
+
+  /users/{username}/mute:
+    post:
+      summary: Mute user (hides from feed without dissolving follows)
+      operationId: muteUser
+      tags: [Social Graph]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User muted successfully
+    delete:
+      summary: Unmute user
+      operationId: unmuteUser
+      tags: [Social Graph]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User unmuted successfully
+
+  /users/{username}/follow-request:
+    post:
+      summary: Submit follow request to private account
+      operationId: createFollowRequest
+      tags: [Social Graph]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Follow request submitted
+    delete:
+      summary: Cancel pending follow request
+      operationId: cancelFollowRequest
+      tags: [Social Graph]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Follow request cancelled
+
+  /follow-requests:
+    get:
+      summary: List incoming follow requests for authenticated user
+      operationId: getFollowRequests
+      tags: [Social Graph]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requests:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FollowRequest'
+
+  /follow-requests/{requestId}/respond:
+    post:
+      summary: Accept or reject follow request
+      operationId: respondFollowRequest
+      tags: [Social Graph]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [accept, reject]
+      responses:
+        '200':
+          description: Action processed successfully
+
   /posts:
     post:
       summary: Publish a new post
@@ -543,6 +812,7 @@ paths:
       tags: [Notifications]
       security:
         - CookieAuth: []
+        - BearerAuth: []
       responses:
         '200':
           content:
@@ -553,6 +823,240 @@ paths:
                   unread_count:
                     type: integer
                     example: 0
+
+  /notifications/unread-count:
+    get:
+      summary: Get live unread notification count
+      operationId: getUnreadNotificationsCount
+      tags: [Notifications]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  unread_count:
+                    type: integer
+                    example: 3
+
+  /notifications/{notificationId}/read:
+    post:
+      summary: Mark a single notification as read
+      operationId: markNotificationRead
+      tags: [Notifications]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  unread_count:
+                    type: integer
+
+  /ws:
+    get:
+      summary: Realtime WebSocket Gateway connection
+      description: Upgrades HTTP connection to WebSocket for live event streaming (DMs, typing, notifications). Supports authentication via Bearer token header or '?token=' query parameter.
+      operationId: wsConnect
+      tags: [Realtime Gateway]
+      parameters:
+        - name: token
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Session token for browser WebSocket connections
+      responses:
+        '101':
+          description: Switching Protocols to WebSocket
+
+  /conversations:
+    get:
+      summary: List authenticated user's conversations
+      operationId: getConversations
+      tags: [Direct Messages]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Conversation'
+    post:
+      summary: Create or retrieve existing 1:1 conversation
+      operationId: createConversation
+      tags: [Direct Messages]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [recipient_id]
+              properties:
+                recipient_id:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+
+  /conversations/{conversationId}:
+    get:
+      summary: Get conversation details by ID
+      operationId: getConversationByID
+      tags: [Direct Messages]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+
+  /conversations/{conversationId}/messages:
+    get:
+      summary: List messages in conversation with cursor pagination
+      operationId: getMessages
+      tags: [Direct Messages]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: before
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Cursor message ID for loading older messages
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+    post:
+      summary: Send message to conversation with client idempotency key
+      operationId: sendMessage
+      tags: [Direct Messages]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                client_message_id:
+                  type: string
+                  description: Idempotency key generated by client
+                media_id:
+                  type: string
+                  format: uuid
+                reply_to_id:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+
+  /conversations/{conversationId}/read:
+    post:
+      summary: Mark conversation messages as read
+      operationId: markConversationRead
+      tags: [Direct Messages]
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Read receipt recorded
 
   /media/upload:
     post:
@@ -742,6 +1246,109 @@ components:
           $ref: '#/components/schemas/Post'
         is_read:
           type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    SocialRelationship:
+      type: object
+      required: [target_user_id, is_following, is_followed_by, is_mutual, is_blocked, is_blocked_by, is_muted, has_pending_follow_request, is_private]
+      properties:
+        target_user_id:
+          type: string
+          format: uuid
+        is_following:
+          type: boolean
+        is_followed_by:
+          type: boolean
+        is_mutual:
+          type: boolean
+        is_blocked:
+          type: boolean
+        is_blocked_by:
+          type: boolean
+        is_muted:
+          type: boolean
+        has_pending_follow_request:
+          type: boolean
+        is_private:
+          type: boolean
+
+    FollowRequest:
+      type: object
+      required: [id, requester_id, target_id, status, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        requester_id:
+          type: string
+          format: uuid
+        requester:
+          $ref: '#/components/schemas/User'
+        target_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, accepted, rejected, cancelled]
+        created_at:
+          type: string
+          format: date-time
+
+    Conversation:
+      type: object
+      required: [id, is_group, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        is_group:
+          type: boolean
+        title:
+          type: string
+          nullable: true
+        other_member:
+          $ref: '#/components/schemas/User'
+        last_message:
+          $ref: '#/components/schemas/Message'
+        unread_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Message:
+      type: object
+      required: [id, conversation_id, sender_id, content, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        conversation_id:
+          type: string
+          format: uuid
+        sender_id:
+          type: string
+          format: uuid
+        sender:
+          $ref: '#/components/schemas/User'
+        client_message_id:
+          type: string
+        content:
+          type: string
+        message_type:
+          type: string
+          enum: [text, media]
+        media:
+          $ref: '#/components/schemas/MediaObject'
+        reply_to_id:
+          type: string
+          format: uuid
+          nullable: true
         created_at:
           type: string
           format: date-time

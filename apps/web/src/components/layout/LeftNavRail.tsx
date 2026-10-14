@@ -19,6 +19,7 @@ import {
 import { User } from "@/types";
 import { cn } from "@/lib/utils";
 import { VerifiedBadge } from "@/components/common/VerifiedBadge";
+import { useRealtime } from "@/lib/useRealtime";
 
 
 interface LeftNavRailProps {
@@ -52,6 +53,8 @@ export function LeftNavRail({
   ];
 
 
+  const { unreadNotifCount } = useRealtime();
+
   return (
     <header className="sticky top-0 h-screen flex flex-col justify-between items-end xl:items-start px-2 sm:px-4 py-3 select-none border-r border-border w-[68px] xl:w-[275px]">
       <div className="w-full flex flex-col items-center xl:items-start">
@@ -71,6 +74,8 @@ export function LeftNavRail({
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
+            const hasBadge = item.label === "Notifications" && unreadNotifCount > 0;
+
             return (
               <Link
                 key={item.label}
@@ -80,7 +85,14 @@ export function LeftNavRail({
                   isActive && "font-bold"
                 )}
               >
-                <Icon className={cn("w-7 h-7 stroke-[2]", isActive && "stroke-[2.5]")} />
+                <div className="relative flex items-center justify-center">
+                  <Icon className={cn("w-7 h-7 stroke-[2]", isActive && "stroke-[2.5]")} />
+                  {hasBadge && (
+                    <span className="absolute -top-1 -right-1 bg-brand text-white text-[11px] font-extrabold px-1.5 py-0.2 rounded-full min-w-[18px] text-center shadow-md animate-pulse">
+                      {unreadNotifCount > 99 ? "99+" : unreadNotifCount}
+                    </span>
+                  )}
+                </div>
                 <span className="hidden xl:inline text-[20px] leading-6">{item.label}</span>
               </Link>
             );

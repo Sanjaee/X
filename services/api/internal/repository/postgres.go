@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,6 +20,13 @@ type PostgresRepository struct {
 }
 
 func NewPostgresRepository(dbURL string) (*PostgresRepository, error) {
+	if !strings.Contains(dbURL, "sslmode=") {
+		if strings.Contains(dbURL, "?") {
+			dbURL += "&sslmode=disable"
+		} else {
+			dbURL += "?sslmode=disable"
+		}
+	}
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
@@ -1177,6 +1185,762 @@ func (r *PostgresRepository) UpdateUserVerification(ctx context.Context, userID 
 		WHERE id = $1;
 	`
 	_, err := r.db.ExecContext(ctx, query, userID, isVerified, verifiedType)
+	return err
+}
+
+// ==========================================
+// SOCIAL GRAPH IMPLEMENTATION
+// ==========================================
+
+func (r *PostgresRepository) GetFollowers(ctx context.Context, userID, viewerID uuid.UUID, limit int, cursor string) ([]domain.User, string, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+
+	query := `
+		SELECT u.id, u.username, u.email, u.role, u.is_verified, u.verified_type, u.is_private, u.created_at, u.updated_at,
+		       p.display_name, p.bio, p.avatar_url, p.banner_url, p.location, p.website,
+		       p.followers_count, p.following_count, p.posts_count,
+		       COALESCE((SELECT TRUE FROM follows f WHERE f.follower_id = $2 AND f.following_id = u.id), FALSE) as is_following,
+		       COALESCE((SELECT TRUE FROM follows f WHERE f.follower_id = u.id AND f.following_id = $2), FALSE) as is_followed_by
+		FROM follows fl
+		JOIN users u ON u.id = fl.follower_id
+		JOIN user_profiles p ON p.user_id = u.id
+		WHERE fl.following_id = $1 AND u.deleted_at IS NULL
+		ORDER BY fl.created_at DESC
+		LIMIT $3;
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, userID, viewerID, limit)
+	if err != nil {
+		return nil, "", err
+	}
+	defer rows.Close()
+
+	var users []domain.User
+	for rows.Next() {
+		var u domain.User
+		if err := rows.Scan(
+			&u.ID, &u.Username, &u.Email, &u.Role, &u.IsVerified, &u.VerifiedType, &u.IsPrivate, &u.CreatedAt, &u.UpdatedAt,
+			&u.DisplayName, &u.Bio, &u.AvatarURL, &u.BannerURL, &u.Location, &u.Website,
+			&u.FollowersCount, &u.FollowingCount, &u.PostsCount,
+			&u.IsFollowing, &u.IsFollowedBy,
+		); err != nil {
+			return nil, "", err
+		}
+		users = append(users, u)
+	}
+
+	return users, "", nil
+}
+
+func (r *PostgresRepository) GetFollowing(ctx context.Context, userID, viewerID uuid.UUID, limit int, cursor string) ([]domain.User, string, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+
+	query := `
+		SELECT u.id, u.username, u.email, u.role, u.is_verified, u.verified_type, u.is_private, u.created_at, u.updated_at,
+		       p.display_name, p.bio, p.avatar_url, p.banner_url, p.location, p.website,
+		       p.followers_count, p.following_count, p.posts_count,
+		       COALESCE((SELECT TRUE FROM follows f WHERE f.follower_id = $2 AND f.following_id = u.id), FALSE) as is_following,
+		       COALESCE((SELECT TRUE FROM follows f WHERE f.follower_id = u.id AND f.following_id = $2), FALSE) as is_followed_by
+		FROM follows fl
+		JOIN users u ON u.id = fl.following_id
+		JOIN user_profiles p ON p.user_id = u.id
+		WHERE fl.follower_id = $1 AND u.deleted_at IS NULL
+		ORDER BY fl.created_at DESC
+		LIMIT $3;
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, userID, viewerID, limit)
+	if err != nil {
+		return nil, "", err
+	}
+	defer rows.Close()
+
+	var users []domain.User
+	for rows.Next() {
+		var u domain.User
+		if err := rows.Scan(
+			&u.ID, &u.Username, &u.Email, &u.Role, &u.IsVerified, &u.VerifiedType, &u.IsPrivate, &u.CreatedAt, &u.UpdatedAt,
+			&u.DisplayName, &u.Bio, &u.AvatarURL, &u.BannerURL, &u.Location, &u.Website,
+			&u.FollowersCount, &u.FollowingCount, &u.PostsCount,
+			&u.IsFollowing, &u.IsFollowedBy,
+		); err != nil {
+			return nil, "", err
+		}
+		users = append(users, u)
+	}
+
+	return users, "", nil
+}
+
+func (r *PostgresRepository) GetMutualConnections(ctx context.Context, userID, viewerID uuid.UUID, limit int) ([]domain.User, error) {
+	if limit <= 0 || limit > 20 {
+		limit = 5
+	}
+
+	query := `
+		SELECT u.id, u.username, u.email, u.role, u.is_verified, u.verified_type, u.is_private, u.created_at, u.updated_at,
+		       p.display_name, p.bio, p.avatar_url, p.banner_url, p.location, p.website,
+		       p.followers_count, p.following_count, p.posts_count,
+		       TRUE as is_following, FALSE as is_followed_by
+		FROM follows f_viewer
+		JOIN follows f_target ON f_viewer.following_id = f_target.following_id
+		JOIN users u ON u.id = f_viewer.following_id
+		JOIN user_profiles p ON p.user_id = u.id
+		WHERE f_viewer.follower_id = $1 AND f_target.follower_id = $2 AND u.deleted_at IS NULL
+		LIMIT $3;
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, viewerID, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []domain.User
+	for rows.Next() {
+		var u domain.User
+		if err := rows.Scan(
+			&u.ID, &u.Username, &u.Email, &u.Role, &u.IsVerified, &u.VerifiedType, &u.IsPrivate, &u.CreatedAt, &u.UpdatedAt,
+			&u.DisplayName, &u.Bio, &u.AvatarURL, &u.BannerURL, &u.Location, &u.Website,
+			&u.FollowersCount, &u.FollowingCount, &u.PostsCount,
+			&u.IsFollowing, &u.IsFollowedBy,
+		); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+
+	return users, nil
+}
+
+func (r *PostgresRepository) GetSocialRelationship(ctx context.Context, viewerID, targetID uuid.UUID) (*domain.SocialRelationship, error) {
+	rel := &domain.SocialRelationship{
+		TargetUserID: targetID,
+	}
+
+	q := `
+		SELECT 
+			u.is_private,
+			COALESCE((SELECT TRUE FROM follows WHERE follower_id = $1 AND following_id = $2), FALSE),
+			COALESCE((SELECT TRUE FROM follows WHERE follower_id = $2 AND following_id = $1), FALSE),
+			COALESCE((SELECT TRUE FROM blocks WHERE blocker_id = $1 AND blocked_id = $2), FALSE),
+			COALESCE((SELECT TRUE FROM blocks WHERE blocker_id = $2 AND blocked_id = $1), FALSE),
+			COALESCE((SELECT TRUE FROM mutes WHERE muter_id = $1 AND muted_id = $2), FALSE),
+			COALESCE((SELECT TRUE FROM follow_requests WHERE requester_id = $1 AND target_id = $2 AND status = 'pending'), FALSE)
+		FROM users u
+		WHERE u.id = $2 AND u.deleted_at IS NULL;
+	`
+	err := r.db.QueryRowContext(ctx, q, viewerID, targetID).Scan(
+		&rel.IsPrivate,
+		&rel.IsFollowing,
+		&rel.IsFollowedBy,
+		&rel.IsBlocked,
+		&rel.IsBlockedBy,
+		&rel.IsMuted,
+		&rel.HasPendingFollowRequest,
+	)
+	if err != nil {
+		return nil, err
+	}
+	rel.IsMutual = rel.IsFollowing && rel.IsFollowedBy
+	return rel, nil
+}
+
+func (r *PostgresRepository) BlockUser(ctx context.Context, blockerID, blockedID uuid.UUID) error {
+	if blockerID == blockedID {
+		return errors.New("cannot block yourself")
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Insert block
+	_, err = tx.ExecContext(ctx, `INSERT INTO blocks (blocker_id, blocked_id, created_at) VALUES ($1, $2, NOW()) ON CONFLICT DO NOTHING;`, blockerID, blockedID)
+	if err != nil {
+		return err
+	}
+
+	// Remove mutual follows
+	res1, _ := tx.ExecContext(ctx, `DELETE FROM follows WHERE follower_id = $1 AND following_id = $2;`, blockerID, blockedID)
+	r1, _ := res1.RowsAffected()
+	if r1 > 0 {
+		_, _ = tx.ExecContext(ctx, `UPDATE user_profiles SET following_count = GREATEST(following_count - 1, 0) WHERE user_id = $1;`, blockerID)
+		_, _ = tx.ExecContext(ctx, `UPDATE user_profiles SET followers_count = GREATEST(followers_count - 1, 0) WHERE user_id = $1;`, blockedID)
+	}
+
+	res2, _ := tx.ExecContext(ctx, `DELETE FROM follows WHERE follower_id = $1 AND following_id = $2;`, blockedID, blockerID)
+	r2, _ := res2.RowsAffected()
+	if r2 > 0 {
+		_, _ = tx.ExecContext(ctx, `UPDATE user_profiles SET following_count = GREATEST(following_count - 1, 0) WHERE user_id = $1;`, blockedID)
+		_, _ = tx.ExecContext(ctx, `UPDATE user_profiles SET followers_count = GREATEST(followers_count - 1, 0) WHERE user_id = $1;`, blockerID)
+	}
+
+	// Cancel any pending follow requests
+	_, _ = tx.ExecContext(ctx, `DELETE FROM follow_requests WHERE (requester_id = $1 AND target_id = $2) OR (requester_id = $2 AND target_id = $1);`, blockerID, blockedID)
+
+	return tx.Commit()
+}
+
+func (r *PostgresRepository) UnblockUser(ctx context.Context, blockerID, blockedID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM blocks WHERE blocker_id = $1 AND blocked_id = $2;`, blockerID, blockedID)
+	return err
+}
+
+func (r *PostgresRepository) MuteUser(ctx context.Context, muterID, mutedID uuid.UUID) error {
+	if muterID == mutedID {
+		return errors.New("cannot mute yourself")
+	}
+	_, err := r.db.ExecContext(ctx, `INSERT INTO mutes (muter_id, muted_id, created_at) VALUES ($1, $2, NOW()) ON CONFLICT DO NOTHING;`, muterID, mutedID)
+	return err
+}
+
+func (r *PostgresRepository) UnmuteUser(ctx context.Context, muterID, mutedID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM mutes WHERE muter_id = $1 AND muted_id = $2;`, muterID, mutedID)
+	return err
+}
+
+func (r *PostgresRepository) IsBlocked(ctx context.Context, userA, userB uuid.UUID) (bool, error) {
+	var blocked bool
+	q := `SELECT EXISTS(SELECT 1 FROM blocks WHERE (blocker_id = $1 AND blocked_id = $2) OR (blocker_id = $2 AND blocked_id = $1));`
+	err := r.db.QueryRowContext(ctx, q, userA, userB).Scan(&blocked)
+	return blocked, err
+}
+
+// ==========================================
+// FOLLOW REQUESTS
+// ==========================================
+
+func (r *PostgresRepository) CreateFollowRequest(ctx context.Context, req *domain.FollowRequest) error {
+	if req.ID == uuid.Nil {
+		req.ID = uuid.New()
+	}
+	q := `
+		INSERT INTO follow_requests (id, requester_id, target_id, status, created_at, updated_at)
+		VALUES ($1, $2, $3, 'pending', NOW(), NOW())
+		ON CONFLICT (requester_id, target_id) DO UPDATE SET status = 'pending', updated_at = NOW()
+		RETURNING created_at, updated_at;
+	`
+	return r.db.QueryRowContext(ctx, q, req.ID, req.RequesterID, req.TargetID).Scan(&req.CreatedAt, &req.UpdatedAt)
+}
+
+func (r *PostgresRepository) GetFollowRequests(ctx context.Context, targetID uuid.UUID) ([]domain.FollowRequest, error) {
+	q := `
+		SELECT fr.id, fr.requester_id, fr.target_id, fr.status, fr.created_at, fr.updated_at,
+		       u.username, p.display_name, p.avatar_url, u.is_verified, u.verified_type
+		FROM follow_requests fr
+		JOIN users u ON u.id = fr.requester_id
+		JOIN user_profiles p ON p.user_id = u.id
+		WHERE fr.target_id = $1 AND fr.status = 'pending'
+		ORDER BY fr.created_at DESC;
+	`
+	rows, err := r.db.QueryContext(ctx, q, targetID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var reqs []domain.FollowRequest
+	for rows.Next() {
+		var req domain.FollowRequest
+		var u domain.User
+		if err := rows.Scan(
+			&req.ID, &req.RequesterID, &req.TargetID, &req.Status, &req.CreatedAt, &req.UpdatedAt,
+			&u.Username, &u.DisplayName, &u.AvatarURL, &u.IsVerified, &u.VerifiedType,
+		); err != nil {
+			return nil, err
+		}
+		u.ID = req.RequesterID
+		req.Requester = &u
+		reqs = append(reqs, req)
+	}
+	return reqs, nil
+}
+
+func (r *PostgresRepository) RespondFollowRequest(ctx context.Context, requestID, targetID uuid.UUID, accept bool) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var req domain.FollowRequest
+	q := `SELECT id, requester_id, target_id, status FROM follow_requests WHERE id = $1 AND target_id = $2;`
+	if err := tx.QueryRowContext(ctx, q, requestID, targetID).Scan(&req.ID, &req.RequesterID, &req.TargetID, &req.Status); err != nil {
+		return err
+	}
+
+	newStatus := "rejected"
+	if accept {
+		newStatus = "accepted"
+		// Insert follow
+		res, err := tx.ExecContext(ctx, `INSERT INTO follows (follower_id, following_id, created_at) VALUES ($1, $2, NOW()) ON CONFLICT DO NOTHING;`, req.RequesterID, req.TargetID)
+		if err != nil {
+			return err
+		}
+		rows, _ := res.RowsAffected()
+		if rows > 0 {
+			_, _ = tx.ExecContext(ctx, `UPDATE user_profiles SET followers_count = followers_count + 1 WHERE user_id = $1;`, req.TargetID)
+			_, _ = tx.ExecContext(ctx, `UPDATE user_profiles SET following_count = following_count + 1 WHERE user_id = $1;`, req.RequesterID)
+		}
+	}
+
+	_, err = tx.ExecContext(ctx, `UPDATE follow_requests SET status = $1, updated_at = NOW() WHERE id = $2;`, newStatus, req.ID)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (r *PostgresRepository) CancelFollowRequest(ctx context.Context, requesterID, targetID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM follow_requests WHERE requester_id = $1 AND target_id = $2 AND status = 'pending';`, requesterID, targetID)
+	return err
+}
+
+// ==========================================
+// DIRECT MESSAGING IMPLEMENTATION
+// ==========================================
+
+func (r *PostgresRepository) GetConversations(ctx context.Context, userID uuid.UUID, limit int, cursor string) ([]domain.Conversation, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 25
+	}
+
+	query := `
+		SELECT c.id, c.is_group, c.name, c.created_at, c.updated_at,
+		       other_u.id, other_u.username, other_p.display_name, other_p.avatar_url, other_u.is_verified, other_u.verified_type,
+		       COALESCE(
+		           (SELECT COUNT(*) FROM messages m
+		            JOIN conversation_members cm ON cm.conversation_id = m.conversation_id AND cm.user_id = $1
+		            WHERE m.conversation_id = c.id AND m.created_at > cm.last_read_at AND m.sender_id != $1), 0) AS unread_count
+		FROM conversations c
+		JOIN conversation_members my_m ON my_m.conversation_id = c.id AND my_m.user_id = $1
+		LEFT JOIN conversation_members other_m ON other_m.conversation_id = c.id AND other_m.user_id != $1
+		LEFT JOIN users other_u ON other_u.id = other_m.user_id
+		LEFT JOIN user_profiles other_p ON other_p.user_id = other_u.id
+		ORDER BY c.updated_at DESC
+		LIMIT $2;
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var convs []domain.Conversation
+	for rows.Next() {
+		var c domain.Conversation
+		var otherUser domain.User
+		var oID *uuid.UUID
+		var oName, oAvatar, oVerifiedType *string
+		var oUsername *string
+		var oVerified *bool
+
+		if err := rows.Scan(
+			&c.ID, &c.IsGroup, &c.Name, &c.CreatedAt, &c.UpdatedAt,
+			&oID, &oUsername, &oName, &oAvatar, &oVerified, &oVerifiedType,
+			&c.UnreadCount,
+		); err != nil {
+			return nil, err
+		}
+
+		if oID != nil {
+			otherUser.ID = *oID
+			if oUsername != nil {
+				otherUser.Username = *oUsername
+			}
+			if oName != nil {
+				otherUser.DisplayName = *oName
+			}
+			if oAvatar != nil {
+				otherUser.AvatarURL = *oAvatar
+			}
+			if oVerified != nil {
+				otherUser.IsVerified = *oVerified
+			}
+			if oVerifiedType != nil {
+				otherUser.VerifiedType = *oVerifiedType
+			}
+			c.OtherMember = &otherUser
+		}
+
+		// Fetch last message preview
+		var lastMsg domain.Message
+		qMsg := `SELECT id, conversation_id, sender_id, content, message_type, created_at FROM messages WHERE conversation_id = $1 ORDER BY created_at DESC LIMIT 1;`
+		if err := r.db.QueryRowContext(ctx, qMsg, c.ID).Scan(&lastMsg.ID, &lastMsg.ConversationID, &lastMsg.SenderID, &lastMsg.Content, &lastMsg.MessageType, &lastMsg.CreatedAt); err == nil {
+			c.LastMessage = &lastMsg
+		}
+
+		convs = append(convs, c)
+	}
+
+	return convs, nil
+}
+
+func (r *PostgresRepository) GetOrCreateConversation(ctx context.Context, userA, userB uuid.UUID) (*domain.Conversation, error) {
+	// Look for existing 1-on-1 conversation
+	qFind := `
+		SELECT c.id, c.is_group, c.name, c.created_at, c.updated_at
+		FROM conversations c
+		JOIN conversation_members m1 ON m1.conversation_id = c.id AND m1.user_id = $1
+		JOIN conversation_members m2 ON m2.conversation_id = c.id AND m2.user_id = $2
+		WHERE c.is_group = FALSE
+		LIMIT 1;
+	`
+	var c domain.Conversation
+	err := r.db.QueryRowContext(ctx, qFind, userA, userB).Scan(&c.ID, &c.IsGroup, &c.Name, &c.CreatedAt, &c.UpdatedAt)
+	if err == nil {
+		return &c, nil
+	}
+
+	// Create new conversation in transaction
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	newID := uuid.New()
+	qCreate := `INSERT INTO conversations (id, is_group, created_at, updated_at) VALUES ($1, FALSE, NOW(), NOW()) RETURNING created_at, updated_at;`
+	if err := tx.QueryRowContext(ctx, qCreate, newID).Scan(&c.CreatedAt, &c.UpdatedAt); err != nil {
+		return nil, err
+	}
+	c.ID = newID
+	c.IsGroup = false
+
+	// Add members
+	qMember := `INSERT INTO conversation_members (conversation_id, user_id, joined_at, last_read_at) VALUES ($1, $2, NOW(), NOW());`
+	if _, err := tx.ExecContext(ctx, qMember, newID, userA); err != nil {
+		return nil, err
+	}
+	if _, err := tx.ExecContext(ctx, qMember, newID, userB); err != nil {
+		return nil, err
+	}
+
+	return &c, tx.Commit()
+}
+
+func (r *PostgresRepository) GetConversationByID(ctx context.Context, convID, userID uuid.UUID) (*domain.Conversation, error) {
+	q := `
+		SELECT c.id, c.is_group, c.name, c.created_at, c.updated_at,
+		       other_u.id, other_u.username, other_p.display_name, other_p.avatar_url, other_u.is_verified, other_u.verified_type
+		FROM conversations c
+		JOIN conversation_members my_m ON my_m.conversation_id = c.id AND my_m.user_id = $2
+		LEFT JOIN conversation_members other_m ON other_m.conversation_id = c.id AND other_m.user_id != $2
+		LEFT JOIN users other_u ON other_u.id = other_m.user_id
+		LEFT JOIN user_profiles other_p ON other_p.user_id = other_u.id
+		WHERE c.id = $1;
+	`
+	var c domain.Conversation
+	var otherUser domain.User
+	var oID *uuid.UUID
+	var oName, oAvatar, oVerifiedType *string
+	var oUsername *string
+	var oVerified *bool
+
+	err := r.db.QueryRowContext(ctx, q, convID, userID).Scan(
+		&c.ID, &c.IsGroup, &c.Name, &c.CreatedAt, &c.UpdatedAt,
+		&oID, &oUsername, &oName, &oAvatar, &oVerified, &oVerifiedType,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if oID != nil {
+		otherUser.ID = *oID
+		if oUsername != nil {
+			otherUser.Username = *oUsername
+		}
+		if oName != nil {
+			otherUser.DisplayName = *oName
+		}
+		if oAvatar != nil {
+			otherUser.AvatarURL = *oAvatar
+		}
+		if oVerified != nil {
+			otherUser.IsVerified = *oVerified
+		}
+		if oVerifiedType != nil {
+			otherUser.VerifiedType = *oVerifiedType
+		}
+		c.OtherMember = &otherUser
+	}
+
+	return &c, nil
+}
+
+func (r *PostgresRepository) GetMessages(ctx context.Context, convID, userID uuid.UUID, limit int, beforeID *uuid.UUID) ([]domain.Message, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+
+	// Verify user is a member of this conversation
+	var isMember bool
+	_ = r.db.QueryRowContext(ctx, `SELECT TRUE FROM conversation_members WHERE conversation_id = $1 AND user_id = $2;`, convID, userID).Scan(&isMember)
+	if !isMember {
+		return nil, errors.New("forbidden: not a member of conversation")
+	}
+
+	query := `
+		SELECT m.id, m.conversation_id, m.sender_id, m.content, m.message_type, m.client_message_id, m.media_id, m.reply_to_id, m.created_at,
+		       u.username, p.display_name, p.avatar_url, u.is_verified, u.verified_type,
+		       mo.url, mo.media_type, mo.file_size_bytes, mo.width, mo.height
+		FROM messages m
+		JOIN users u ON u.id = m.sender_id
+		JOIN user_profiles p ON p.user_id = u.id
+		LEFT JOIN media_objects mo ON mo.id = m.media_id
+		WHERE m.conversation_id = $1 AND ($2::uuid IS NULL OR m.created_at < (SELECT created_at FROM messages WHERE id = $2))
+		ORDER BY m.created_at ASC
+		LIMIT $3;
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, convID, beforeID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var msgs []domain.Message
+	for rows.Next() {
+		var m domain.Message
+		var u domain.User
+		var clientMsgID, replyToID sql.NullString
+		var mediaURL, mediaType sql.NullString
+		var mediaSize sql.NullInt64
+		var mediaW, mediaH sql.NullInt32
+
+		if err := rows.Scan(
+			&m.ID, &m.ConversationID, &m.SenderID, &m.Content, &m.MessageType, &clientMsgID, &m.MediaID, &replyToID, &m.CreatedAt,
+			&u.Username, &u.DisplayName, &u.AvatarURL, &u.IsVerified, &u.VerifiedType,
+			&mediaURL, &mediaType, &mediaSize, &mediaW, &mediaH,
+		); err != nil {
+			return nil, err
+		}
+
+		u.ID = m.SenderID
+		m.Sender = &u
+		if clientMsgID.Valid {
+			m.ClientMessageID = clientMsgID.String
+		}
+
+		if mediaURL.Valid && m.MediaID != nil {
+			var wPtr, hPtr *int
+			if mediaW.Valid {
+				wVal := int(mediaW.Int32)
+				wPtr = &wVal
+			}
+			if mediaH.Valid {
+				hVal := int(mediaH.Int32)
+				hPtr = &hVal
+			}
+			m.Media = &domain.MediaObject{
+				ID:            *m.MediaID,
+				URL:           mediaURL.String,
+				MediaType:     mediaType.String,
+				FileSizeBytes: mediaSize.Int64,
+				Width:         wPtr,
+				Height:        hPtr,
+			}
+		}
+
+		msgs = append(msgs, m)
+	}
+
+	return msgs, nil
+}
+
+func (r *PostgresRepository) CreateMessage(ctx context.Context, msg *domain.Message) error {
+	if msg.ID == uuid.Nil {
+		msg.ID = uuid.New()
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Idempotency: If client_message_id is provided, check if already sent
+	if msg.ClientMessageID != "" {
+		var existingID uuid.UUID
+		qCheck := `SELECT id, created_at FROM messages WHERE conversation_id = $1 AND client_message_id = $2;`
+		if err := tx.QueryRowContext(ctx, qCheck, msg.ConversationID, msg.ClientMessageID).Scan(&existingID, &msg.CreatedAt); err == nil {
+			msg.ID = existingID
+			return nil // already processed, return existing
+		}
+	}
+
+	q := `
+		INSERT INTO messages (id, conversation_id, sender_id, client_message_id, content, message_type, media_id, reply_to_id, created_at)
+		VALUES ($1, $2, $3, NULLIF($4, ''), $5, COALESCE(NULLIF($6, ''), 'text'), $7, $8, NOW())
+		RETURNING created_at;
+	`
+	err = tx.QueryRowContext(ctx, q, msg.ID, msg.ConversationID, msg.SenderID, msg.ClientMessageID, msg.Content, msg.MessageType, msg.MediaID, msg.ReplyToID).Scan(&msg.CreatedAt)
+	if err != nil {
+		return err
+	}
+
+	// Update conversation updated_at
+	_, _ = tx.ExecContext(ctx, `UPDATE conversations SET updated_at = NOW() WHERE id = $1;`, msg.ConversationID)
+
+	// Update sender's last_read_at
+	_, _ = tx.ExecContext(ctx, `UPDATE conversation_members SET last_read_at = NOW(), last_read_message_id = $1 WHERE conversation_id = $2 AND user_id = $3;`, msg.ID, msg.ConversationID, msg.SenderID)
+
+	return tx.Commit()
+}
+
+func (r *PostgresRepository) MarkConversationRead(ctx context.Context, convID, userID uuid.UUID, messageID *uuid.UUID) error {
+	query := `
+		UPDATE conversation_members
+		SET last_read_at = NOW(), last_read_message_id = COALESCE($3, last_read_message_id)
+		WHERE conversation_id = $1 AND user_id = $2;
+	`
+	_, err := r.db.ExecContext(ctx, query, convID, userID, messageID)
+	return err
+}
+
+// ==========================================
+// NOTIFICATIONS WITH TABS & UNREAD COUNT
+// ==========================================
+
+func (r *PostgresRepository) GetNotificationsWithTab(ctx context.Context, userID uuid.UUID, tab string, cursor string, limit int) ([]domain.Notification, string, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+
+	filterClause := ""
+	if tab == "verified" {
+		filterClause = "AND actor_u.is_verified = TRUE"
+	} else if tab == "mentions" {
+		filterClause = "AND n.type IN ('reply', 'mention')"
+	}
+
+	query := fmt.Sprintf(`
+		SELECT n.id, n.recipient_id, n.actor_id, n.type, n.post_id, n.entity_type, n.entity_id, n.is_read, n.created_at,
+		       actor_u.username, actor_p.display_name, actor_p.avatar_url, actor_u.is_verified, actor_u.verified_type,
+		       p.content
+		FROM notifications n
+		JOIN users actor_u ON actor_u.id = n.actor_id
+		JOIN user_profiles actor_p ON actor_p.user_id = actor_u.id
+		LEFT JOIN posts p ON p.id = n.post_id
+		WHERE n.recipient_id = $1 %s
+		ORDER BY n.created_at DESC
+		LIMIT $2;
+	`, filterClause)
+
+	rows, err := r.db.QueryContext(ctx, query, userID, limit)
+	if err != nil {
+		return nil, "", err
+	}
+	defer rows.Close()
+
+	var notifs []domain.Notification
+	for rows.Next() {
+		var n domain.Notification
+		var actor domain.User
+		var postContent, entityType sql.NullString
+		var entityID *uuid.UUID
+
+		if err := rows.Scan(
+			&n.ID, &n.RecipientID, &n.ActorID, &n.Type, &n.PostID, &entityType, &entityID, &n.IsRead, &n.CreatedAt,
+			&actor.Username, &actor.DisplayName, &actor.AvatarURL, &actor.IsVerified, &actor.VerifiedType,
+			&postContent,
+		); err != nil {
+			return nil, "", err
+		}
+
+		actor.ID = n.ActorID
+		n.Actor = &actor
+		if entityType.Valid {
+			n.EntityType = entityType.String
+		}
+		n.EntityID = entityID
+
+		if postContent.Valid && n.PostID != nil {
+			n.Post = &domain.Post{
+				ID:      *n.PostID,
+				Content: postContent.String,
+			}
+		}
+
+		notifs = append(notifs, n)
+	}
+
+	return notifs, "", nil
+}
+
+func (r *PostgresRepository) GetUnreadNotificationsCount(ctx context.Context, userID uuid.UUID) (int, error) {
+	var count int
+	q := `SELECT COUNT(*) FROM notifications WHERE recipient_id = $1 AND is_read = FALSE;`
+	err := r.db.QueryRowContext(ctx, q, userID).Scan(&count)
+	return count, err
+}
+
+func (r *PostgresRepository) MarkNotificationRead(ctx context.Context, notifID, userID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE notifications SET is_read = TRUE, read_at = NOW() WHERE id = $1 AND recipient_id = $2;`, notifID, userID)
+	return err
+}
+
+// ==========================================
+// TRANSACTIONAL OUTBOX EVENTS
+// ==========================================
+
+func (r *PostgresRepository) CreateOutboxEvent(ctx context.Context, event *domain.OutboxEvent) error {
+	if event.ID == uuid.Nil {
+		event.ID = uuid.New()
+	}
+	payloadJSON, _ := json.Marshal(event.Payload)
+	q := `
+		INSERT INTO outbox_events (id, event_type, aggregate_type, aggregate_id, payload, status, retry_count, created_at)
+		VALUES ($1, $2, $3, $4, $5, 'pending', 0, NOW())
+		RETURNING created_at;
+	`
+	return r.db.QueryRowContext(ctx, q, event.ID, event.EventType, event.AggregateType, event.AggregateID, payloadJSON).Scan(&event.CreatedAt)
+}
+
+func (r *PostgresRepository) GetPendingOutboxEvents(ctx context.Context, batchSize int) ([]domain.OutboxEvent, error) {
+	if batchSize <= 0 || batchSize > 100 {
+		batchSize = 25
+	}
+	q := `
+		SELECT id, event_type, aggregate_type, aggregate_id, payload, status, retry_count, created_at
+		FROM outbox_events
+		WHERE status = 'pending'
+		ORDER BY created_at ASC
+		LIMIT $1;
+	`
+	rows, err := r.db.QueryContext(ctx, q, batchSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []domain.OutboxEvent
+	for rows.Next() {
+		var e domain.OutboxEvent
+		var payloadBytes []byte
+		if err := rows.Scan(&e.ID, &e.EventType, &e.AggregateType, &e.AggregateID, &payloadBytes, &e.Status, &e.RetryCount, &e.CreatedAt); err != nil {
+			return nil, err
+		}
+		_ = json.Unmarshal(payloadBytes, &e.Payload)
+		events = append(events, e)
+	}
+	return events, nil
+}
+
+func (r *PostgresRepository) MarkOutboxEventPublished(ctx context.Context, id uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE outbox_events SET status = 'published', published_at = NOW() WHERE id = $1;`, id)
 	return err
 }
 

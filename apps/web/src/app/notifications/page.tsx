@@ -2,13 +2,24 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { Settings, Heart, Repeat2, UserPlus, MessageCircle, Loader2 } from "lucide-react";
+import {
+  Settings,
+  Heart,
+  Repeat2,
+  UserPlus,
+  MessageCircle,
+  Mail,
+  UserCheck,
+  CheckCheck,
+  Loader2,
+} from "lucide-react";
 import { LeftNavRail } from "@/components/layout/LeftNavRail";
 import { RightSidebar } from "@/components/layout/RightSidebar";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { Notification, User } from "@/types";
 import { apiRequest } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useRealtime } from "@/lib/useRealtime";
 
 export default function NotificationsPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -16,28 +27,47 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"all" | "verified" | "mentions">("all");
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const { setUnreadNotifCount } = useRealtime();
 
   useEffect(() => {
     apiRequest<User>("/me")
       .then((u) => {
         setCurrentUser(u);
-        return apiRequest<{ notifications: Notification[] }>("/notifications");
+        return apiRequest<{ notifications: Notification[] }>("/notifications?limit=50");
       })
       .then((res) => {
         setNotifications(res.notifications || []);
+        // Automatically mark as read on visit
+        apiRequest("/notifications/read", { method: "PATCH" })
+          .then(() => setUnreadNotifCount(0))
+          .catch(() => {});
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [setUnreadNotifCount]);
+
+  const handleMarkAllRead = async () => {
+    try {
+      await apiRequest("/notifications/read", { method: "PATCH" });
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      setUnreadNotifCount(0);
+    } catch (e) {
+      console.error("Failed to mark all as read", e);
+    }
+  };
 
   const getIconForType = (type: string) => {
     switch (type) {
       case "like":
-        return <Heart className="w-7 h-7 fill-like text-like" />;
+        return <Heart className="w-7 h-7 fill-rose-500 text-rose-500" />;
       case "repost":
-        return <Repeat2 className="w-7 h-7 text-repost" />;
+        return <Repeat2 className="w-7 h-7 text-emerald-500" />;
       case "follow":
         return <UserPlus className="w-7 h-7 fill-brand text-brand" />;
+      case "follow_request":
+        return <UserCheck className="w-7 h-7 text-amber-500" />;
+      case "dm":
+        return <Mail className="w-7 h-7 fill-blue-400 text-blue-400" />;
       case "reply":
       case "mention":
         return <MessageCircle className="w-7 h-7 fill-brand text-brand" />;
@@ -45,6 +75,16 @@ export default function NotificationsPage() {
         return <Heart className="w-7 h-7 fill-brand text-brand" />;
     }
   };
+
+  const filteredNotifications = notifications.filter((n) => {
+    if (activeTab === "verified") {
+      return n.actor?.is_verified;
+    }
+    if (activeTab === "mentions") {
+      return n.type === "mention" || n.type === "reply";
+    }
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-background text-foreground flex justify-center">
@@ -59,9 +99,20 @@ export default function NotificationsPage() {
           <header className="sticky top-0 bg-background/80 backdrop-blur-md border-b border-border z-20 flex flex-col">
             <div className="flex items-center justify-between px-4 h-[53px]">
               <h1 className="font-extrabold text-[20px]">Notifications</h1>
-              <button className="p-2 hover:bg-subtle rounded-full text-foreground transition-colors">
-                <Settings className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {currentUser && (
+                  <button
+                    onClick={handleMarkAllRead}
+                    title="Mark all as read"
+                    className="p-2 hover:bg-subtle rounded-full text-muted hover:text-foreground transition-colors"
+                  >
+                    <CheckCheck className="w-5 h-5" />
+                  </button>
+                )}
+                <button className="p-2 hover:bg-subtle rounded-full text-foreground transition-colors">
+                  <Settings className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Tabs */}
@@ -107,19 +158,26 @@ export default function NotificationsPage() {
                   Sign in
                 </button>
               </div>
-            ) : notifications.length === 0 ? (
+            ) : filteredNotifications.length === 0 ? (
               <div className="text-center py-16 px-6">
                 <h3 className="font-bold text-[22px] mb-2">Nothing to see here — yet</h3>
                 <p className="text-muted text-[15px] max-w-sm mx-auto">
-                  From likes to reposts and a whole lot more, this is where all the action about your posts and account will happen.
+                  {activeTab === "verified"
+                    ? "Likes, mentions, and other interactions from verified users will appear here."
+                    : activeTab === "mentions"
+                    ? "Conversations, replies, and mentions will appear here."
+                    : "From likes to reposts and a whole lot more, this is where all the action about your posts and account will happen."}
                 </p>
               </div>
             ) : (
               <div className="flex flex-col divide-y divide-border">
-                {notifications.map((n) => (
+                {filteredNotifications.map((n) => (
                   <div
                     key={n.id}
-                    className="flex gap-4 p-4 hover:bg-subtle/50 transition-colors cursor-pointer"
+                    className={cn(
+                      "flex gap-4 p-4 hover:bg-subtle/50 transition-colors cursor-pointer",
+                      !n.is_read && "bg-brand/5"
+                    )}
                   >
                     <div className="shrink-0 pt-0.5">{getIconForType(n.type)}</div>
                     <div className="flex-1">
@@ -144,6 +202,8 @@ export default function NotificationsPage() {
                         {n.type === "repost" && "reposted your post"}
                         {n.type === "reply" && "replied to your post"}
                         {n.type === "follow" && "followed you"}
+                        {n.type === "follow_request" && "requested to follow you"}
+                        {n.type === "dm" && "sent you a direct message"}
                       </p>
                       {n.post && (
                         <p className="text-[14px] text-muted mt-1 line-clamp-2">
