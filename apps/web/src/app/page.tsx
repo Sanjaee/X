@@ -20,9 +20,15 @@ export default function HomePage() {
 
   // Restore authenticated session
   useEffect(() => {
-    apiRequest<User>("/me")
-      .then((user) => setCurrentUser(user))
-      .catch(() => setCurrentUser(null));
+    const syncUser = () => {
+      apiRequest<User>("/me")
+        .then((user) => setCurrentUser(user))
+        .catch(() => setCurrentUser(null));
+    };
+    syncUser();
+
+    window.addEventListener("x_auth_state_change", syncUser);
+    return () => window.removeEventListener("x_auth_state_change", syncUser);
   }, []);
 
   // Fetch timeline feed
@@ -49,6 +55,10 @@ export default function HomePage() {
   const handleLogout = async () => {
     try {
       await apiRequest("/auth/logout", { method: "POST" });
+    } catch (e) {}
+    try {
+      const { signOut } = await import("next-auth/react");
+      await signOut({ redirect: false });
     } catch (e) {}
     setStoredToken(null);
     setCurrentUser(null);

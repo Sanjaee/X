@@ -185,6 +185,115 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type GoogleAuthRequest struct {
+	Email       string `json:"email"`
+	DisplayName string `json:"display_name"`
+	AvatarURL   string `json:"avatar_url"`
+	GoogleID    string `json:"google_id"`
+}
+
+func (h *Handler) GoogleAuth(w http.ResponseWriter, r *http.Request) {
+	var req GoogleAuthRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request payload")
+		return
+	}
+
+	email := strings.TrimSpace(strings.ToLower(req.Email))
+	if email == "" || !strings.Contains(email, "@") {
+		writeError(w, http.StatusBadRequest, "valid email required from Google profile")
+		return
+	}
+
+	// 1. Check if user already exists by email
+	existingUser, err := h.repo.GetUserByIdentifier(r.Context(), email)
+	if err == nil && existingUser != nil {
+		// Update avatar if currently empty or default twitter egg
+		if req.AvatarURL != "" && (existingUser.AvatarURL == "" || strings.Contains(existingUser.AvatarURL, "default_profile")) {
+			existingUser.AvatarURL = req.AvatarURL
+			_ = h.repo.UpdateProfile(r.Context(), existingUser)
+		}
+
+		token, err := h.createSessionForUser(r, existingUser.ID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to generate session")
+			return
+		}
+
+		h.setSessionCookie(w, token)
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"user":          existingUser,
+			"session_token": token,
+		})
+		return
+	}
+
+	// 2. User does not exist -> Create new user with Google details
+	parts := strings.Split(email, "@")
+	baseUsername := parts[0]
+	var clean strings.Builder
+	for _, ch := range baseUsername {
+		if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' {
+			clean.WriteRune(ch)
+		}
+	}
+	uname := strings.ToLower(clean.String())
+	if len(uname) < 3 {
+		uname = "user"
+	}
+	if len(uname) > 15 {
+		uname = uname[:15]
+	}
+
+	finalUsername := uname
+	for i := 0; i < 5; i++ {
+		_, err := h.repo.GetUserByUsername(r.Context(), finalUsername, nil)
+		if err != nil {
+			break
+		}
+		finalUsername = fmt.Sprintf("%s%d", uname, time.Now().UnixNano()%10000)
+	}
+
+	dispName := strings.TrimSpace(req.DisplayName)
+	if dispName == "" {
+		dispName = finalUsername
+	}
+
+	avatar := req.AvatarURL
+	if avatar == "" {
+		avatar = "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"
+	}
+
+	randomPass := make([]byte, 16)
+	_, _ = rand.Read(randomPass)
+	hash, _ := bcrypt.GenerateFromPassword(randomPass, bcrypt.DefaultCost)
+
+	newUser := &domain.User{
+		Username:     finalUsername,
+		Email:        email,
+		PasswordHash: string(hash),
+		DisplayName:  dispName,
+		AvatarURL:    avatar,
+	}
+
+	if err := h.repo.CreateUser(r.Context(), newUser); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to register user from Google profile")
+		return
+	}
+
+	token, err := h.createSessionForUser(r, newUser.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to generate session")
+		return
+	}
+
+	h.setSessionCookie(w, token)
+	writeJSON(w, http.StatusCreated, map[string]interface{}{
+		"user":          newUser,
+		"session_token": token,
+	})
+}
+
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	if cookie, err := r.Cookie("session_token"); err == nil && cookie.Value != "" {
 		hash := sha256.Sum256([]byte(cookie.Value))
