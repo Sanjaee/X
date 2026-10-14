@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -975,25 +976,30 @@ func (r *PostgresRepository) CreatePaymentOrder(ctx context.Context, order *doma
 	if order.ID == uuid.Nil {
 		order.ID = uuid.New()
 	}
+	metaJSON, _ := json.Marshal(order.Metadata)
+	if len(metaJSON) == 0 || string(metaJSON) == "null" {
+		metaJSON = []byte("{}")
+	}
 	query := `
 		INSERT INTO payment_orders (id, user_id, plan_id, billing_cycle, amount_cents, currency, provider, provider_order_id, provider_invoice_url, status, metadata, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, '{}'::jsonb, NOW(), NOW())
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, NOW(), NOW())
 		RETURNING created_at, updated_at;
 	`
-	return r.db.QueryRowContext(ctx, query, order.ID, order.UserID, order.PlanID, order.BillingCycle, order.AmountCents, order.Currency, order.Provider, order.ProviderOrderID, order.ProviderInvoiceURL, order.Status).Scan(&order.CreatedAt, &order.UpdatedAt)
+	return r.db.QueryRowContext(ctx, query, order.ID, order.UserID, order.PlanID, order.BillingCycle, order.AmountCents, order.Currency, order.Provider, order.ProviderOrderID, order.ProviderInvoiceURL, order.Status, string(metaJSON)).Scan(&order.CreatedAt, &order.UpdatedAt)
 }
 
 func (r *PostgresRepository) GetPaymentOrderByID(ctx context.Context, orderID uuid.UUID) (*domain.PaymentOrder, error) {
 	query := `
-		SELECT id, user_id, plan_id, billing_cycle, amount_cents, currency, provider, provider_order_id, provider_invoice_url, status, created_at, updated_at
+		SELECT id, user_id, plan_id, billing_cycle, amount_cents, currency, provider, provider_order_id, provider_invoice_url, status, metadata, created_at, updated_at
 		FROM payment_orders
 		WHERE id = $1;
 	`
 	var o domain.PaymentOrder
 	var provOrderID, invoiceURL sql.NullString
+	var metaBytes []byte
 	err := r.db.QueryRowContext(ctx, query, orderID).Scan(
 		&o.ID, &o.UserID, &o.PlanID, &o.BillingCycle, &o.AmountCents, &o.Currency, &o.Provider,
-		&provOrderID, &invoiceURL, &o.Status, &o.CreatedAt, &o.UpdatedAt,
+		&provOrderID, &invoiceURL, &o.Status, &metaBytes, &o.CreatedAt, &o.UpdatedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
@@ -1003,6 +1009,9 @@ func (r *PostgresRepository) GetPaymentOrderByID(ctx context.Context, orderID uu
 	}
 	if invoiceURL.Valid {
 		o.ProviderInvoiceURL = invoiceURL.String
+	}
+	if len(metaBytes) > 0 {
+		_ = json.Unmarshal(metaBytes, &o.Metadata)
 	}
 	return &o, err
 }

@@ -75,21 +75,18 @@ export default function PremiumPage() {
         invoice_url: string;
         amount_cents: number;
         currency: string;
+        white_label?: any;
       }>('/subscriptions/checkout', {
         method: 'POST',
         body: JSON.stringify({
           plan_id: selectedTier,
           billing_cycle: billingCycle,
+          currency: 'USDT_TRX',
         }),
       });
 
-      if (simulate) {
-        router.push(`/premium/invoice?order_id=${res.order_id}&simulated=true`);
-      } else if (res.invoice_url) {
-        setCheckoutUrl(res.invoice_url);
-        window.open(res.invoice_url, '_blank');
-      }
-
+      // White-Label checkout: navigate directly to internal payment page without external redirect
+      router.push(`/premium/invoice?order_id=${res.order_id}${simulate ? '&simulated=true' : ''}`);
     } catch (err: any) {
       alert(err.message || 'Failed to initiate checkout');
     } finally {

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -861,8 +862,9 @@ func (h *Handler) GetMySubscription(w http.ResponseWriter, r *http.Request) {
 }
 
 type CheckoutRequest struct {
-	PlanID       string `json:"plan_id"`
-	BillingCycle string `json:"billing_cycle"` // 'monthly' or 'annual'
+	PlanID         string `json:"plan_id"`
+	BillingCycle   string `json:"billing_cycle"` // 'monthly' or 'annual'
+	CryptoCurrency string `json:"currency"`      // e.g. 'USDT_TRX', 'BTC', 'ETH'
 }
 
 func (h *Handler) CheckoutSubscription(w http.ResponseWriter, r *http.Request) {
@@ -883,6 +885,9 @@ func (h *Handler) CheckoutSubscription(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.BillingCycle == "" {
 		req.BillingCycle = "monthly"
+	}
+	if req.CryptoCurrency == "" {
+		req.CryptoCurrency = "USDT_TRX"
 	}
 
 	plan, err := h.repo.GetSubscriptionPlanByID(r.Context(), req.PlanID)
@@ -907,12 +912,24 @@ func (h *Handler) CheckoutSubscription(w http.ResponseWriter, r *http.Request) {
 		Status:       "pending",
 	}
 
-	var invoiceURL string
+	var wlInv *payment.PlisioWhiteLabelInvoice
 	if h.plisioSvc != nil {
-		invURL, err := h.plisioSvc.CreateInvoice(r.Context(), order.ID, plan.Name, amountCents, user.Email)
-		if err == nil {
-			invoiceURL = invURL
-			order.ProviderInvoiceURL = invURL
+		inv, err := h.plisioSvc.CreateWhiteLabelInvoice(r.Context(), order.ID, plan.Name, amountCents, req.CryptoCurrency, user.Email)
+		if err == nil && inv != nil {
+			wlInv = inv
+			order.ProviderInvoiceURL = inv.InvoiceURL
+			order.ProviderOrderID = inv.TxnID
+
+			// Store white label payload in metadata
+			order.Metadata = map[string]interface{}{
+				"white_label":            inv,
+				"wallet_hash":            inv.WalletHash,
+				"qr_code":                inv.QRCode,
+				"amount":                 inv.Amount,
+				"currency":               inv.Currency,
+				"expire_utc":             inv.ExpireUTC,
+				"expected_confirmations": inv.ExpectedConfirmations,
+			}
 		}
 	}
 
@@ -927,8 +944,9 @@ func (h *Handler) CheckoutSubscription(w http.ResponseWriter, r *http.Request) {
 		"plan_name":    plan.Name,
 		"amount_cents": amountCents,
 		"currency":     plan.Currency,
-		"invoice_url":  invoiceURL,
+		"invoice_url":  order.ProviderInvoiceURL,
 		"status":       order.Status,
+		"white_label":  wlInv,
 	})
 }
 
@@ -1037,21 +1055,149 @@ func (h *Handler) SimulatePayment(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GetSubscriptionOrder retrieves order status and white-label data, with optional live Plisio operations check
+func (h *Handler) GetSubscriptionOrder(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	orderIDStr := chi.URLParam(r, "orderId")
+	orderID, err := uuid.Parse(orderIDStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid order id")
+		return
+	}
+
+	order, err := h.repo.GetPaymentOrderByID(r.Context(), orderID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "order not found")
+		return
+	}
+
+	if order.UserID != user.ID {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+
+	// Active status verification against Plisio operations if still pending
+	if order.Status == "pending" && h.plisioSvc != nil {
+		opResp, err := h.plisioSvc.FetchOperations(r.Context(), order.ID.String())
+		if err == nil && opResp != nil && opResp.Status == "success" {
+			for _, op := range opResp.Data.Operations {
+				if op.Type == "invoice" && (op.Params.OrderNumber == order.ID.String() || op.ID == order.ProviderOrderID) {
+					opStatus := strings.ToLower(op.Status)
+					if opStatus == "completed" || opStatus == "mismatch" {
+						_ = h.repo.UpdatePaymentOrderStatus(r.Context(), order.ID, "completed", "")
+						order.Status = "completed"
+
+						plan, _ := h.repo.GetSubscriptionPlanByID(r.Context(), order.PlanID)
+						periodDays := 30
+						if order.BillingCycle == "annual" {
+							periodDays = 365
+						}
+
+						sub := &domain.Subscription{
+							ID:                 uuid.New(),
+							UserID:             order.UserID,
+							PlanID:             order.PlanID,
+							BillingCycle:       order.BillingCycle,
+							Status:             "active",
+							CurrentPeriodStart: time.Now(),
+							CurrentPeriodEnd:   time.Now().AddDate(0, 0, periodDays),
+						}
+						_ = h.repo.CreateSubscription(r.Context(), sub)
+
+						if plan != nil && plan.CanGetVerifiedBadge {
+							_ = h.repo.UpdateUserVerification(r.Context(), order.UserID, true, "blue")
+							_ = h.repo.AssignVerificationBadge(r.Context(), &domain.VerificationBadge{
+								UserID:       order.UserID,
+								BadgeType:    "blue",
+								DisplayLabel: "Verified",
+								Description:  "This account is verified because it's subscribed to Premium.",
+								ColorToken:   "#1d9bf0",
+								Status:       "approved",
+							})
+						}
+
+						_ = h.repo.CreateInvoice(r.Context(), &domain.Invoice{
+							OrderID:     order.ID,
+							UserID:      order.UserID,
+							AmountCents: order.AmountCents,
+							Currency:    order.Currency,
+							Status:      "paid",
+						})
+					}
+					break
+				}
+			}
+		}
+	}
+
+	plan, _ := h.repo.GetSubscriptionPlanByID(r.Context(), order.PlanID)
+	planName := "Premium"
+	if plan != nil {
+		planName = plan.Name
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"order":       order,
+		"plan_name":   planName,
+		"white_label": order.Metadata["white_label"],
+	})
+}
+
+// GetCryptoCurrencies returns the list of supported cryptocurrencies
+func (h *Handler) GetCryptoCurrencies(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"cryptos": payment.GetSupportedCryptos(),
+	})
+}
+
 // HandlePlisioWebhook handles real IPN callbacks from Plisio cryptocurrency gateway (Section 6F)
 func (h *Handler) HandlePlisioWebhook(w http.ResponseWriter, r *http.Request) {
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "failed to read body")
+		return
+	}
+
+	var data map[string]interface{}
+	_ = json.Unmarshal(bodyBytes, &data)
+
 	var payload payment.PlisioWebhookPayload
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		// Try form parsing if JSON decode fails
+	_ = json.Unmarshal(bodyBytes, &payload)
+
+	// Fallback to form parsing if JSON empty
+	if payload.OrderNumber == "" {
 		_ = r.ParseForm()
 		payload.Status = r.FormValue("status")
 		payload.OrderNumber = r.FormValue("order_number")
 		payload.TxnID = r.FormValue("txn_id")
 		payload.VerifyHash = r.FormValue("verify_hash")
+		if data == nil {
+			data = make(map[string]interface{})
+			for k, v := range r.Form {
+				if len(v) > 0 {
+					data[k] = v[0]
+				}
+			}
+		}
 	}
 
 	if payload.OrderNumber == "" {
 		writeError(w, http.StatusBadRequest, "order_number is required")
 		return
+	}
+
+	// Validate cryptographic signature with PLISIO_API_KEY
+	if h.plisioSvc != nil && payload.VerifyHash != "" {
+		if !h.plisioSvc.VerifyWebhook(data, payload.VerifyHash, bodyBytes) {
+			slog.Warn("Plisio webhook signature verification failed", "received_hash", payload.VerifyHash)
+			writeError(w, http.StatusUnprocessableEntity, "signature verification failed")
+			return
+		}
 	}
 
 	orderID, err := uuid.Parse(payload.OrderNumber)

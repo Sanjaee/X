@@ -49,6 +49,7 @@ func setupTestRouter() (*chi.Mux, repository.Repository) {
 
 			auth.Get("/subscriptions/me", h.GetMySubscription)
 			auth.Post("/subscriptions/checkout", h.CheckoutSubscription)
+			auth.Get("/subscriptions/orders/{orderId}", h.GetSubscriptionOrder)
 			auth.Post("/subscriptions/simulate-payment", h.SimulatePayment)
 			auth.Get("/billing/history", h.GetBillingHistory)
 		})
