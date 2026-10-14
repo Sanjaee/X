@@ -1,10 +1,13 @@
 package middleware
 
 import (
+	"bufio"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -142,4 +145,21 @@ type responseWriterWrapper struct {
 func (rw *responseWriterWrapper) WriteHeader(code int) {
 	rw.statusCode = code
 	rw.ResponseWriter.WriteHeader(code)
+}
+
+func (rw *responseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hj, ok := rw.ResponseWriter.(http.Hijacker); ok {
+		return hj.Hijack()
+	}
+	return nil, nil, errors.New("underlying ResponseWriter does not implement http.Hijacker")
+}
+
+func (rw *responseWriterWrapper) Flush() {
+	if fl, ok := rw.ResponseWriter.(http.Flusher); ok {
+		fl.Flush()
+	}
+}
+
+func (rw *responseWriterWrapper) Unwrap() http.ResponseWriter {
+	return rw.ResponseWriter
 }

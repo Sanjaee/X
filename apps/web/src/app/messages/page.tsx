@@ -158,8 +158,13 @@ export default function MessagesPage() {
     }
 
     // Update conversation preview in sidebar
-    setConversations((prev) =>
-      prev.map((c) =>
+    setConversations((prev) => {
+      const exists = prev.some((c) => c.id === lastMessage.conversation_id);
+      if (!exists) {
+        loadConversations();
+        return prev;
+      }
+      const updated = prev.map((c) =>
         c.id === lastMessage.conversation_id
           ? {
               ...c,
@@ -169,9 +174,15 @@ export default function MessagesPage() {
                 c.id === activeConvId ? 0 : (c.unread_count || 0) + 1,
             }
           : c
-      )
-    );
-  }, [lastMessage, activeConvId, refreshCounts]);
+      );
+      // Sort most recent first (Standard X)
+      return updated.sort(
+        (a, b) =>
+          new Date(b.updated_at || b.created_at).getTime() -
+          new Date(a.updated_at || a.created_at).getTime()
+      );
+    });
+  }, [lastMessage, activeConvId, refreshCounts, loadConversations]);
 
   // Auto-scroll to bottom of chat
   useEffect(() => {

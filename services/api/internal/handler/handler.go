@@ -1544,6 +1544,11 @@ func (h *Handler) StartOutboxWorker(ctx context.Context) {
 								h.hub.BroadcastToConversation(convID, nil, "message.created", e.Payload)
 							}
 						}
+						if recStr, ok := e.Payload["recipient_id"].(string); ok {
+							if recID, err := uuid.Parse(recStr); err == nil {
+								h.hub.BroadcastToUser(recID, "message.created", e.Payload)
+							}
+						}
 					}
 				}
 				_ = h.repo.MarkOutboxEventPublished(ctx, e.ID)
@@ -2015,19 +2020,28 @@ func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if h.hub != nil {
-		h.hub.BroadcastToConversation(convID, nil, "message.created", msg)
+		var recipientID *uuid.UUID
+		if conv.OtherMember != nil {
+			recipientID = &conv.OtherMember.ID
+		}
+		h.hub.BroadcastMessage(convID, recipientID, &user.ID, msg)
+	}
+
+	outboxPayload := map[string]interface{}{
+		"message_id":      msg.ID.String(),
+		"conversation_id": convID.String(),
+		"sender_id":       user.ID.String(),
+		"content":         msg.Content,
+	}
+	if conv.OtherMember != nil {
+		outboxPayload["recipient_id"] = conv.OtherMember.ID.String()
 	}
 
 	_ = h.repo.CreateOutboxEvent(r.Context(), &domain.OutboxEvent{
 		EventType:     "message.created",
 		AggregateType: "conversation",
 		AggregateID:   convID,
-		Payload: map[string]interface{}{
-			"message_id":      msg.ID.String(),
-			"conversation_id": convID.String(),
-			"sender_id":       user.ID.String(),
-			"content":         msg.Content,
-		},
+		Payload:       outboxPayload,
 	})
 
 	writeJSON(w, http.StatusCreated, msg)

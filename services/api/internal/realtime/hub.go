@@ -25,15 +25,17 @@ var upgrader = websocket.Upgrader{
 // InboundEvent represents incoming client WebSocket messages
 type InboundEvent struct {
 	EventType string          `json:"event_type"`
+	Type      string          `json:"type"` // Fallback alias
 	Payload   json.RawMessage `json:"payload"`
 }
 
 // OutboundEvent represents outgoing server WebSocket events
 type OutboundEvent struct {
-	EventID   string      `json:"event_id"`
-	EventType string      `json:"event_type"`
-	OccurredAt string     `json:"occurred_at"`
-	Payload   interface{} `json:"payload"`
+	EventID    string      `json:"event_id"`
+	EventType  string      `json:"event_type"`
+	Type       string      `json:"type"` // Dual compatibility for frontend
+	OccurredAt string      `json:"occurred_at"`
+	Payload    interface{} `json:"payload"`
 }
 
 // Hub maintains the set of active clients and handles routing of events
@@ -140,6 +142,7 @@ func (h *Hub) BroadcastToUser(userID uuid.UUID, eventType string, payload interf
 	event := OutboundEvent{
 		EventID:    uuid.New().String(),
 		EventType:  eventType,
+		Type:       eventType,
 		OccurredAt: time.Now().UTC().Format(time.RFC3339),
 		Payload:    payload,
 	}
@@ -173,6 +176,7 @@ func (h *Hub) BroadcastToConversation(convID uuid.UUID, excludeUser *uuid.UUID, 
 	event := OutboundEvent{
 		EventID:    uuid.New().String(),
 		EventType:  eventType,
+		Type:       eventType,
 		OccurredAt: time.Now().UTC().Format(time.RFC3339),
 		Payload:    payload,
 	}
@@ -189,6 +193,70 @@ func (h *Hub) BroadcastToConversation(convID uuid.UUID, excludeUser *uuid.UUID, 
 		select {
 		case client.send <- bytes:
 		default:
+		}
+	}
+}
+
+// BroadcastMessage dispatches a new message to conversation subscribers AND direct user sessions without duplicates
+func (h *Hub) BroadcastMessage(convID uuid.UUID, recipientID *uuid.UUID, senderID *uuid.UUID, msg interface{}) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	event := OutboundEvent{
+		EventID:    uuid.New().String(),
+		EventType:  "message.created",
+		Type:       "message.created",
+		OccurredAt: time.Now().UTC().Format(time.RFC3339),
+		Payload:    msg,
+	}
+
+	bytes, err := json.Marshal(event)
+	if err != nil {
+		return
+	}
+
+	sentClients := make(map[*Client]bool)
+
+	// 1. Send to all clients subscribed to this conversation room
+	if roomMembers, ok := h.rooms[convID]; ok {
+		for client := range roomMembers {
+			if !sentClients[client] {
+				sentClients[client] = true
+				select {
+				case client.send <- bytes:
+				default:
+				}
+			}
+		}
+	}
+
+	// 2. Send to recipient user's active sessions (for notification/badge when outside conversation)
+	if recipientID != nil {
+		if userClients, ok := h.clients[*recipientID]; ok {
+			for client := range userClients {
+				if !sentClients[client] {
+					sentClients[client] = true
+					select {
+					case client.send <- bytes:
+					default:
+					}
+				}
+			}
+		}
+	}
+
+	// 3. Send to sender user's active sessions (multi-tab sync)
+	if senderID != nil {
+		if userClients, ok := h.clients[*senderID]; ok {
+			for client := range userClients {
+				if !sentClients[client] {
+					sentClients[client] = true
+					select {
+					case client.send <- bytes:
+					default:
+					}
+				}
+			}
 		}
 	}
 }
@@ -272,18 +340,24 @@ func (c *Client) writePump() {
 }
 
 func (c *Client) handleInboundEvent(event InboundEvent) {
-	switch event.EventType {
+	evtType := event.EventType
+	if evtType == "" {
+		evtType = event.Type
+	}
+
+	switch evtType {
 	case "ping":
 		pongEvent := OutboundEvent{
 			EventID:    uuid.New().String(),
 			EventType:  "pong",
+			Type:       "pong",
 			OccurredAt: time.Now().UTC().Format(time.RFC3339),
 			Payload:    map[string]string{"status": "ok"},
 		}
 		bytes, _ := json.Marshal(pongEvent)
 		c.send <- bytes
 
-	case "conversation.subscribe":
+	case "conversation.subscribe", "subscribe":
 		var p struct {
 			ConversationID string `json:"conversation_id"`
 		}
@@ -293,7 +367,7 @@ func (c *Client) handleInboundEvent(event InboundEvent) {
 			}
 		}
 
-	case "conversation.unsubscribe":
+	case "conversation.unsubscribe", "unsubscribe":
 		var p struct {
 			ConversationID string `json:"conversation_id"`
 		}
@@ -303,20 +377,30 @@ func (c *Client) handleInboundEvent(event InboundEvent) {
 			}
 		}
 
-	case "typing.start":
+	case "typing.start", "typing":
 		var p struct {
 			ConversationID string `json:"conversation_id"`
+			IsTyping       bool   `json:"is_typing"`
 		}
 		if err := json.Unmarshal(event.Payload, &p); err == nil {
 			if convUUID, err := uuid.Parse(p.ConversationID); err == nil {
+				isTyping := true
+				if evtType == "typing" {
+					isTyping = p.IsTyping
+				}
+
 				if c.hub.rdb != nil {
 					key := fmt.Sprintf("typing:conversation:%s:user:%s", convUUID, c.userID)
-					_ = c.hub.rdb.Set(context.Background(), key, "1", 4*time.Second).Err()
+					if isTyping {
+						_ = c.hub.rdb.Set(context.Background(), key, "1", 4*time.Second).Err()
+					} else {
+						_ = c.hub.rdb.Del(context.Background(), key).Err()
+					}
 				}
 				c.hub.BroadcastToConversation(convUUID, &c.userID, "typing.updated", map[string]interface{}{
 					"conversation_id": convUUID.String(),
 					"user_id":         c.userID.String(),
-					"is_typing":       true,
+					"is_typing":       isTyping,
 				})
 			}
 		}

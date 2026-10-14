@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
-import { Message, Notification, Conversation } from "@/types";
+import { Message, Notification, Conversation, User } from "@/types";
 import { apiRequest } from "@/lib/api";
 
 interface TypingEvent {
@@ -36,6 +36,8 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const backoffRef = useRef<number>(1000);
+  const currentUserIdRef = useRef<string | null>(null);
+  const seenMessageIdsRef = useRef<Set<string>>(new Set());
 
   // Refresh counts from REST API
   const refreshCounts = useCallback(async () => {
@@ -48,6 +50,14 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
+      if (!currentUserIdRef.current) {
+        apiRequest<User>("/me")
+          .then((u) => {
+            if (u?.id) currentUserIdRef.current = u.id;
+          })
+          .catch(() => {});
+      }
+
       const [notifRes, convsRes] = await Promise.allSettled([
         apiRequest<{ unread_count: number }>("/notifications/unread-count"),
         apiRequest<{ conversations: Conversation[] }>("/conversations"),
@@ -95,7 +105,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
         // Heartbeat
         const pingInterval = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: "ping" }));
+            ws.send(JSON.stringify({ event_type: "ping", type: "ping" }));
           } else {
             clearInterval(pingInterval);
           }
@@ -105,20 +115,33 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.type === "message.created") {
-            setLastMessage(data.payload as Message);
-            setUnreadMessageCount((prev) => prev + 1);
-          } else if (data.type === "typing.updated") {
-            const typingData = data.payload as TypingEvent;
+          const type = data.event_type || data.type;
+          const payload = data.payload || data;
+
+          if (type === "message.created") {
+            const msg = payload as Message;
+            setLastMessage(msg);
+
+            // Deduplicate count increment
+            if (msg.id && !seenMessageIdsRef.current.has(msg.id)) {
+              seenMessageIdsRef.current.add(msg.id);
+              // Only increment if message is from another user
+              if (!currentUserIdRef.current || msg.sender_id !== currentUserIdRef.current) {
+                setUnreadMessageCount((prev) => prev + 1);
+              }
+            }
+          } else if (type === "typing.updated") {
+            const typingData = payload as TypingEvent;
             setTypingUsers((prev) => ({
               ...prev,
               [typingData.conversation_id]: typingData.is_typing,
             }));
-          } else if (data.type === "notification.created") {
+          } else if (type === "notification.created") {
             setUnreadNotifCount((prev) => prev + 1);
-          } else if (data.type === "notification.count.updated") {
-            if (typeof data.payload?.unread_count === "number") {
-              setUnreadNotifCount(data.payload.unread_count);
+            refreshCounts();
+          } else if (type === "notification.count.updated") {
+            if (typeof payload?.unread_count === "number") {
+              setUnreadNotifCount(payload.unread_count);
             }
           }
         } catch (e) {
@@ -193,16 +216,22 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
   const sendWS = useCallback((type: string, payload: any) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type, payload }));
+      wsRef.current.send(
+        JSON.stringify({
+          event_type: type,
+          type: type,
+          payload,
+        })
+      );
     }
   }, []);
 
   const subscribeToConversation = useCallback((convId: string) => {
-    sendWS("subscribe", { conversation_id: convId });
+    sendWS("conversation.subscribe", { conversation_id: convId });
   }, [sendWS]);
 
   const unsubscribeFromConversation = useCallback((convId: string) => {
-    sendWS("unsubscribe", { conversation_id: convId });
+    sendWS("conversation.unsubscribe", { conversation_id: convId });
   }, [sendWS]);
 
   const sendTyping = useCallback((convId: string, isTyping: boolean) => {
