@@ -11,6 +11,11 @@ import { User, Post } from "@/types";
 import { apiRequest, setStoredToken } from "@/lib/api";
 import { feedKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
+import { MobileDrawer } from "@/components/layout/MobileDrawer";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
+import { MobileComposerModal } from "@/components/composer/MobileComposerModal";
+import { Plus, Radio, ArrowUp } from "lucide-react";
+import Link from "next/link";
 
 interface FeedResponse {
   posts: Post[];
@@ -22,6 +27,9 @@ export default function HomePage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<"for_you" | "following">("for_you");
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [composerModalOpen, setComposerModalOpen] = useState(false);
+  const [showNewPostsPill, setShowNewPostsPill] = useState(true);
 
   // Restore authenticated session
   useEffect(() => {
@@ -218,17 +226,51 @@ export default function HomePage() {
         />
 
         {/* Center Feed Timeline (600px max) */}
-        <main className="w-full sm:w-[600px] border-r border-border min-h-screen flex flex-col">
-          {/* Sticky Header with Feed Tabs */}
+        <main className="w-full sm:w-[600px] border-r border-border min-h-screen flex flex-col pb-16 sm:pb-0 relative">
+          {/* Sticky Header with Mobile Top Bar and Feed Tabs */}
           <header className="sticky top-0 bg-background/80 backdrop-blur-md border-b border-border z-20 flex flex-col">
+            {/* Mobile Top Bar (Matches Screenshot 1: Avatar, X logo, Berlangganan) */}
             <div className="flex h-[53px] items-center justify-between px-4 sm:hidden">
-              <span className="font-extrabold text-[18px]">Home</span>
+              <button
+                onClick={() => setDrawerOpen(true)}
+                className="w-8 h-8 rounded-full overflow-hidden border border-border flex items-center justify-center shrink-0"
+              >
+                {currentUser?.avatar_url ? (
+                  <img
+                    src={currentUser.avatar_url}
+                    alt={currentUser.display_name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-[#16181c] flex items-center justify-center text-xs font-bold text-foreground">
+                    {currentUser?.display_name?.charAt(0) || "X"}
+                  </div>
+                )}
+              </button>
+
+              {/* Centered X Logo */}
+              <div className="flex items-center justify-center">
+                <svg viewBox="0 0 24 24" aria-hidden="true" className="w-5 h-5 fill-current">
+                  <g>
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 24.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </g>
+                </svg>
+              </div>
+
+              {/* Berlangganan / Subscribe Pill Button */}
+              <Link
+                href="/premium"
+                className="text-xs font-bold px-3.5 py-1.5 rounded-full border border-border text-foreground hover:bg-subtle transition-colors"
+              >
+                Berlangganan
+              </Link>
             </div>
 
-            <div className="flex w-full h-[53px]">
+            {/* Feed Tabs: Untuk Anda (For you) & Mengikuti (Following) + Add List Button */}
+            <div className="flex w-full h-[53px] items-center">
               <button
                 onClick={() => setActiveTab("for_you")}
-                className="flex-1 flex justify-center items-center hover:bg-subtle transition-colors relative"
+                className="flex-1 flex justify-center items-center hover:bg-subtle transition-colors relative h-full"
               >
                 <span
                   className={cn(
@@ -236,7 +278,7 @@ export default function HomePage() {
                     activeTab === "for_you" ? "text-foreground" : "text-muted"
                   )}
                 >
-                  For you
+                  Untuk Anda
                   {activeTab === "for_you" && (
                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-brand rounded-full" />
                   )}
@@ -251,7 +293,7 @@ export default function HomePage() {
                   }
                   setActiveTab("following");
                 }}
-                className="flex-1 flex justify-center items-center hover:bg-subtle transition-colors relative"
+                className="flex-1 flex justify-center items-center hover:bg-subtle transition-colors relative h-full"
               >
                 <span
                   className={cn(
@@ -259,21 +301,75 @@ export default function HomePage() {
                     activeTab === "following" ? "text-foreground" : "text-muted"
                   )}
                 >
-                  Following
+                  Mengikuti
                   {activeTab === "following" && (
                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-brand rounded-full" />
                   )}
                 </span>
               </button>
+
+              <div className="px-3 sm:hidden">
+                <button
+                  aria-label="Add feed"
+                  className="p-1.5 hover:bg-subtle rounded-full text-muted hover:text-foreground transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </header>
 
-          {/* Post Composer */}
-          <PostComposer
-            currentUser={currentUser}
-            onPostSuccess={handlePostCreated}
-            onOpenAuth={() => setAuthModalOpen(true)}
-          />
+          {/* Spaces Live Banner (Matches Screenshot 1 Audio Bar) */}
+          <div className="bg-[#f91880] text-white px-3 py-2 flex items-center justify-between shadow-sm cursor-pointer hover:opacity-95 transition-opacity select-none">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-6 h-6 rounded bg-black/20 flex items-center justify-center text-xs shrink-0 font-bold">
+                📻
+              </div>
+              <span className="text-xs font-bold truncate">
+                <strong className="font-extrabold mr-1">+15,1 rb ·</strong>
+                President Trump Participates in a R...
+              </span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0 text-white/90">
+              <span className="font-mono text-xs font-bold tracking-tighter">ılı•</span>
+            </div>
+          </div>
+
+          {/* Floating Pill: New Posts Indicator (Matches Screenshot 1: ↑ 👥 diposting) */}
+          {showNewPostsPill && (
+            <button
+              onClick={() => {
+                window.scrollTo({ top: 0, behavior: "smooth" });
+                setShowNewPostsPill(false);
+                setTimeout(() => setShowNewPostsPill(true), 30000);
+              }}
+              className="fixed top-28 left-1/2 -translate-x-1/2 z-30 bg-[#1d9bf0] hover:bg-[#1a8cd8] active:scale-95 text-white px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-2 text-xs font-bold transition-transform cursor-pointer"
+            >
+              <ArrowUp className="w-3.5 h-3.5 stroke-[2.5]" />
+              <div className="flex -space-x-1.5 overflow-hidden">
+                <img
+                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=50"
+                  alt="user"
+                  className="w-4 h-4 rounded-full ring-1 ring-white object-cover"
+                />
+                <img
+                  src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=50"
+                  alt="user"
+                  className="w-4 h-4 rounded-full ring-1 ring-white object-cover"
+                />
+              </div>
+              <span>diposting</span>
+            </button>
+          )}
+
+          {/* Desktop Post Composer (Hidden on mobile) */}
+          <div className="hidden sm:block">
+            <PostComposer
+              currentUser={currentUser}
+              onPostSuccess={handlePostCreated}
+              onOpenAuth={() => setAuthModalOpen(true)}
+            />
+          </div>
 
           {/* Virtualized Infinite Feed with Bounded Cache */}
           <div className="flex-1 flex flex-col">
@@ -313,6 +409,27 @@ export default function HomePage() {
 
         {/* Right Sidebar (420px max) */}
         <RightSidebar />
+
+        {/* Mobile Navigation Drawer */}
+        <MobileDrawer
+          isOpen={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          currentUser={currentUser}
+          onOpenAuth={() => setAuthModalOpen(true)}
+          onLogout={handleLogout}
+        />
+
+        {/* Mobile Composer Modal (Full screen sheet on FAB click) */}
+        <MobileComposerModal
+          isOpen={composerModalOpen}
+          onClose={() => setComposerModalOpen(false)}
+          currentUser={currentUser}
+          onPostSuccess={handlePostCreated}
+          onOpenAuth={() => setAuthModalOpen(true)}
+        />
+
+        {/* Mobile Fixed Bottom Nav */}
+        <MobileBottomNav onOpenComposer={() => setComposerModalOpen(true)} />
 
         {/* Auth Modal */}
         <AuthModal

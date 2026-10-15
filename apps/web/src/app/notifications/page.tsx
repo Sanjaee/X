@@ -16,6 +16,9 @@ import {
 } from "lucide-react";
 import { LeftNavRail } from "@/components/layout/LeftNavRail";
 import { RightSidebar } from "@/components/layout/RightSidebar";
+import { MobileDrawer } from "@/components/layout/MobileDrawer";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
+import { MobileComposerModal } from "@/components/composer/MobileComposerModal";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { Notification, User, FollowRequest } from "@/types";
 import { apiRequest } from "@/lib/api";
@@ -30,6 +33,8 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"all" | "verified" | "mentions">("all");
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [composerModalOpen, setComposerModalOpen] = useState(false);
   const { setUnreadNotifCount } = useRealtime();
 
   const fetchNotifs = useCallback(() => {
@@ -149,11 +154,30 @@ export default function NotificationsPage() {
           onOpenAuth={() => setAuthModalOpen(true)}
         />
 
-        <main className="w-full sm:w-[600px] border-r border-border min-h-screen flex flex-col">
+        <main className="w-full sm:w-[600px] border-r border-border min-h-screen flex flex-col pb-16 sm:pb-0">
           {/* Header */}
           <header className="sticky top-0 bg-background/80 backdrop-blur-md border-b border-border z-20 flex flex-col">
             <div className="flex items-center justify-between px-4 h-[53px]">
-              <h1 className="font-extrabold text-[20px]">Notifications</h1>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setDrawerOpen(true)}
+                  className="sm:hidden w-8 h-8 rounded-full overflow-hidden border border-border flex items-center justify-center shrink-0"
+                >
+                  {currentUser?.avatar_url ? (
+                    <img
+                      src={currentUser.avatar_url}
+                      alt={currentUser.display_name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-[#16181c] flex items-center justify-center text-xs font-bold text-foreground">
+                      {currentUser?.display_name?.charAt(0) || "X"}
+                    </div>
+                  )}
+                </button>
+                <h1 className="font-extrabold text-[20px]">Notifikasi</h1>
+              </div>
+
               <div className="flex items-center gap-2">
                 {currentUser && (
                   <button
@@ -164,28 +188,34 @@ export default function NotificationsPage() {
                     <CheckCheck className="w-5 h-5" />
                   </button>
                 )}
-                <button className="p-2 hover:bg-subtle rounded-full text-foreground transition-colors">
+                <button
+                  className="p-2 hover:bg-subtle rounded-full text-foreground transition-colors"
+                  title="Settings"
+                >
                   <Settings className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            {/* Tabs */}
+            {/* Tabs: Semua (All) & Sebutan (Mentions) - Matches Screenshot 3 */}
             <div className="flex w-full h-[53px]">
-              {(["all", "verified", "mentions"] as const).map((tab) => (
+              {[
+                { id: "all", label: "Semua" },
+                { id: "mentions", label: "Sebutan" },
+              ].map((tab) => (
                 <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className="flex-1 flex justify-center items-center hover:bg-subtle transition-colors relative capitalize text-[15px]"
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as "all" | "mentions")}
+                  className="flex-1 flex justify-center items-center hover:bg-subtle transition-colors relative text-[15px]"
                 >
                   <span
                     className={cn(
                       "font-bold py-3.5 relative",
-                      activeTab === tab ? "text-foreground" : "text-muted"
+                      activeTab === tab.id ? "text-foreground" : "text-muted"
                     )}
                   >
-                    {tab}
-                    {activeTab === tab && (
+                    {tab.label}
+                    {activeTab === tab.id && (
                       <div className="absolute bottom-0 left-0 right-0 h-1 bg-brand rounded-full" />
                     )}
                   </span>
@@ -354,6 +384,30 @@ export default function NotificationsPage() {
         </main>
 
         <RightSidebar />
+
+        {/* Mobile Navigation Drawer */}
+        <MobileDrawer
+          isOpen={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          currentUser={currentUser}
+          onOpenAuth={() => setAuthModalOpen(true)}
+          onLogout={() => {
+            setCurrentUser(null);
+            setNotifications([]);
+          }}
+        />
+
+        {/* Mobile Composer Modal */}
+        <MobileComposerModal
+          isOpen={composerModalOpen}
+          onClose={() => setComposerModalOpen(false)}
+          currentUser={currentUser}
+          onPostSuccess={() => fetchNotifs()}
+          onOpenAuth={() => setAuthModalOpen(true)}
+        />
+
+        {/* Mobile Fixed Bottom Nav */}
+        <MobileBottomNav onOpenComposer={() => setComposerModalOpen(true)} />
 
         <AuthModal
           isOpen={authModalOpen}

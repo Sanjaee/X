@@ -13,9 +13,14 @@ import {
   Calendar,
   Heart,
   User as UserIcon,
+  Settings,
+  MoreHorizontal,
 } from "lucide-react";
 import { LeftNavRail } from "@/components/layout/LeftNavRail";
 import { RightSidebar } from "@/components/layout/RightSidebar";
+import { MobileDrawer } from "@/components/layout/MobileDrawer";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
+import { MobileComposerModal } from "@/components/composer/MobileComposerModal";
 import { SearchBarDropdown } from "@/components/search/SearchBarDropdown";
 import { VirtualizedFeed } from "@/components/virtualized-list/VirtualizedFeed";
 import { VerifiedBadge } from "@/components/common/VerifiedBadge";
@@ -26,6 +31,7 @@ import { searchKeys } from "@/lib/query-keys";
 import { cn, formatNumber } from "@/lib/utils";
 
 type SearchTab = "top" | "latest" | "people" | "media";
+type ExploreCategory = "jelajahi" | "trending" | "berita" | "olahraga" | "hiburan";
 
 interface SearchPostsResponse {
   data: Post[];
@@ -54,6 +60,25 @@ function SearchPageContent() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [composerModalOpen, setComposerModalOpen] = useState(false);
+  const [exploreCategory, setExploreCategory] = useState<ExploreCategory>("jelajahi");
+
+  // Mock trending data matching Indonesian X Explore (Screenshot 2)
+  const trendingList = [
+    { category: "Sedang tren dalam topik Indonesia", title: "A. SECEPAT ITU", count: "42,1 rb postingan" },
+    { category: "Sedang tren dalam topik Indonesia", title: "Malam Jumat", count: "18,4 rb postingan" },
+    { category: "Sedang tren dalam topik Indonesia", title: "Angkut", count: "12,9 rb postingan" },
+    { category: "Sedang tren dalam topik Indonesia", title: "Kamis", count: "35,2 rb postingan" },
+    { category: "Sedang tren dalam topik Indonesia", title: "#Happy21andOnlyJAMES", count: "148 rb postingan" },
+    { category: "Sedang tren dalam topik Indonesia", title: "#2026MAMAVOTE", count: "89,3 rb postingan" },
+    { category: "Sedang tren dalam topik Indonesia", title: "SPBU", count: "7,8 rb postingan" },
+    { category: "Sedang tren dalam topik Indonesia", title: "bantu tanpa lelah", count: "15,6 rb postingan" },
+    { category: "Sedang tren dalam topik Indonesia", title: "capaian program pemerintah", count: "21,0 rb postingan" },
+    { category: "Sedang tren dalam topik Setia Budi", title: "Tolong", count: "9,4 rb postingan" },
+    { category: "Sedang tren dalam topik Olahraga", title: "Liga 1", count: "14,2 rb postingan" },
+    { category: "Sedang tren dalam topik Berita", title: "BMKG Gempa", count: "31,8 rb postingan" },
+  ];
 
   // Advanced Filters State
   const [filterFromUser, setFilterFromUser] = useState("");
@@ -236,62 +261,136 @@ function SearchPageContent() {
         />
 
         {/* Center Search Container (600px) */}
-        <main className="w-full sm:w-[600px] border-r border-border min-h-screen flex flex-col">
-          {/* Sticky Header with Search Bar and Filter Toggle */}
+        <main className="w-full sm:w-[600px] border-r border-border min-h-screen flex flex-col pb-16 sm:pb-0">
+          {/* Sticky Header */}
           <header className="sticky top-0 bg-background/80 backdrop-blur-md border-b border-border z-20 flex flex-col">
-            <div className="flex items-center gap-3 px-4 py-2.5">
-              <button
-                onClick={() => router.back()}
-                className="p-2 hover:bg-subtle rounded-full text-foreground transition-colors shrink-0"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
+            {!rawQuery.trim() ? (
+              /* Screenshot 2: Explore Mobile Top Bar */
+              <div className="flex items-center gap-3 px-4 py-2.5">
+                <button
+                  onClick={() => setDrawerOpen(true)}
+                  className="sm:hidden w-8 h-8 rounded-full overflow-hidden border border-border flex items-center justify-center shrink-0"
+                >
+                  {currentUser?.avatar_url ? (
+                    <img
+                      src={currentUser.avatar_url}
+                      alt={currentUser.display_name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-[#16181c] flex items-center justify-center text-xs font-bold text-foreground">
+                      {currentUser?.display_name?.charAt(0) || "X"}
+                    </div>
+                  )}
+                </button>
 
-              <div className="flex-1">
-                <SearchBarDropdown
-                  initialQuery={rawQuery}
-                  onSearchSubmit={handleSearchSubmit}
-                />
+                <div className="flex-1">
+                  <SearchBarDropdown
+                    initialQuery=""
+                    onSearchSubmit={handleSearchSubmit}
+                  />
+                </div>
+
+                <button
+                  onClick={() => setFiltersOpen(!filtersOpen)}
+                  className="p-2 hover:bg-subtle rounded-full text-foreground transition-colors shrink-0"
+                  title="Settings"
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
               </div>
+            ) : (
+              /* Active Search Header */
+              <div className="flex items-center gap-3 px-4 py-2.5">
+                <button
+                  onClick={() => {
+                    const params = new URLSearchParams();
+                    router.push("/search");
+                  }}
+                  className="p-2 hover:bg-subtle rounded-full text-foreground transition-colors shrink-0"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
 
-              <button
-                onClick={() => setFiltersOpen(!filtersOpen)}
-                className={cn(
-                  "p-2.5 rounded-full transition-colors shrink-0",
-                  filtersOpen ? "bg-brand text-white" : "hover:bg-subtle text-foreground"
-                )}
-                title="Advanced filters"
-              >
-                <SlidersHorizontal className="w-5 h-5" />
-              </button>
-            </div>
+                <div className="flex-1">
+                  <SearchBarDropdown
+                    initialQuery={rawQuery}
+                    onSearchSubmit={handleSearchSubmit}
+                  />
+                </div>
 
-            {/* Search Tabs: Top, Latest, People, Media */}
-            <div className="flex w-full h-[53px]">
-              {(["top", "latest", "people", "media"] as SearchTab[]).map((tab) => {
-                const label = tab.charAt(0).toUpperCase() + tab.slice(1);
-                const isActive = activeTab === tab;
-                return (
-                  <button
-                    key={tab}
-                    onClick={() => handleTabChange(tab)}
-                    className="flex-1 flex justify-center items-center hover:bg-subtle transition-colors relative"
-                  >
-                    <span
-                      className={cn(
-                        "text-[15px] font-bold py-3.5 relative",
-                        isActive ? "text-foreground" : "text-muted"
-                      )}
+                <button
+                  onClick={() => setFiltersOpen(!filtersOpen)}
+                  className={cn(
+                    "p-2.5 rounded-full transition-colors shrink-0",
+                    filtersOpen ? "bg-brand text-white" : "hover:bg-subtle text-foreground"
+                  )}
+                  title="Advanced filters"
+                >
+                  <SlidersHorizontal className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+
+            {/* Tab Bar: If Explore mode, show Explore categories (Screenshot 2); If query active, show SearchTabs */}
+            {!rawQuery.trim() ? (
+              <div className="flex w-full h-[53px] overflow-x-auto no-scrollbar border-t sm:border-t-0 border-border">
+                {[
+                  { id: "jelajahi", label: "Jelajahi" },
+                  { id: "trending", label: "Sedang Tren" },
+                  { id: "berita", label: "Berita" },
+                  { id: "olahraga", label: "Olahraga" },
+                  { id: "hiburan", label: "Hiburan" },
+                ].map((cat) => {
+                  const isActive = exploreCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setExploreCategory(cat.id as ExploreCategory)}
+                      className="px-4 shrink-0 flex justify-center items-center hover:bg-subtle transition-colors relative"
                     >
-                      {label}
-                      {isActive && (
-                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-brand rounded-full" />
-                      )}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+                      <span
+                        className={cn(
+                          "text-[15px] font-bold py-3.5 relative whitespace-nowrap",
+                          isActive ? "text-foreground" : "text-muted"
+                        )}
+                      >
+                        {cat.label}
+                        {isActive && (
+                          <div className="absolute bottom-0 left-0 right-0 h-1 bg-brand rounded-full" />
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex w-full h-[53px]">
+                {(["top", "latest", "people", "media"] as SearchTab[]).map((tab) => {
+                  const label = tab.charAt(0).toUpperCase() + tab.slice(1);
+                  const isActive = activeTab === tab;
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() => handleTabChange(tab)}
+                      className="flex-1 flex justify-center items-center hover:bg-subtle transition-colors relative"
+                    >
+                      <span
+                        className={cn(
+                          "text-[15px] font-bold py-3.5 relative",
+                          isActive ? "text-foreground" : "text-muted"
+                        )}
+                      >
+                        {label}
+                        {isActive && (
+                          <div className="absolute bottom-0 left-0 right-0 h-1 bg-brand rounded-full" />
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </header>
 
           {/* Advanced Filters Drawer / Modal */}
@@ -378,14 +477,37 @@ function SearchPageContent() {
           {/* Search Content */}
           <div className="flex-1 flex flex-col">
             {!rawQuery.trim() ? (
-              <div className="text-center py-20 px-6">
-                <div className="w-16 h-16 rounded-full bg-subtle flex items-center justify-center mx-auto mb-4 text-brand">
-                  <Search className="w-8 h-8" />
-                </div>
-                <h3 className="font-extrabold text-[22px] mb-2">Search X</h3>
-                <p className="text-muted text-[15px] max-w-sm mx-auto">
-                  Search for topics, people, keywords, or operators like <span className="text-brand">from:username</span>.
-                </p>
+              /* Screenshot 2: Authentic Trending List */
+              <div className="flex flex-col divide-y divide-border">
+                {trendingList.map((trend, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => handleSearchSubmit(trend.title)}
+                    className="p-4 hover:bg-subtle/50 cursor-pointer transition-colors flex items-start justify-between group"
+                  >
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-[13px] text-muted leading-tight">
+                        {trend.category}
+                      </span>
+                      <span className="font-bold text-[15px] text-foreground group-hover:underline truncate">
+                        {trend.title}
+                      </span>
+                      <span className="text-[13px] text-muted leading-tight">
+                        {trend.count}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                      className="p-2 -mr-2 text-muted hover:text-foreground hover:bg-subtle rounded-full transition-colors"
+                      title="More"
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
               </div>
             ) : isPeopleTab ? (
               /* People Tab View */
@@ -503,6 +625,32 @@ function SearchPageContent() {
 
         {/* Right Sidebar (with search bar hidden on search page) */}
         <RightSidebar hideSearchBar />
+
+        {/* Mobile Navigation Drawer */}
+        <MobileDrawer
+          isOpen={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          currentUser={currentUser}
+          onOpenAuth={() => setAuthModalOpen(true)}
+          onLogout={() => {
+            queryClient.clear();
+            setCurrentUser(null);
+          }}
+        />
+
+        {/* Mobile Composer Modal */}
+        <MobileComposerModal
+          isOpen={composerModalOpen}
+          onClose={() => setComposerModalOpen(false)}
+          currentUser={currentUser}
+          onPostSuccess={() => {
+            if (isPostTab) postsRefetch();
+          }}
+          onOpenAuth={() => setAuthModalOpen(true)}
+        />
+
+        {/* Mobile Fixed Bottom Nav */}
+        <MobileBottomNav onOpenComposer={() => setComposerModalOpen(true)} />
 
         {/* Auth Modal */}
         <AuthModal

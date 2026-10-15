@@ -22,6 +22,7 @@
       "apps_web_src_app_premium_page",
       "apps_web_src_app_premium_page_premiumpage",
       "apps_web_src_app_search_page",
+      "apps_web_src_app_search_page_explorecategory",
       "apps_web_src_app_search_page_searchpage",
       "apps_web_src_app_search_page_searchpagecontent",
       "apps_web_src_app_search_page_searchpostsresponse",
@@ -47,6 +48,10 @@
       "apps_web_src_components_common_verifiedbadge",
       "apps_web_src_components_common_verifiedbadge_verifiedbadge",
       "apps_web_src_components_common_verifiedbadge_verifiedbadgeprops",
+      "apps_web_src_components_composer_mobilecomposermodal",
+      "apps_web_src_components_composer_mobilecomposermodal_mobilecomposermodal",
+      "apps_web_src_components_composer_mobilecomposermodal_mobilecomposermodalprops",
+      "apps_web_src_components_composer_mobilecomposermodal_stagedattachment",
       "apps_web_src_components_composer_postcomposer",
       "apps_web_src_components_composer_postcomposer_postcomposer",
       "apps_web_src_components_composer_postcomposer_postcomposerprops",
@@ -57,9 +62,18 @@
       "apps_web_src_components_layout_leftnavrail",
       "apps_web_src_components_layout_leftnavrail_leftnavrail",
       "apps_web_src_components_layout_leftnavrail_leftnavrailprops",
+      "apps_web_src_components_layout_mobilebottomnav",
+      "apps_web_src_components_layout_mobilebottomnav_mobilebottomnav",
+      "apps_web_src_components_layout_mobilebottomnav_mobilebottomnavprops",
+      "apps_web_src_components_layout_mobiledrawer",
+      "apps_web_src_components_layout_mobiledrawer_mobiledrawer",
+      "apps_web_src_components_layout_mobiledrawer_mobiledrawerprops",
       "apps_web_src_components_layout_rightsidebar",
       "apps_web_src_components_layout_rightsidebar_rightsidebar",
       "apps_web_src_components_layout_rightsidebar_rightsidebarprops",
+      "apps_web_src_components_media_mediadetailsidebar",
+      "apps_web_src_components_media_mediadetailsidebar_mediadetailsidebar",
+      "apps_web_src_components_media_mediadetailsidebar_mediadetailsidebarprops",
       "apps_web_src_components_media_mediaviewercontext",
       "apps_web_src_components_media_mediaviewercontext_mediaviewercontext",
       "apps_web_src_components_media_mediaviewercontext_mediaviewercontexttype",
@@ -91,6 +105,7 @@
       "apps_web_src_components_virtualized_list_virtualizedfeed_virtualizedfeedprops",
       "apps_web_src_lib_api",
       "apps_web_src_lib_api_apirequest",
+      "apps_web_src_lib_api_getapibase",
       "apps_web_src_lib_api_getstoredtoken",
       "apps_web_src_lib_api_setstoredtoken",
       "apps_web_src_lib_query_keys",
@@ -330,8 +345,124 @@
       "services_api_internal_middleware_concurrency_requesttimeoutmiddleware"
     ],
     "3": [
+      "client",
+      "duration",
+      "hub",
+      "logger",
+      "mediaservice",
+      "middleware_contextkey",
+      "middleware_memorylimiter",
+      "middleware_memorylimiter_isallowed",
+      "middleware_responsewriterwrapper",
+      "middleware_responsewriterwrapper_flush",
+      "middleware_responsewriterwrapper_hijack",
+      "middleware_responsewriterwrapper_unwrap",
+      "middleware_responsewriterwrapper_writeheader",
+      "mutex",
+      "plisioservice",
+      "readwriter",
+      "repository",
+      "repository_memoryrepository_seedinitialdata",
+      "repository_repository",
+      "services_api_internal_handler_handler_newhandler",
+      "services_api_internal_handler_handler_test",
+      "services_api_internal_handler_handler_test_go_mux",
+      "services_api_internal_handler_handler_test_go_t",
+      "services_api_internal_handler_handler_test_setuptestrouter",
+      "services_api_internal_handler_handler_test_testauthandpostingflow",
+      "services_api_internal_handler_handler_test_testhealthcheck",
+      "services_api_internal_handler_handler_test_testsubscriptionsandbadges",
+      "services_api_internal_handler_recommendation_test",
+      "services_api_internal_handler_recommendation_test_go_mux",
+      "services_api_internal_handler_recommendation_test_go_t",
+      "services_api_internal_handler_recommendation_test_registertestuser",
+      "services_api_internal_handler_recommendation_test_setuprecommendationrouter",
+      "services_api_internal_handler_recommendation_test_testrecommendationandfeedapis",
+      "services_api_internal_handler_search_test",
+      "services_api_internal_handler_search_test_go_t",
+      "services_api_internal_handler_search_test_testsearchapiendpoints",
+      "services_api_internal_handler_social_messaging_test",
+      "services_api_internal_handler_social_messaging_test_createtestuser",
+      "services_api_internal_handler_social_messaging_test_go_mux",
+      "services_api_internal_handler_social_messaging_test_go_t",
+      "services_api_internal_handler_social_messaging_test_go_user",
+      "services_api_internal_handler_social_messaging_test_setuptestapp",
+      "services_api_internal_handler_social_messaging_test_testdirectmessaging_idempotencyandflow",
+      "services_api_internal_handler_social_messaging_test_testfollowrequest_privateaccount",
+      "services_api_internal_handler_social_messaging_test_testsocialgraph_followunfollowblockmute",
+      "services_api_internal_middleware_middleware",
+      "services_api_internal_middleware_middleware_authmiddleware",
+      "services_api_internal_middleware_middleware_getuserfromcontext",
+      "services_api_internal_middleware_middleware_getviewerid",
+      "services_api_internal_middleware_middleware_go_conn",
+      "services_api_internal_middleware_middleware_go_context",
+      "services_api_internal_middleware_middleware_go_responsewriter",
+      "services_api_internal_middleware_middleware_go_user",
+      "services_api_internal_middleware_middleware_go_uuid",
+      "services_api_internal_middleware_middleware_loggermiddleware",
+      "services_api_internal_middleware_middleware_recoverymiddleware",
+      "services_api_internal_middleware_ratelimit",
+      "services_api_internal_middleware_ratelimit_go_time",
+      "services_api_internal_middleware_ratelimit_ratelimiter",
+      "services_api_internal_repository_memory",
+      "services_api_internal_repository_memory_newmemoryrepository",
+      "services_api_internal_repository_repository"
+    ],
+    "4": [
+      "db",
+      "repository_postgresrepository",
+      "repository_postgresrepository_addrecentsearch",
+      "repository_postgresrepository_blockuser",
+      "repository_postgresrepository_bookmarkpost",
+      "repository_postgresrepository_cancelfollowrequest",
+      "repository_postgresrepository_cancelsubscription",
+      "repository_postgresrepository_clearrecentsearches",
+      "repository_postgresrepository_createinvoice",
+      "repository_postgresrepository_createoutboxevent",
+      "repository_postgresrepository_createpaymentorder",
+      "repository_postgresrepository_createsession",
+      "repository_postgresrepository_createverificationapplication",
+      "repository_postgresrepository_deletepost",
+      "repository_postgresrepository_deleterecentsearch",
+      "repository_postgresrepository_deletesession",
+      "repository_postgresrepository_followuser",
+      "repository_postgresrepository_getbillinghistory",
+      "repository_postgresrepository_getpaymentorderbyid",
+      "repository_postgresrepository_getpendingoutboxevents",
+      "repository_postgresrepository_getrecentsearches",
+      "repository_postgresrepository_getsessionbytokenhash",
+      "repository_postgresrepository_gettrendingtopics",
+      "repository_postgresrepository_getunreadnotificationscount",
+      "repository_postgresrepository_getusertopicpreferences",
+      "repository_postgresrepository_getverificationapplication",
+      "repository_postgresrepository_getviewerinteractions",
+      "repository_postgresrepository_isblocked",
+      "repository_postgresrepository_likepost",
+      "repository_postgresrepository_markconversationread",
+      "repository_postgresrepository_marknotificationread",
+      "repository_postgresrepository_marknotificationsread",
+      "repository_postgresrepository_markoutboxeventpublished",
+      "repository_postgresrepository_muteuser",
+      "repository_postgresrepository_ping",
+      "repository_postgresrepository_recordfeedfeedback",
+      "repository_postgresrepository_recordfeedimpressions",
+      "repository_postgresrepository_removebookmark",
+      "repository_postgresrepository_repostpost",
+      "repository_postgresrepository_resetpersonalization",
+      "repository_postgresrepository_respondfollowrequest",
+      "repository_postgresrepository_unblockuser",
+      "repository_postgresrepository_undorepost",
+      "repository_postgresrepository_unfollowuser",
+      "repository_postgresrepository_unlikepost",
+      "repository_postgresrepository_unmuteuser",
+      "repository_postgresrepository_updatepaymentorderstatus",
+      "repository_postgresrepository_updateusertopicpreference",
+      "repository_postgresrepository_updateuserverification",
+      "services_api_internal_repository_postgres_go_context",
+      "services_api_internal_repository_postgres_go_uuid"
+    ],
+    "5": [
       "b",
-      "domain_rankingweights",
       "recommendation_candidate",
       "recommendation_candidateprovider",
       "recommendation_candidatesource",
@@ -345,17 +476,6 @@
       "recommendation_feedmetrics",
       "recommendation_feedoptions",
       "recommendation_feedresult",
-      "recommendation_mockcandidateprovider",
-      "recommendation_mockcandidateprovider_getactiveweights",
-      "recommendation_mockcandidateprovider_getexplorationcandidates",
-      "recommendation_mockcandidateprovider_getfollowingcandidates",
-      "recommendation_mockcandidateprovider_getfollowingposts",
-      "recommendation_mockcandidateprovider_getfreshcandidates",
-      "recommendation_mockcandidateprovider_getsocialengagementcandidates",
-      "recommendation_mockcandidateprovider_gettopiccandidates",
-      "recommendation_mockcandidateprovider_gettrendingcandidates",
-      "recommendation_mockcandidateprovider_getviewerinteractions",
-      "services_api_internal_domain_models_defaultrankingweights",
       "services_api_internal_recommendation_cursor",
       "services_api_internal_recommendation_cursor_decodecursor",
       "services_api_internal_recommendation_cursor_encodecursor",
@@ -369,10 +489,7 @@
       "services_api_internal_recommendation_engine_test",
       "services_api_internal_recommendation_engine_test_benchmarkdiversityreranker",
       "services_api_internal_recommendation_engine_test_benchmarkscoringengine",
-      "services_api_internal_recommendation_engine_test_go_context",
-      "services_api_internal_recommendation_engine_test_go_post",
       "services_api_internal_recommendation_engine_test_go_t",
-      "services_api_internal_recommendation_engine_test_go_uuid",
       "services_api_internal_recommendation_engine_test_testcursorroundtrip",
       "services_api_internal_recommendation_engine_test_testdiversityreranking",
       "services_api_internal_recommendation_engine_test_testfeedevaluator",
@@ -393,7 +510,53 @@
       "services_api_internal_recommendation_types_go_time",
       "services_api_internal_recommendation_types_go_uuid"
     ],
-    "4": [
+    "6": [
+      "domain_conversation",
+      "domain_entitlements",
+      "domain_feedfeedback",
+      "domain_feedimpression",
+      "domain_follow",
+      "domain_followrequest",
+      "domain_hashtag",
+      "domain_invoice",
+      "domain_mediaobject",
+      "domain_message",
+      "domain_messagereaction",
+      "domain_notification",
+      "domain_notificationpreferences",
+      "domain_outboxevent",
+      "domain_pageinfo",
+      "domain_paymentorder",
+      "domain_post",
+      "domain_postfeatures",
+      "domain_rankingexperiment",
+      "domain_rankingweights",
+      "domain_recentsearch",
+      "domain_searchfilterparams",
+      "domain_searchsuggestionsresponse",
+      "domain_session",
+      "domain_socialrelationship",
+      "domain_subscription",
+      "domain_subscriptionplan",
+      "domain_trendingtopic",
+      "domain_user",
+      "domain_usersettings",
+      "domain_usertopicpreference",
+      "domain_verificationapplication",
+      "domain_verificationbadge",
+      "repository_postgresrepository_getactiveweights",
+      "services_api_internal_domain_models",
+      "services_api_internal_domain_models_defaultrankingweights",
+      "services_api_internal_domain_models_go_message",
+      "services_api_internal_domain_models_go_time",
+      "services_api_internal_domain_models_go_uuid",
+      "services_api_internal_search_parser",
+      "services_api_internal_search_parser_parsequery",
+      "services_api_internal_search_parser_test",
+      "services_api_internal_search_parser_test_go_t",
+      "services_api_internal_search_parser_test_testparsequery"
+    ],
+    "7": [
       "apps_web_package",
       "apps_web_package_dependencies",
       "apps_web_package_dependencies_clsx",
@@ -437,123 +600,6 @@
       "types_react",
       "types_react_dom",
       "typescript"
-    ],
-    "5": [
-      "domain_conversation",
-      "domain_entitlements",
-      "domain_feedfeedback",
-      "domain_feedimpression",
-      "domain_follow",
-      "domain_followrequest",
-      "domain_hashtag",
-      "domain_invoice",
-      "domain_mediaobject",
-      "domain_message",
-      "domain_messagereaction",
-      "domain_notification",
-      "domain_notificationpreferences",
-      "domain_outboxevent",
-      "domain_pageinfo",
-      "domain_paymentorder",
-      "domain_post",
-      "domain_postfeatures",
-      "domain_rankingexperiment",
-      "domain_recentsearch",
-      "domain_searchfilterparams",
-      "domain_searchsuggestionsresponse",
-      "domain_session",
-      "domain_socialrelationship",
-      "domain_subscription",
-      "domain_subscriptionplan",
-      "domain_trendingtopic",
-      "domain_user",
-      "domain_usersettings",
-      "domain_usertopicpreference",
-      "domain_verificationapplication",
-      "domain_verificationbadge",
-      "services_api_internal_domain_models",
-      "services_api_internal_domain_models_go_message",
-      "services_api_internal_domain_models_go_time",
-      "services_api_internal_domain_models_go_uuid",
-      "services_api_internal_search_parser",
-      "services_api_internal_search_parser_parsequery",
-      "services_api_internal_search_parser_test",
-      "services_api_internal_search_parser_test_go_t",
-      "services_api_internal_search_parser_test_testparsequery"
-    ],
-    "6": [
-      "repository_postgresrepository_blockuser",
-      "repository_postgresrepository_bookmarkpost",
-      "repository_postgresrepository_cancelfollowrequest",
-      "repository_postgresrepository_cancelsubscription",
-      "repository_postgresrepository_clearrecentsearches",
-      "repository_postgresrepository_createpaymentorder",
-      "repository_postgresrepository_createverificationapplication",
-      "repository_postgresrepository_deletepost",
-      "repository_postgresrepository_deleterecentsearch",
-      "repository_postgresrepository_followuser",
-      "repository_postgresrepository_getactiveweights",
-      "repository_postgresrepository_getbillinghistory",
-      "repository_postgresrepository_getpaymentorderbyid",
-      "repository_postgresrepository_getpendingoutboxevents",
-      "repository_postgresrepository_getrecentsearches",
-      "repository_postgresrepository_getsessionbytokenhash",
-      "repository_postgresrepository_gettrendingtopics",
-      "repository_postgresrepository_getunreadnotificationscount",
-      "repository_postgresrepository_getusertopicpreferences",
-      "repository_postgresrepository_getverificationapplication",
-      "repository_postgresrepository_getviewerinteractions",
-      "repository_postgresrepository_isblocked",
-      "repository_postgresrepository_likepost",
-      "repository_postgresrepository_markconversationread",
-      "repository_postgresrepository_marknotificationsread",
-      "repository_postgresrepository_markoutboxeventpublished",
-      "repository_postgresrepository_muteuser",
-      "repository_postgresrepository_removebookmark",
-      "repository_postgresrepository_repostpost",
-      "repository_postgresrepository_resetpersonalization",
-      "repository_postgresrepository_respondfollowrequest",
-      "repository_postgresrepository_unblockuser",
-      "repository_postgresrepository_undorepost",
-      "repository_postgresrepository_unfollowuser",
-      "repository_postgresrepository_unlikepost",
-      "repository_postgresrepository_unmuteuser",
-      "repository_postgresrepository_updateuserverification",
-      "services_api_internal_repository_postgres_go_context",
-      "services_api_internal_repository_postgres_go_uuid"
-    ],
-    "7": [
-      "db",
-      "repository_postgresrepository",
-      "repository_postgresrepository_addrecentsearch",
-      "repository_postgresrepository_assignverificationbadge",
-      "repository_postgresrepository_createfollowrequest",
-      "repository_postgresrepository_createinvoice",
-      "repository_postgresrepository_createmediaobject",
-      "repository_postgresrepository_createmessage",
-      "repository_postgresrepository_createoutboxevent",
-      "repository_postgresrepository_createsession",
-      "repository_postgresrepository_deletesession",
-      "repository_postgresrepository_ensuresearchschema",
-      "repository_postgresrepository_getfollowrequests",
-      "repository_postgresrepository_getmediaobjectbyid",
-      "repository_postgresrepository_getmessages",
-      "repository_postgresrepository_getsubscriptionplanbyid",
-      "repository_postgresrepository_getsubscriptionplans",
-      "repository_postgresrepository_getuserbadges",
-      "repository_postgresrepository_marknotificationread",
-      "repository_postgresrepository_ping",
-      "repository_postgresrepository_recordfeedfeedback",
-      "repository_postgresrepository_recordfeedimpressions",
-      "repository_postgresrepository_updatepaymentorderstatus",
-      "repository_postgresrepository_updateusertopicpreference",
-      "services_api_internal_repository_postgres",
-      "services_api_internal_repository_postgres_go_followrequest",
-      "services_api_internal_repository_postgres_go_mediaobject",
-      "services_api_internal_repository_postgres_go_message",
-      "services_api_internal_repository_postgres_go_subscriptionplan",
-      "services_api_internal_repository_postgres_go_verificationbadge",
-      "services_api_internal_repository_postgres_newpostgresrepository"
     ],
     "8": [
       "apps_web_tsconfig",
@@ -673,20 +719,35 @@
       "services_api_internal_repository_postgres_go_post"
     ],
     "13": [
-      "client",
-      "hub",
-      "mediaservice",
-      "plisioservice",
-      "repository",
-      "repository_memoryrepository_seedinitialdata",
-      "services_api_internal_handler_handler_newhandler",
-      "services_api_internal_handler_search_test",
-      "services_api_internal_handler_search_test_go_t",
-      "services_api_internal_handler_search_test_testsearchapiendpoints",
-      "services_api_internal_repository_memory",
-      "services_api_internal_repository_memory_newmemoryrepository"
+      "recommendation_mockcandidateprovider",
+      "recommendation_mockcandidateprovider_getactiveweights",
+      "recommendation_mockcandidateprovider_getexplorationcandidates",
+      "recommendation_mockcandidateprovider_getfollowingcandidates",
+      "recommendation_mockcandidateprovider_getfollowingposts",
+      "recommendation_mockcandidateprovider_getfreshcandidates",
+      "recommendation_mockcandidateprovider_getsocialengagementcandidates",
+      "recommendation_mockcandidateprovider_gettopiccandidates",
+      "recommendation_mockcandidateprovider_gettrendingcandidates",
+      "recommendation_mockcandidateprovider_getviewerinteractions",
+      "services_api_internal_recommendation_engine_test_go_context",
+      "services_api_internal_recommendation_engine_test_go_post",
+      "services_api_internal_recommendation_engine_test_go_uuid"
     ],
     "14": [
+      "handler_checkoutrequest",
+      "handler_createpostrequest",
+      "handler_feedfeedbackrequest",
+      "handler_feedimpressionsrequest",
+      "handler_googleauthrequest",
+      "handler_loginrequest",
+      "handler_registerrequest",
+      "handler_simulatepaymentrequest",
+      "handler_verificationapprequest",
+      "mediaobject",
+      "services_api_internal_handler_handler",
+      "uuid"
+    ],
+    "15": [
       "repository_postgresrepository_createuser",
       "repository_postgresrepository_getfollowers",
       "repository_postgresrepository_getfollowing",
@@ -700,42 +761,7 @@
       "repository_postgresrepository_updateprofile",
       "services_api_internal_repository_postgres_go_user"
     ],
-    "15": [
-      "handler_checkoutrequest",
-      "handler_createpostrequest",
-      "handler_feedfeedbackrequest",
-      "handler_feedimpressionsrequest",
-      "handler_googleauthrequest",
-      "handler_loginrequest",
-      "handler_registerrequest",
-      "handler_simulatepaymentrequest",
-      "handler_verificationapprequest",
-      "services_api_internal_handler_handler",
-      "uuid"
-    ],
     "16": [
-      "repository_repository",
-      "services_api_internal_handler_social_messaging_test",
-      "services_api_internal_handler_social_messaging_test_createtestuser",
-      "services_api_internal_handler_social_messaging_test_go_mux",
-      "services_api_internal_handler_social_messaging_test_go_t",
-      "services_api_internal_handler_social_messaging_test_go_user",
-      "services_api_internal_handler_social_messaging_test_setuptestapp",
-      "services_api_internal_handler_social_messaging_test_testdirectmessaging_idempotencyandflow",
-      "services_api_internal_handler_social_messaging_test_testfollowrequest_privateaccount",
-      "services_api_internal_handler_social_messaging_test_testsocialgraph_followunfollowblockmute",
-      "services_api_internal_repository_repository"
-    ],
-    "17": [
-      "middleware_responsewriterwrapper",
-      "middleware_responsewriterwrapper_flush",
-      "middleware_responsewriterwrapper_hijack",
-      "middleware_responsewriterwrapper_unwrap",
-      "readwriter",
-      "services_api_internal_middleware_middleware_go_conn",
-      "services_api_internal_middleware_middleware_go_responsewriter"
-    ],
-    "18": [
       "apps_web_src_components_media_videocontrols",
       "apps_web_src_components_media_videocontrols_formattime",
       "apps_web_src_components_media_videocontrols_speed_options",
@@ -746,143 +772,151 @@
       "apps_web_src_components_media_videoprogressbar_videoprogressbar",
       "apps_web_src_components_media_videoprogressbar_videoprogressbarprops"
     ],
+    "17": [
+      "repository_postgresrepository_assignverificationbadge",
+      "repository_postgresrepository_ensuresearchschema",
+      "repository_postgresrepository_getuserbadges",
+      "services_api_internal_repository_postgres",
+      "services_api_internal_repository_postgres_go_verificationbadge",
+      "services_api_internal_repository_postgres_newpostgresrepository"
+    ],
+    "18": [
+      "repository_postgresrepository_createmessage",
+      "repository_postgresrepository_getmessages",
+      "repository_postgresrepository_getsubscriptionplanbyid",
+      "repository_postgresrepository_getsubscriptionplans",
+      "services_api_internal_repository_postgres_go_message",
+      "services_api_internal_repository_postgres_go_subscriptionplan"
+    ],
     "19": [
-      "duration",
-      "logger",
-      "middleware_contextkey",
-      "middleware_memorylimiter",
-      "middleware_memorylimiter_isallowed",
-      "middleware_responsewriterwrapper_writeheader",
-      "mutex",
-      "services_api_internal_middleware_middleware",
-      "services_api_internal_middleware_middleware_authmiddleware",
-      "services_api_internal_middleware_middleware_getuserfromcontext",
-      "services_api_internal_middleware_middleware_getviewerid",
-      "services_api_internal_middleware_middleware_go_context",
-      "services_api_internal_middleware_middleware_go_user",
-      "services_api_internal_middleware_middleware_go_uuid",
-      "services_api_internal_middleware_middleware_loggermiddleware",
-      "services_api_internal_middleware_middleware_recoverymiddleware",
-      "services_api_internal_middleware_ratelimit",
-      "services_api_internal_middleware_ratelimit_go_time",
-      "services_api_internal_middleware_ratelimit_ratelimiter"
-    ],
-    "21": [
-      "services_api_internal_handler_handler_test",
-      "services_api_internal_handler_handler_test_go_mux",
-      "services_api_internal_handler_handler_test_go_t",
-      "services_api_internal_handler_handler_test_setuptestrouter",
-      "services_api_internal_handler_handler_test_testauthandpostingflow",
-      "services_api_internal_handler_handler_test_testhealthcheck",
-      "services_api_internal_handler_handler_test_testsubscriptionsandbadges"
-    ],
-    "22": [
-      "services_api_internal_handler_recommendation_test",
-      "services_api_internal_handler_recommendation_test_go_mux",
-      "services_api_internal_handler_recommendation_test_go_t",
-      "services_api_internal_handler_recommendation_test_registertestuser",
-      "services_api_internal_handler_recommendation_test_setuprecommendationrouter",
-      "services_api_internal_handler_recommendation_test_testrecommendationandfeedapis"
-    ],
-    "23": [
       "repository_postgresrepository_createsubscription",
       "repository_postgresrepository_getactivesubscription",
       "repository_postgresrepository_getuserentitlements",
       "services_api_internal_repository_postgres_go_entitlements",
       "services_api_internal_repository_postgres_go_subscription"
     ],
-    "24": [
+    "20": [
       "apps_web_src_app_api_auth_nextauth_route",
       "apps_web_src_app_api_auth_nextauth_route_handler",
       "apps_web_src_lib_auth",
       "apps_web_src_lib_auth_authoptions"
     ],
-    "25": [
+    "21": [
       "repository_postgresrepository_createnotification",
       "repository_postgresrepository_getnotifications",
       "repository_postgresrepository_getnotificationswithtab",
       "services_api_internal_repository_postgres_go_notification"
     ],
-    "26": [
+    "22": [
       "repository_postgresrepository_getconversationbyid",
       "repository_postgresrepository_getconversations",
       "repository_postgresrepository_getorcreateconversation",
       "services_api_internal_repository_postgres_go_conversation"
     ],
-    "27": [
+    "23": [
+      "repository_postgresrepository_createfollowrequest",
+      "repository_postgresrepository_getfollowrequests",
+      "services_api_internal_repository_postgres_go_followrequest"
+    ],
+    "24": [
+      "repository_postgresrepository_createmediaobject",
+      "repository_postgresrepository_getmediaobjectbyid",
+      "services_api_internal_repository_postgres_go_mediaobject"
+    ],
+    "25": [
+      "scripts_test_all_apis",
+      "scripts_test_all_apis_call_api",
+      "scripts_test_all_apis_run"
+    ],
+    "26": [
       "apps_web_next_env_d",
       "apps_web_next_env_d_rationale_4"
     ],
-    "28": [
+    "27": [
       "apps_web_tailwind_config",
       "apps_web_tailwind_config_config"
     ],
-    "29": [
+    "28": [
       "repository_postgresrepository_getsocialrelationship",
       "services_api_internal_repository_postgres_go_socialrelationship"
     ],
-    "30": [
+    "29": [
       "scripts_benchmark_search",
       "scripts_benchmark_search_measure_endpoint"
     ],
+    "30": [
+      "scripts_monitoring",
+      "scripts_monitoring_sh__entry"
+    ],
     "31": [
-      "apps_web_postcss_config"
+      "services_api_cmd_server_main",
+      "services_api_cmd_server_main_main"
     ],
     "32": [
-      "pkg_github_com_x_reconstruction_api"
+      "apps_web_postcss_config"
     ],
     "33": [
-      "scripts_dev"
+      "pkg_github_com_x_reconstruction_api"
     ],
     "34": [
-      "scripts_load_test_spike"
+      "scripts_dev"
     ],
     "35": [
-      "scripts_test"
+      "scripts_load_test_spike"
     ],
     "36": [
-      "scripts_test_media_viewer"
+      "scripts_test"
     ],
     "37": [
-      "services_api_internal_handler_handler_go_context"
+      "scripts_test_auth"
     ],
     "38": [
-      "services_api_internal_handler_handler_go_request"
+      "scripts_test_auth_flow"
     ],
     "39": [
-      "services_api_internal_handler_handler_go_responsewriter"
+      "scripts_test_media_viewer"
     ],
     "40": [
+      "services_api_internal_handler_handler_go_context"
+    ],
+    "41": [
+      "services_api_internal_handler_handler_go_request"
+    ],
+    "42": [
+      "services_api_internal_handler_handler_go_responsewriter"
+    ],
+    "43": [
       "services_api_internal_handler_handler_go_uuid"
     ]
   },
   "cohesion": {
-    "0": 0.05991735537190083,
+    "0": 0.053703703703703705,
     "1": 0.053407855922993325,
     "2": 0.1290491118077325,
-    "3": 0.0597567424643046,
-    "4": 0.046511627906976744,
-    "5": 0.12439024390243902,
-    "6": 0.09176788124156546,
-    "7": 0.07956989247311828,
+    "3": 0.05076679005817028,
+    "4": 0.1011764705882353,
+    "5": 0.06845513413506013,
+    "6": 0.11416490486257928,
+    "7": 0.046511627906976744,
     "8": 0.07407407407407407,
     "9": 0.16600790513833993,
     "10": 0.18095238095238095,
     "11": 0.1895424836601307,
     "12": 0.16993464052287582,
-    "13": 0.16666666666666666,
+    "13": 0.3974358974358974,
     "14": 0.19696969696969696,
-    "15": 0.21818181818181817,
-    "16": 0.36363636363636365,
-    "17": 0.3333333333333333,
-    "18": 0.3055555555555556,
-    "19": 0.14035087719298245,
-    "21": 0.5238095238095238,
-    "22": 0.6,
-    "23": 0.4,
+    "15": 0.19696969696969696,
+    "16": 0.3055555555555556,
+    "17": 0.26666666666666666,
+    "18": 0.26666666666666666,
+    "19": 0.4,
+    "20": 0.6666666666666666,
+    "21": 0.5,
+    "22": 0.5,
+    "23": 0.6666666666666666,
     "24": 0.6666666666666666,
-    "25": 0.5,
-    "26": 0.5,
+    "25": 1.0,
+    "26": 1.0,
     "27": 1.0,
     "28": 1.0,
     "29": 1.0,
@@ -896,7 +930,10 @@
     "37": 1.0,
     "38": 1.0,
     "39": 1.0,
-    "40": 1.0
+    "40": 1.0,
+    "41": 1.0,
+    "42": 1.0,
+    "43": 1.0
   },
   "gods": [
     {
@@ -932,12 +969,12 @@
     {
       "id": "apps_web_src_lib_utils_cn",
       "label": "cn()",
-      "degree": 27
+      "degree": 26
     },
     {
       "id": "apps_web_src_types_index_user",
       "label": "User",
-      "degree": 23
+      "degree": 26
     },
     {
       "id": "apps_web_tsconfig_compileroptions",
@@ -952,6 +989,17 @@
   ],
   "surprises": [
     {
+      "source": "BenchmarkScoringEngine()",
+      "target": "DefaultRankingWeights()",
+      "source_files": [
+        "services/api/internal/recommendation/engine_test.go",
+        "services/api/internal/domain/models.go"
+      ],
+      "confidence": "INFERRED",
+      "relation": "calls",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
+    },
+    {
       "source": "NewMemoryRepository()",
       "target": "DefaultRankingWeights()",
       "source_files": [
@@ -963,75 +1011,64 @@
       "why": "inferred connection - not explicitly stated in source; bridges separate communities"
     },
     {
-      "source": "setupTestRouter()",
-      "target": "NewHandler()",
+      "source": "setupTestApp()",
+      "target": "NewHub()",
       "source_files": [
-        "services/api/internal/handler/handler_test.go",
-        "services/api/internal/handler/handler.go"
+        "services/api/internal/handler/social_messaging_test.go",
+        "services/api/internal/realtime/hub.go"
       ],
       "confidence": "INFERRED",
       "relation": "calls",
       "why": "inferred connection - not explicitly stated in source; bridges separate communities"
     },
     {
-      "source": "setupTestRouter()",
-      "target": "AuthMiddleware()",
+      "source": "ExplorePage()",
+      "target": "react",
       "source_files": [
-        "services/api/internal/handler/handler_test.go",
-        "services/api/internal/middleware/middleware.go"
+        "apps/web/src/app/explore/page.tsx",
+        "apps/web/package.json"
       ],
-      "confidence": "INFERRED",
-      "relation": "calls",
-      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "bridges separate communities"
     },
     {
-      "source": "setupTestRouter()",
-      "target": "NewMemoryRepository()",
+      "source": "BookmarksPage()",
+      "target": "apiRequest()",
       "source_files": [
-        "services/api/internal/handler/handler_test.go",
-        "services/api/internal/repository/memory.go"
+        "apps/web/src/app/bookmarks/page.tsx",
+        "apps/web/src/lib/api.ts"
       ],
-      "confidence": "INFERRED",
+      "confidence": "EXTRACTED",
       "relation": "calls",
-      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
-    },
-    {
-      "source": "setupRecommendationRouter()",
-      "target": "NewHandler()",
-      "source_files": [
-        "services/api/internal/handler/recommendation_test.go",
-        "services/api/internal/handler/handler.go"
-      ],
-      "confidence": "INFERRED",
-      "relation": "calls",
-      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
+      "why": "peripheral node `BookmarksPage()` unexpectedly reaches hub `apiRequest()`"
     }
   ],
   "questions": [
     {
       "type": "bridge_node",
-      "question": "Why does `NewMemoryRepository()` connect `NewHandler` to `MemoryRepository`, `.GenerateFeed`, `setupTestApp`, `setupTestRouter`, `setupRecommendationRouter`?",
-      "why": "High betweenness centrality (0.248) - this node is a cross-community bridge."
+      "question": "Why does `NewMemoryRepository()` connect `NewHandler` to `MemoryRepository`, `models.go`?",
+      "why": "High betweenness centrality (0.233) - this node is a cross-community bridge."
     },
     {
       "type": "bridge_node",
-      "question": "Why does `setupTestApp()` connect `setupTestApp` to `Client`, `Handler`, `middleware.go`, `NewHandler`?",
-      "why": "High betweenness centrality (0.215) - this node is a cross-community bridge."
+      "question": "Why does `setupTestApp()` connect `NewHandler` to `Client`, `Handler`?",
+      "why": "High betweenness centrality (0.202) - this node is a cross-community bridge."
     },
     {
       "type": "bridge_node",
-      "question": "Why does `MemoryRepository` connect `MemoryRepository` to `NewHandler`, `.GenerateFeed`, `models.go`?",
-      "why": "High betweenness centrality (0.198) - this node is a cross-community bridge."
+      "question": "Why does `MemoryRepository` connect `MemoryRepository` to `NewHandler`, `models.go`?",
+      "why": "High betweenness centrality (0.187) - this node is a cross-community bridge."
     },
     {
       "type": "isolated_nodes",
       "question": "What connects `name`, `version`, `private` to the rest of the system?",
-      "why": "77 weakly-connected nodes found - possible documentation gaps or missing edges."
+      "why": "89 weakly-connected nodes found - possible documentation gaps or missing edges."
     },
     {
       "type": "low_cohesion",
-      "question": "Should `apiRequest` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.05991735537190083 - nodes in this community are weakly interconnected."
+      "question": "Should `index.ts` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.053703703703703705 - nodes in this community are weakly interconnected."
     },
     {
       "type": "low_cohesion",

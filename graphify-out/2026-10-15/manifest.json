@@ -130,14 +130,14 @@
     "semantic_hash": "8451e38da96bc961f931e3aefe6d3b5c"
   },
   "apps/web/src/lib/api.ts": {
-    "mtime": 1792073076.2394984,
-    "ast_hash": "3e150ff3e3555ed36ba65188d779218d",
-    "semantic_hash": "3e150ff3e3555ed36ba65188d779218d"
+    "mtime": 1792081523.6507142,
+    "ast_hash": "58d11fe8d97c8453f1f97eeba6e883ce",
+    "semantic_hash": "58d11fe8d97c8453f1f97eeba6e883ce"
   },
   "apps/web/src/lib/auth.ts": {
-    "mtime": 1792073042.8360243,
-    "ast_hash": "1674f41180379dfdae3f4ffe3e7d7282",
-    "semantic_hash": "1674f41180379dfdae3f4ffe3e7d7282"
+    "mtime": 1792081543.121992,
+    "ast_hash": "117e602f16cfbef9d6299a4be9c917aa",
+    "semantic_hash": "117e602f16cfbef9d6299a4be9c917aa"
   },
   "apps/web/src/lib/query-keys.ts": {
     "mtime": 1792075609.0371644,
@@ -428,5 +428,20 @@
     "mtime": 1792079029.1267867,
     "ast_hash": "b11f4a1898f3e963b4db57e5ef502b22",
     "semantic_hash": "b11f4a1898f3e963b4db57e5ef502b22"
+  },
+  "services/api/cmd/server/main.go": {
+    "mtime": 1792081585.080451,
+    "ast_hash": "a824e69bf2c6a9fdc7d8259af5130919",
+    "semantic_hash": "a824e69bf2c6a9fdc7d8259af5130919"
+  },
+  "scripts/test-auth-flow.ps1": {
+    "mtime": 1792082013.9908762,
+    "ast_hash": "5942a602d5b2cdc578d758b58c56a828",
+    "semantic_hash": "5942a602d5b2cdc578d758b58c56a828"
+  },
+  "scripts/test_auth.py": {
+    "mtime": 1792082075.071204,
+    "ast_hash": "60088e0d789b44441f6acd146d550ca2",
+    "semantic_hash": "60088e0d789b44441f6acd146d550ca2"
   }
 }

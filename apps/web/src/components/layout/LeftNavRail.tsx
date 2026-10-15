@@ -56,7 +56,7 @@ export function LeftNavRail({
   const { unreadNotifCount, unreadMessageCount } = useRealtime();
 
   return (
-    <header className="sticky top-0 h-screen flex flex-col justify-between items-end xl:items-start px-2 sm:px-4 py-3 select-none border-r border-border w-[68px] xl:w-[275px]">
+    <header className="hidden sm:flex sticky top-0 h-screen flex-col justify-between items-end xl:items-start px-2 sm:px-4 py-3 select-none border-r border-border w-[68px] xl:w-[275px]">
       <div className="w-full flex flex-col items-center xl:items-start">
         {/* X Logo */}
         <Link
