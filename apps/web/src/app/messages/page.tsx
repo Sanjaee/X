@@ -364,13 +364,13 @@ export default function MessagesPage() {
                     </div>
                   )}
                 </button>
-                <h1 className="font-extrabold text-[20px]">Obrolan</h1>
+                <h1 className="font-extrabold text-[20px]">Messages</h1>
               </div>
 
               <div className="flex items-center gap-2">
-                {/* Screenshot 4: Dropdown pill 'Semua ⌵' */}
+                {/* Dropdown pill 'All ⌵' */}
                 <button className="flex items-center gap-1 border border-border/80 rounded-full px-3 py-1 text-xs font-bold text-foreground hover:bg-subtle transition-colors">
-                  <span>Semua</span>
+                  <span>All</span>
                   <ChevronDown className="w-3.5 h-3.5" />
                 </button>
 
@@ -393,14 +393,14 @@ export default function MessagesPage() {
               </div>
             </header>
 
-            {/* Screenshot 4: Search Bar '🔍 Cari' */}
+            {/* Search Bar '🔍 Search' */}
             {currentUser && (
               <div className="p-3 border-b border-border">
                 <div className="relative flex items-center">
                   <Search className="w-4 h-4 text-muted absolute left-3.5 pointer-events-none" />
                   <input
                     type="text"
-                    placeholder="Cari"
+                    placeholder="Search Direct Messages"
                     value={sidebarSearchQuery}
                     onChange={(e) => setSidebarSearchQuery(e.target.value)}
                     className="w-full bg-[#202327]/60 rounded-full py-2 pl-10 pr-4 text-sm outline-none border border-transparent focus:border-brand text-foreground placeholder:text-muted transition-colors"
@@ -445,22 +445,22 @@ export default function MessagesPage() {
                   </button>
                 </div>
               ) : filteredConversations.length === 0 ? (
-                /* Screenshot 4: Authentic Empty Inbox */
+                /* Authentic Empty Inbox */
                 <div className="flex-1 flex flex-col items-center justify-center text-center py-20 px-6 select-none">
                   <div className="w-20 h-20 rounded-full border-2 border-foreground/70 flex items-center justify-center mb-6">
                     <Mail className="w-10 h-10 stroke-[1.8] text-foreground" />
                   </div>
                   <h2 className="font-extrabold text-[24px] mb-2 tracking-tight text-foreground">
-                    Kotak masuk kosong
+                    No messages yet
                   </h2>
                   <p className="text-muted text-[15px] mb-6 max-w-xs">
-                    Kirim pesan untuk seseorang
+                    Drop a line, share posts, and more with private conversations.
                   </p>
                   <button
                     onClick={() => setNewChatModalOpen(true)}
-                    className="bg-brand hover:bg-brand-hover text-white font-bold py-3 px-7 rounded-full text-[15px] shadow-md transition-all active:scale-95"
+                    className="bg-[#eff3f4] hover:bg-[#d7dbdc] text-[#0f1419] font-bold py-3 px-7 rounded-full text-[15px] shadow-md transition-all active:scale-95"
                   >
-                    Tulis pesan
+                    Write a message
                   </button>
                 </div>
               ) : (

@@ -175,7 +175,7 @@ export default function NotificationsPage() {
                     </div>
                   )}
                 </button>
-                <h1 className="font-extrabold text-[20px]">Notifikasi</h1>
+                <h1 className="font-extrabold text-[20px]">Notifications</h1>
               </div>
 
               <div className="flex items-center gap-2">
@@ -197,11 +197,11 @@ export default function NotificationsPage() {
               </div>
             </div>
 
-            {/* Tabs: Semua (All) & Sebutan (Mentions) - Matches Screenshot 3 */}
+            {/* Tabs: All & Mentions */}
             <div className="flex w-full h-[53px]">
               {[
-                { id: "all", label: "Semua" },
-                { id: "mentions", label: "Sebutan" },
+                { id: "all", label: "All" },
+                { id: "mentions", label: "Mentions" },
               ].map((tab) => (
                 <button
                   key={tab.id}

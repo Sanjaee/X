@@ -278,10 +278,10 @@ export function PostComposer({
               onClick={handleSubmit}
               disabled={!canPost}
               className={cn(
-                "bg-brand text-white font-bold text-[15px] px-4 py-1.5 rounded-full shadow-sm transition-all flex items-center justify-center min-w-[70px]",
+                "font-bold text-[15px] px-4 py-1.5 rounded-full transition-all flex items-center justify-center min-w-[70px]",
                 !canPost
-                  ? "opacity-50 cursor-not-allowed"
-                  : "hover:bg-brand-hover active:scale-95"
+                  ? "bg-[#333639] text-[#71767b] cursor-not-allowed"
+                  : "bg-[#eff3f4] text-[#0f1419] hover:bg-[#d7dbdc] active:scale-95 shadow-sm"
               )}
             >
               {isSubmitting ? (

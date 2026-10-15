@@ -55,19 +55,19 @@
     "semantic_hash": "1a3b08c462b4ed09996f663eff3c299f"
   },
   "apps/web/src/app/messages/page.tsx": {
-    "mtime": 1792086366.1823583,
-    "ast_hash": "5042b5e806deb37ac3a1c6d2cdb99c4c",
-    "semantic_hash": "5042b5e806deb37ac3a1c6d2cdb99c4c"
+    "mtime": 1792088454.6077526,
+    "ast_hash": "d8d838ee0a42d806ac127576765d482b",
+    "semantic_hash": "d8d838ee0a42d806ac127576765d482b"
   },
   "apps/web/src/app/notifications/page.tsx": {
-    "mtime": 1792086412.074008,
-    "ast_hash": "fb69a11fef9d6730360be48a1569883f",
-    "semantic_hash": "fb69a11fef9d6730360be48a1569883f"
+    "mtime": 1792088423.9119465,
+    "ast_hash": "9525cc7f45aeb5494ba1737130aea80f",
+    "semantic_hash": "9525cc7f45aeb5494ba1737130aea80f"
   },
   "apps/web/src/app/page.tsx": {
-    "mtime": 1792086327.977389,
-    "ast_hash": "f312a3f7f738c639e9591d31d13a1a70",
-    "semantic_hash": "f312a3f7f738c639e9591d31d13a1a70"
+    "mtime": 1792088284.9349332,
+    "ast_hash": "f5e2f832c30f35ba40345710c0d9251c",
+    "semantic_hash": "f5e2f832c30f35ba40345710c0d9251c"
   },
   "apps/web/src/app/premium/invoice/page.tsx": {
     "mtime": 1791994062.575128,
@@ -80,9 +80,9 @@
     "semantic_hash": "1eb23a9778e0d0f6450106189ed89d5a"
   },
   "apps/web/src/app/search/page.tsx": {
-    "mtime": 1792086342.3397446,
-    "ast_hash": "8c4903c4adb4a7a18eb9dfa287f45933",
-    "semantic_hash": "8c4903c4adb4a7a18eb9dfa287f45933"
+    "mtime": 1792088405.648595,
+    "ast_hash": "df26f0d86eed680982bc84c1e42f1229",
+    "semantic_hash": "df26f0d86eed680982bc84c1e42f1229"
   },
   "apps/web/src/components/auth/AuthModal.tsx": {
     "mtime": 1791997737.352788,
@@ -95,9 +95,9 @@
     "semantic_hash": "fa867af0bf79369e0557cfc1d9d4688c"
   },
   "apps/web/src/components/composer/PostComposer.tsx": {
-    "mtime": 1792002239.9504147,
-    "ast_hash": "5e8f9927262aab8e97b42a630fe01bda",
-    "semantic_hash": "5e8f9927262aab8e97b42a630fe01bda"
+    "mtime": 1792088304.996182,
+    "ast_hash": "1228e72ea74c823d97a78f158cd580c1",
+    "semantic_hash": "1228e72ea74c823d97a78f158cd580c1"
   },
   "apps/web/src/components/feed/PostCard.tsx": {
     "mtime": 1792078316.6182806,
@@ -105,14 +105,14 @@
     "semantic_hash": "1f43a8864f1a0aebb56e0de9cce72eeb"
   },
   "apps/web/src/components/layout/LeftNavRail.tsx": {
-    "mtime": 1792085831.2830741,
-    "ast_hash": "ecf0b4a2dd64352fbd70e370ffee28a5",
-    "semantic_hash": "ecf0b4a2dd64352fbd70e370ffee28a5"
+    "mtime": 1792088199.996361,
+    "ast_hash": "21008da845f1611cb196744d5a0618c2",
+    "semantic_hash": "21008da845f1611cb196744d5a0618c2"
   },
   "apps/web/src/components/layout/RightSidebar.tsx": {
-    "mtime": 1792075739.4360442,
-    "ast_hash": "122fddb5c4a222785976073b2196e8c3",
-    "semantic_hash": "122fddb5c4a222785976073b2196e8c3"
+    "mtime": 1792088127.574692,
+    "ast_hash": "beb242308bdf5c7e27fe10f6bb1898b8",
+    "semantic_hash": "beb242308bdf5c7e27fe10f6bb1898b8"
   },
   "apps/web/src/components/providers/AppProviders.tsx": {
     "mtime": 1792078242.952993,
@@ -300,9 +300,9 @@
     "semantic_hash": "4b3319ee52fce4ceb4be64e63fffe0c0"
   },
   "services/api/internal/repository/postgres.go": {
-    "mtime": 1792077200.624083,
-    "ast_hash": "ae244eaf65d557ff31b1dcdf3e1c07f2",
-    "semantic_hash": "ae244eaf65d557ff31b1dcdf3e1c07f2"
+    "mtime": 1792088095.236563,
+    "ast_hash": "e943fb632c1be4fc406913fb8e9a5a1b",
+    "semantic_hash": "e943fb632c1be4fc406913fb8e9a5a1b"
   },
   "services/api/internal/repository/repository.go": {
     "mtime": 1792075199.280223,
@@ -460,9 +460,9 @@
     "semantic_hash": "64a3304849299fc7c7851c14d147ed37"
   },
   "apps/web/src/components/composer/MobileComposerModal.tsx": {
-    "mtime": 1792086452.3474963,
-    "ast_hash": "453d56263bb67bff97bf6f89adcd2fc2",
-    "semantic_hash": "453d56263bb67bff97bf6f89adcd2fc2"
+    "mtime": 1792088336.604663,
+    "ast_hash": "64bd48915a54b512aedf95dcd5db23eb",
+    "semantic_hash": "64bd48915a54b512aedf95dcd5db23eb"
   },
   "apps/web/src/components/layout/MobileBottomNav.tsx": {
     "mtime": 1792085795.0982056,
@@ -473,5 +473,10 @@
     "mtime": 1792085778.3607447,
     "ast_hash": "0042e9a5397ff8c4d86b8865bd59b4a5",
     "semantic_hash": "0042e9a5397ff8c4d86b8865bd59b4a5"
+  },
+  "apps/web/src/components/composer/PostModal.tsx": {
+    "mtime": 1792088180.8492546,
+    "ast_hash": "2dc53ee668f52f010de94bd35a2ef021",
+    "semantic_hash": "2dc53ee668f52f010de94bd35a2ef021"
   }
 }

@@ -155,16 +155,20 @@ export function MobileComposerModal({
           onClick={onClose}
           className="text-foreground text-[16px] font-medium hover:opacity-80 transition-opacity"
         >
-          Batal
+          Cancel
         </button>
 
         <button
           onClick={handleSubmit}
           disabled={(!content.trim() && stagedFiles.length === 0) || isSubmitting}
-          className="bg-brand hover:bg-brand-hover text-white font-bold text-[14px] px-5 py-1.5 rounded-full disabled:opacity-50 transition-opacity flex items-center gap-1.5 shadow"
+          className={`font-bold text-[14px] px-5 py-1.5 rounded-full transition-opacity flex items-center gap-1.5 shadow ${
+            (!content.trim() && stagedFiles.length === 0) || isSubmitting
+              ? "bg-[#333639] text-[#71767b] cursor-not-allowed"
+              : "bg-[#eff3f4] text-[#0f1419] hover:bg-[#d7dbdc]"
+          }`}
         >
           {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-          <span>Posting</span>
+          <span>Post</span>
         </button>
       </header>
 
@@ -183,14 +187,14 @@ export function MobileComposerModal({
           {/* Audience Pill */}
           <div className="inline-flex items-center gap-1 text-brand text-xs font-bold border border-brand/40 px-2.5 py-1 rounded-full w-fit mb-3">
             <Globe className="w-3 h-3" />
-            <span>Semua orang dapat membalas</span>
+            <span>Everyone can reply</span>
           </div>
 
           <textarea
             ref={textareaRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="Apa yang sedang terjadi?!"
+            placeholder="What is happening?!"
             rows={5}
             className="w-full bg-transparent text-[17px] text-foreground placeholder:text-muted outline-none resize-none leading-relaxed"
           />

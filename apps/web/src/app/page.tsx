@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { MobileDrawer } from "@/components/layout/MobileDrawer";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { MobileComposerModal } from "@/components/composer/MobileComposerModal";
+import { PostModal } from "@/components/composer/PostModal";
 import { Plus, Radio, ArrowUp } from "lucide-react";
 import Link from "next/link";
 
@@ -29,6 +30,7 @@ export default function HomePage() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [composerModalOpen, setComposerModalOpen] = useState(false);
+  const [desktopPostModalOpen, setDesktopPostModalOpen] = useState(false);
   const [showNewPostsPill, setShowNewPostsPill] = useState(true);
 
   // Restore authenticated session
@@ -220,7 +222,7 @@ export default function HomePage() {
         {/* Left Navigation Rail (88px / 275px) */}
         <LeftNavRail
           currentUser={currentUser}
-          onOpenComposer={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          onOpenComposer={() => setDesktopPostModalOpen(true)}
           onOpenAuth={() => setAuthModalOpen(true)}
           onLogout={handleLogout}
         />
@@ -229,7 +231,7 @@ export default function HomePage() {
         <main className="w-full sm:w-[600px] border-r border-border min-h-screen flex flex-col pb-16 sm:pb-0 relative">
           {/* Sticky Header with Mobile Top Bar and Feed Tabs */}
           <header className="sticky top-0 bg-background/80 backdrop-blur-md border-b border-border z-20 flex flex-col">
-            {/* Mobile Top Bar (Matches Screenshot 1: Avatar, X logo, Berlangganan) */}
+            {/* Mobile Top Bar: Avatar, X logo, Subscribe */}
             <div className="flex h-[53px] items-center justify-between px-4 sm:hidden">
               <button
                 onClick={() => setDrawerOpen(true)}
@@ -257,16 +259,16 @@ export default function HomePage() {
                 </svg>
               </div>
 
-              {/* Berlangganan / Subscribe Pill Button */}
+              {/* Subscribe Pill Button */}
               <Link
                 href="/premium"
                 className="text-xs font-bold px-3.5 py-1.5 rounded-full border border-border text-foreground hover:bg-subtle transition-colors"
               >
-                Berlangganan
+                Subscribe
               </Link>
             </div>
 
-            {/* Feed Tabs: Untuk Anda (For you) & Mengikuti (Following) + Add List Button */}
+            {/* Feed Tabs: For you & Following + Add List Button */}
             <div className="flex w-full h-[53px] items-center">
               <button
                 onClick={() => setActiveTab("for_you")}
@@ -278,7 +280,7 @@ export default function HomePage() {
                     activeTab === "for_you" ? "text-foreground" : "text-muted"
                   )}
                 >
-                  Untuk Anda
+                  For you
                   {activeTab === "for_you" && (
                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-brand rounded-full" />
                   )}
@@ -301,7 +303,7 @@ export default function HomePage() {
                     activeTab === "following" ? "text-foreground" : "text-muted"
                   )}
                 >
-                  Mengikuti
+                  Following
                   {activeTab === "following" && (
                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-brand rounded-full" />
                   )}
@@ -319,23 +321,7 @@ export default function HomePage() {
             </div>
           </header>
 
-          {/* Spaces Live Banner (Matches Screenshot 1 Audio Bar) */}
-          <div className="bg-[#f91880] text-white px-3 py-2 flex items-center justify-between shadow-sm cursor-pointer hover:opacity-95 transition-opacity select-none">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-6 h-6 rounded bg-black/20 flex items-center justify-center text-xs shrink-0 font-bold">
-                📻
-              </div>
-              <span className="text-xs font-bold truncate">
-                <strong className="font-extrabold mr-1">+15,1 rb ·</strong>
-                President Trump Participates in a R...
-              </span>
-            </div>
-            <div className="flex items-center gap-1 shrink-0 text-white/90">
-              <span className="font-mono text-xs font-bold tracking-tighter">ılı•</span>
-            </div>
-          </div>
-
-          {/* Floating Pill: New Posts Indicator (Matches Screenshot 1: ↑ 👥 diposting) */}
+          {/* Floating Pill: New Posts Indicator (↑ 👥 New posts) */}
           {showNewPostsPill && (
             <button
               onClick={() => {
@@ -343,7 +329,7 @@ export default function HomePage() {
                 setShowNewPostsPill(false);
                 setTimeout(() => setShowNewPostsPill(true), 30000);
               }}
-              className="fixed top-28 left-1/2 -translate-x-1/2 z-30 bg-[#1d9bf0] hover:bg-[#1a8cd8] active:scale-95 text-white px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-2 text-xs font-bold transition-transform cursor-pointer"
+              className="fixed top-24 left-1/2 -translate-x-1/2 z-30 bg-[#1d9bf0] hover:bg-[#1a8cd8] active:scale-95 text-white px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-2 text-xs font-bold transition-transform cursor-pointer"
             >
               <ArrowUp className="w-3.5 h-3.5 stroke-[2.5]" />
               <div className="flex -space-x-1.5 overflow-hidden">
@@ -358,7 +344,7 @@ export default function HomePage() {
                   className="w-4 h-4 rounded-full ring-1 ring-white object-cover"
                 />
               </div>
-              <span>diposting</span>
+              <span>New posts</span>
             </button>
           )}
 
@@ -417,6 +403,15 @@ export default function HomePage() {
           currentUser={currentUser}
           onOpenAuth={() => setAuthModalOpen(true)}
           onLogout={handleLogout}
+        />
+
+        {/* Desktop Post Modal Popup (Matches Screenshot) */}
+        <PostModal
+          isOpen={desktopPostModalOpen}
+          onClose={() => setDesktopPostModalOpen(false)}
+          currentUser={currentUser}
+          onPostSuccess={handlePostCreated}
+          onOpenAuth={() => setAuthModalOpen(true)}
         />
 
         {/* Mobile Composer Modal (Full screen sheet on FAB click) */}

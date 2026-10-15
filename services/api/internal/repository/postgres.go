@@ -350,6 +350,9 @@ func (r *PostgresRepository) GetPostByID(ctx context.Context, postID uuid.UUID, 
 	}
 	author.ID = p.AuthorID
 	p.Author = &author
+	single := []domain.Post{p}
+	_ = r.attachMediaToPosts(ctx, single)
+	p.Media = single[0].Media
 	return &p, nil
 }
 
@@ -376,6 +379,9 @@ func (r *PostgresRepository) GetFeed(ctx context.Context, feedType string, viewe
 	})
 	if err != nil {
 		return nil, "", err
+	}
+	if len(res.Posts) > 0 {
+		_ = r.attachMediaToPosts(ctx, res.Posts)
 	}
 	return res.Posts, res.NextCursor, nil
 }
@@ -450,6 +456,9 @@ func (r *PostgresRepository) GetUserPosts(ctx context.Context, username, tab str
 		p.Author = &author
 		posts = append(posts, p)
 	}
+	if len(posts) > 0 {
+		_ = r.attachMediaToPosts(ctx, posts)
+	}
 	return posts, "", nil
 }
 
@@ -500,6 +509,9 @@ func (r *PostgresRepository) GetPostReplies(ctx context.Context, postID uuid.UUI
 		author.ID = p.AuthorID
 		p.Author = &author
 		posts = append(posts, p)
+	}
+	if len(posts) > 0 {
+		_ = r.attachMediaToPosts(ctx, posts)
 	}
 	return posts, "", nil
 }

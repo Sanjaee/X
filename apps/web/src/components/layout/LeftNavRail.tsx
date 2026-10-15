@@ -109,7 +109,7 @@ export function LeftNavRail({
           {currentUser ? (
             <button
               onClick={onOpenComposer}
-              className="w-full bg-brand hover:bg-brand-hover text-white font-bold p-3 xl:py-3.5 xl:px-8 rounded-full shadow-md transition-all flex items-center justify-center"
+              className="w-full bg-[#eff3f4] hover:bg-[#d7dbdc] text-[#0f1419] font-bold p-3 xl:py-3.5 xl:px-8 rounded-full shadow-md transition-all flex items-center justify-center active:scale-95"
             >
               <Feather className="w-6 h-6 xl:hidden" />
               <span className="hidden xl:inline text-[17px]">Post</span>
@@ -117,7 +117,7 @@ export function LeftNavRail({
           ) : (
             <button
               onClick={onOpenAuth}
-              className="w-full bg-brand hover:bg-brand-hover text-white font-bold p-3 xl:py-3.5 xl:px-8 rounded-full shadow-md transition-all flex items-center justify-center"
+              className="w-full bg-[#eff3f4] hover:bg-[#d7dbdc] text-[#0f1419] font-bold p-3 xl:py-3.5 xl:px-8 rounded-full shadow-md transition-all flex items-center justify-center active:scale-95"
             >
               <span className="hidden xl:inline text-[17px]">Sign In</span>
               <UserIcon className="w-6 h-6 xl:hidden" />

@@ -63,79 +63,82 @@ export function RightSidebar({ onSearch, hideSearchBar = false }: RightSidebarPr
         </Link>
       </div>
 
-      {/* What's Happening / Trends */}
-      <div className="bg-transparent rounded-2xl border border-border mb-4 overflow-hidden">
-        <h2 className="font-extrabold text-[20px] leading-6 px-4 pt-3 pb-2 text-foreground">What's happening</h2>
-        <div className="flex flex-col">
-          {trends.map((t) => (
-            <div
-              key={t.topic}
-              onClick={() => router.push(`/search?q=${encodeURIComponent(t.topic)}`)}
-              className="px-4 py-3 hover:bg-subtle cursor-pointer transition-colors flex justify-between items-start"
-            >
-              <div>
-                <span className="text-[13px] text-muted leading-4 block">{t.category}</span>
-                <span className="text-[15px] font-bold text-foreground leading-5 block mt-0.5">{t.topic}</span>
-                <span className="text-[13px] text-muted leading-4 block mt-0.5">{formatNumber(t.posts)} posts</span>
-              </div>
-              <button className="text-muted hover:text-foreground p-1 hover:bg-subtle rounded-full">
-                <MoreHorizontal className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-          <Link
-            href="/explore"
-            className="px-4 py-3 text-brand text-[15px] hover:bg-subtle transition-colors block"
-          >
-            Show more
-          </Link>
-        </div>
-      </div>
-
-      {/* Who to Follow */}
-      <div className="bg-transparent rounded-2xl border border-border mb-4 overflow-hidden">
-        <h2 className="font-extrabold text-[20px] leading-6 px-4 pt-3 pb-2 text-foreground">Who to follow</h2>
-        <div className="flex flex-col">
-          {suggestedUsers.map((u) => (
-            <div
-              key={u.username}
-              className="px-4 py-3 hover:bg-subtle cursor-pointer transition-colors flex items-center justify-between"
-            >
-              <div className="flex items-center gap-3">
-                <img src={u.avatar} alt={u.name} className="w-10 h-10 rounded-full object-cover border border-border" />
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-1">
-                    <span className="font-bold text-[15px] leading-5 text-foreground hover:underline">{u.name}</span>
-                    {u.verified && (
-                      <CheckCircle2 className="w-4 h-4 fill-brand text-background inline" />
-                    )}
-                  </div>
-                  <span className="text-[14px] text-muted leading-4">@{u.username}</span>
+      {/* Sticky Container for What's happening & Who to follow (matches X behavior) */}
+      <div className="sticky top-16 space-y-4 pb-12">
+        {/* What's Happening / Trends */}
+        <div className="bg-transparent rounded-2xl border border-border overflow-hidden">
+          <h2 className="font-extrabold text-[20px] leading-6 px-4 pt-3 pb-2 text-foreground">What's happening</h2>
+          <div className="flex flex-col">
+            {trends.map((t) => (
+              <div
+                key={t.topic}
+                onClick={() => router.push(`/search?q=${encodeURIComponent(t.topic)}`)}
+                className="px-4 py-3 hover:bg-subtle cursor-pointer transition-colors flex justify-between items-start"
+              >
+                <div>
+                  <span className="text-[13px] text-muted leading-4 block">{t.category}</span>
+                  <span className="text-[15px] font-bold text-foreground leading-5 block mt-0.5">{t.topic}</span>
+                  <span className="text-[13px] text-muted leading-4 block mt-0.5">{formatNumber(t.posts)} posts</span>
                 </div>
+                <button className="text-muted hover:text-foreground p-1 hover:bg-subtle rounded-full">
+                  <MoreHorizontal className="w-4 h-4" />
+                </button>
               </div>
-              <button className="bg-foreground text-background font-bold text-[14px] py-1.5 px-4 rounded-full hover:opacity-90 transition-opacity">
-                Follow
-              </button>
-            </div>
-          ))}
-          <Link
-            href="/explore"
-            className="px-4 py-3 text-brand text-[15px] hover:bg-subtle transition-colors block"
-          >
-            Show more
-          </Link>
+            ))}
+            <Link
+              href="/explore"
+              className="px-4 py-3 text-brand text-[15px] hover:bg-subtle transition-colors block"
+            >
+              Show more
+            </Link>
+          </div>
         </div>
-      </div>
 
-      {/* Footer Links */}
-      <footer className="text-[13px] text-muted px-4 leading-5 flex flex-wrap gap-x-3 gap-y-1">
-        <Link href="#" className="hover:underline">Terms of Service</Link>
-        <Link href="#" className="hover:underline">Privacy Policy</Link>
-        <Link href="#" className="hover:underline">Cookie Policy</Link>
-        <Link href="#" className="hover:underline">Accessibility</Link>
-        <Link href="#" className="hover:underline">Ads info</Link>
-        <span>© 2026 X Corp. (Reconstructed)</span>
-      </footer>
+        {/* Who to Follow */}
+        <div className="bg-transparent rounded-2xl border border-border overflow-hidden">
+          <h2 className="font-extrabold text-[20px] leading-6 px-4 pt-3 pb-2 text-foreground">Who to follow</h2>
+          <div className="flex flex-col">
+            {suggestedUsers.map((u) => (
+              <div
+                key={u.username}
+                className="px-4 py-3 hover:bg-subtle cursor-pointer transition-colors flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <img src={u.avatar} alt={u.name} className="w-10 h-10 rounded-full object-cover border border-border" />
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-1">
+                      <span className="font-bold text-[15px] leading-5 text-foreground hover:underline">{u.name}</span>
+                      {u.verified && (
+                        <CheckCircle2 className="w-4 h-4 fill-brand text-background inline" />
+                      )}
+                    </div>
+                    <span className="text-[14px] text-muted leading-4">@{u.username}</span>
+                  </div>
+                </div>
+                <button className="bg-foreground text-background font-bold text-[14px] py-1.5 px-4 rounded-full hover:opacity-90 transition-opacity">
+                  Follow
+                </button>
+              </div>
+            ))}
+            <Link
+              href="/explore"
+              className="px-4 py-3 text-brand text-[15px] hover:bg-subtle transition-colors block"
+            >
+              Show more
+            </Link>
+          </div>
+        </div>
+
+        {/* Footer Links */}
+        <footer className="text-[13px] text-muted px-4 leading-5 flex flex-wrap gap-x-3 gap-y-1">
+          <Link href="#" className="hover:underline">Terms of Service</Link>
+          <Link href="#" className="hover:underline">Privacy Policy</Link>
+          <Link href="#" className="hover:underline">Cookie Policy</Link>
+          <Link href="#" className="hover:underline">Accessibility</Link>
+          <Link href="#" className="hover:underline">Ads info</Link>
+          <span>© 2026 X Corp. (Reconstructed)</span>
+        </footer>
+      </div>
     </aside>
   );
 }

@@ -31,7 +31,7 @@ import { searchKeys } from "@/lib/query-keys";
 import { cn, formatNumber } from "@/lib/utils";
 
 type SearchTab = "top" | "latest" | "people" | "media";
-type ExploreCategory = "jelajahi" | "trending" | "berita" | "olahraga" | "hiburan";
+type ExploreCategory = "explore" | "trending" | "news" | "sports" | "entertainment";
 
 interface SearchPostsResponse {
   data: Post[];
@@ -62,22 +62,19 @@ function SearchPageContent() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [composerModalOpen, setComposerModalOpen] = useState(false);
-  const [exploreCategory, setExploreCategory] = useState<ExploreCategory>("jelajahi");
+  const [exploreCategory, setExploreCategory] = useState<ExploreCategory>("explore");
 
-  // Mock trending data matching Indonesian X Explore (Screenshot 2)
+  // Trending data (English standard)
   const trendingList = [
-    { category: "Sedang tren dalam topik Indonesia", title: "A. SECEPAT ITU", count: "42,1 rb postingan" },
-    { category: "Sedang tren dalam topik Indonesia", title: "Malam Jumat", count: "18,4 rb postingan" },
-    { category: "Sedang tren dalam topik Indonesia", title: "Angkut", count: "12,9 rb postingan" },
-    { category: "Sedang tren dalam topik Indonesia", title: "Kamis", count: "35,2 rb postingan" },
-    { category: "Sedang tren dalam topik Indonesia", title: "#Happy21andOnlyJAMES", count: "148 rb postingan" },
-    { category: "Sedang tren dalam topik Indonesia", title: "#2026MAMAVOTE", count: "89,3 rb postingan" },
-    { category: "Sedang tren dalam topik Indonesia", title: "SPBU", count: "7,8 rb postingan" },
-    { category: "Sedang tren dalam topik Indonesia", title: "bantu tanpa lelah", count: "15,6 rb postingan" },
-    { category: "Sedang tren dalam topik Indonesia", title: "capaian program pemerintah", count: "21,0 rb postingan" },
-    { category: "Sedang tren dalam topik Setia Budi", title: "Tolong", count: "9,4 rb postingan" },
-    { category: "Sedang tren dalam topik Olahraga", title: "Liga 1", count: "14,2 rb postingan" },
-    { category: "Sedang tren dalam topik Berita", title: "BMKG Gempa", count: "31,8 rb postingan" },
+    { category: "Technology · Trending", title: "#NextJS15", count: "142K posts" },
+    { category: "Space · Trending", title: "Artemis III", count: "89.4K posts" },
+    { category: "Artificial Intelligence · Trending", title: "DeepSeek", count: "320K posts" },
+    { category: "Software Engineering · Trending", title: "Golang 1.25", count: "45.1K posts" },
+    { category: "Web Development · Trending", title: "Tailwind CSS v4", count: "12.5K posts" },
+    { category: "Trending Worldwide", title: "#WorldCup2026", count: "215K posts" },
+    { category: "Sports · Trending", title: "Champions League", count: "112K posts" },
+    { category: "Entertainment · Trending", title: "Dune Messiah", count: "94K posts" },
+    { category: "Science · Trending", title: "James Webb Telescope", count: "58K posts" },
   ];
 
   // Advanced Filters State
@@ -336,11 +333,11 @@ function SearchPageContent() {
             {!rawQuery.trim() ? (
               <div className="flex w-full h-[53px] overflow-x-auto no-scrollbar border-t sm:border-t-0 border-border">
                 {[
-                  { id: "jelajahi", label: "Jelajahi" },
-                  { id: "trending", label: "Sedang Tren" },
-                  { id: "berita", label: "Berita" },
-                  { id: "olahraga", label: "Olahraga" },
-                  { id: "hiburan", label: "Hiburan" },
+                  { id: "explore", label: "Explore" },
+                  { id: "trending", label: "Trending" },
+                  { id: "news", label: "News" },
+                  { id: "sports", label: "Sports" },
+                  { id: "entertainment", label: "Entertainment" },
                 ].map((cat) => {
                   const isActive = exploreCategory === cat.id;
                   return (
