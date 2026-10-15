@@ -22,6 +22,8 @@ services:
       context: ../../
       dockerfile: deploy/docker/Dockerfile.api
     container_name: x-api
+    env_file:
+      - ../../.env
     environment:
       PORT: 8080
       GOMEMLIMIT: 300MiB
@@ -68,6 +70,8 @@ services:
       context: ../../
       dockerfile: deploy/docker/Dockerfile.web
     container_name: x-web
+    env_file:
+      - ../../.env
     environment:
       PORT: 3000
       NODE_ENV: production
