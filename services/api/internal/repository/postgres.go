@@ -7,12 +7,15 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 	"github.com/x-reconstruction/api/internal/domain"
+	"github.com/x-reconstruction/api/internal/recommendation"
 )
 
 type PostgresRepository struct {
@@ -32,9 +35,23 @@ func NewPostgresRepository(dbURL string) (*PostgresRepository, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	db.SetMaxOpenConns(50)
-	db.SetMaxIdleConns(25)
+	maxOpen := 20
+	if v := os.Getenv("DB_MAX_OPEN_CONNS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			maxOpen = n
+		}
+	}
+	maxIdle := 10
+	if v := os.Getenv("DB_MAX_IDLE_CONNS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			maxIdle = n
+		}
+	}
+
+	db.SetMaxOpenConns(maxOpen)
+	db.SetMaxIdleConns(maxIdle)
 	db.SetConnMaxLifetime(15 * time.Minute)
+	db.SetConnMaxIdleTime(3 * time.Minute)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -43,7 +60,42 @@ func NewPostgresRepository(dbURL string) (*PostgresRepository, error) {
 		return nil, fmt.Errorf("database ping failed: %w", err)
 	}
 
-	return &PostgresRepository{db: db}, nil
+	repo := &PostgresRepository{db: db}
+	repo.ensureSearchSchema(ctx)
+
+	return repo, nil
+}
+
+func (r *PostgresRepository) ensureSearchSchema(ctx context.Context) {
+	stmts := []string{
+		`CREATE EXTENSION IF NOT EXISTS pg_trgm;`,
+		`DO $$ 
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM information_schema.columns 
+				WHERE table_name = 'posts' AND column_name = 'search_vector'
+			) THEN
+				ALTER TABLE posts
+				ADD COLUMN search_vector tsvector
+				GENERATED ALWAYS AS (to_tsvector('simple', COALESCE(content, ''))) STORED;
+			END IF;
+		END $$;`,
+		`CREATE INDEX IF NOT EXISTS idx_posts_search_vector ON posts USING GIN (search_vector);`,
+		`CREATE INDEX IF NOT EXISTS idx_users_username_trgm ON users USING GIN (username gin_trgm_ops);`,
+		`CREATE INDEX IF NOT EXISTS idx_user_profiles_display_name_trgm ON user_profiles USING GIN (display_name gin_trgm_ops);`,
+		`CREATE INDEX IF NOT EXISTS idx_posts_search_keyset ON posts (created_at DESC, id DESC) WHERE deleted_at IS NULL;`,
+		`CREATE TABLE IF NOT EXISTS recent_searches (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			query VARCHAR(255) NOT NULL,
+			searched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			UNIQUE(user_id, query)
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_recent_searches_user ON recent_searches (user_id, searched_at DESC);`,
+	}
+	for _, stmt := range stmts {
+		_, _ = r.db.ExecContext(ctx, stmt)
+	}
 }
 
 func (r *PostgresRepository) Ping(ctx context.Context) error {
@@ -315,57 +367,20 @@ func (r *PostgresRepository) DeletePost(ctx context.Context, postID, authorID uu
 }
 
 func (r *PostgresRepository) GetFeed(ctx context.Context, feedType string, viewerID *uuid.UUID, cursor string, limit int) ([]domain.Post, string, error) {
-	if limit <= 0 || limit > 50 {
-		limit = 20
-	}
-
-	var vID interface{} = uuid.Nil
-	if viewerID != nil {
-		vID = *viewerID
-	}
-
-	var query string
-	if feedType == "following" && viewerID != nil {
-		query = `
-			SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
-			       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
-			       u.username, u.is_verified, u.verified_type,
-			       pr.display_name, pr.avatar_url,
-			       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1), FALSE) as is_liked,
-			       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $1), FALSE) as is_reposted,
-			       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $1), FALSE) as is_bookmarked
-			FROM posts p
-			JOIN follows f ON f.following_id = p.author_id AND f.follower_id = $1
-			JOIN users u ON u.id = p.author_id
-			JOIN user_profiles pr ON pr.user_id = p.author_id
-			WHERE p.deleted_at IS NULL
-			ORDER BY p.created_at DESC, p.id DESC
-			LIMIT $2;
-		`
-	} else {
-		query = `
-			SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
-			       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
-			       u.username, u.is_verified, u.verified_type,
-			       pr.display_name, pr.avatar_url,
-			       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1), FALSE) as is_liked,
-			       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $1), FALSE) as is_reposted,
-			       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $1), FALSE) as is_bookmarked
-			FROM posts p
-			JOIN users u ON u.id = p.author_id
-			JOIN user_profiles pr ON pr.user_id = p.author_id
-			WHERE p.deleted_at IS NULL
-			ORDER BY p.created_at DESC, p.id DESC
-			LIMIT $2;
-		`
-	}
-
-	rows, err := r.db.QueryContext(ctx, query, vID, limit)
+	engine := recommendation.NewEngine(r)
+	res, err := engine.GenerateFeed(ctx, recommendation.FeedOptions{
+		ViewerID: viewerID,
+		FeedType: feedType,
+		Cursor:   cursor,
+		Limit:    limit,
+	})
 	if err != nil {
 		return nil, "", err
 	}
-	defer rows.Close()
+	return res.Posts, res.NextCursor, nil
+}
 
+func (r *PostgresRepository) scanPostRows(rows *sql.Rows) ([]domain.Post, error) {
 	var posts []domain.Post
 	for rows.Next() {
 		var p domain.Post
@@ -378,14 +393,13 @@ func (r *PostgresRepository) GetFeed(ctx context.Context, feedType string, viewe
 			&p.IsLiked, &p.IsReposted, &p.IsBookmarked,
 		)
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
 		author.ID = p.AuthorID
 		p.Author = &author
 		posts = append(posts, p)
 	}
-
-	return posts, "", nil
+	return posts, nil
 }
 
 func (r *PostgresRepository) GetUserPosts(ctx context.Context, username, tab string, viewerID *uuid.UUID, cursor string, limit int) ([]domain.Post, string, error) {
@@ -642,31 +656,182 @@ func (r *PostgresRepository) UnfollowUser(ctx context.Context, followerID, follo
 	return false, followersCount, tx.Commit()
 }
 
-func (r *PostgresRepository) SearchPosts(ctx context.Context, query string, viewerID *uuid.UUID, cursor string, limit int) ([]domain.Post, string, error) {
+func (r *PostgresRepository) attachMediaToPosts(ctx context.Context, posts []domain.Post) error {
+	if len(posts) == 0 {
+		return nil
+	}
+	postIDs := make([]uuid.UUID, len(posts))
+	postIndexMap := make(map[uuid.UUID]int)
+	for i, p := range posts {
+		postIDs[i] = p.ID
+		postIndexMap[p.ID] = i
+	}
+
+	query := `
+		SELECT pm.post_id, mo.id, mo.uploader_id, mo.storage_key, mo.url, mo.media_type, mo.mime_type,
+		       mo.file_size_bytes, mo.width, mo.height, mo.duration_seconds, mo.created_at
+		FROM post_media pm
+		JOIN media_objects mo ON mo.id = pm.media_id
+		WHERE pm.post_id = ANY($1)
+		ORDER BY pm.position ASC;
+	`
+	rows, err := r.db.QueryContext(ctx, query, pq.Array(postIDs))
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var postID uuid.UUID
+		var m domain.MediaObject
+		if err := rows.Scan(
+			&postID, &m.ID, &m.UploaderID, &m.StorageKey, &m.URL, &m.MediaType, &m.MimeType,
+			&m.FileSizeBytes, &m.Width, &m.Height, &m.DurationSeconds, &m.CreatedAt,
+		); err == nil {
+			if idx, ok := postIndexMap[postID]; ok {
+				posts[idx].Media = append(posts[idx].Media, m)
+			}
+		}
+	}
+	return nil
+}
+
+func (r *PostgresRepository) SearchPostsAdvanced(ctx context.Context, params domain.SearchFilterParams, viewerID *uuid.UUID) ([]domain.Post, string, error) {
+	limit := params.Limit
 	if limit <= 0 || limit > 50 {
 		limit = 20
 	}
+
 	var vID interface{} = uuid.Nil
 	if viewerID != nil {
 		vID = *viewerID
 	}
 
-	sqlQuery := `
+	var args []interface{}
+	argIdx := 1
+
+	args = append(args, vID) // $1 = viewerID
+	argIdx++
+
+	var whereClauses []string
+	whereClauses = append(whereClauses, "p.deleted_at IS NULL")
+
+	if viewerID != nil {
+		whereClauses = append(whereClauses, fmt.Sprintf(`p.author_id NOT IN (
+			SELECT blocked_id FROM blocks WHERE blocker_id = $%d
+			UNION
+			SELECT blocker_id FROM blocks WHERE blocked_id = $%d
+		)`, 1, 1))
+	}
+
+	// Filter query text
+	var textArgIdx int
+	if params.Query != "" {
+		args = append(args, params.Query)
+		textArgIdx = argIdx
+		argIdx++
+		whereClauses = append(whereClauses, fmt.Sprintf(`(
+			(p.search_vector IS NOT NULL AND p.search_vector @@ plainto_tsquery('simple', $%d))
+			OR p.content ILIKE '%%' || $%d || '%%'
+		)`, textArgIdx, textArgIdx))
+	}
+
+	// from:username
+	if params.FromUsername != "" {
+		args = append(args, params.FromUsername)
+		whereClauses = append(whereClauses, fmt.Sprintf("u.username ILIKE $%d", argIdx))
+		argIdx++
+	}
+
+	// to:username
+	if params.ToUsername != "" {
+		args = append(args, params.ToUsername)
+		whereClauses = append(whereClauses, fmt.Sprintf(`EXISTS (
+			SELECT 1 FROM posts rp
+			JOIN users ru ON ru.id = rp.author_id
+			WHERE rp.id = p.reply_to_id AND ru.username ILIKE $%d
+		)`, argIdx))
+		argIdx++
+	}
+
+	// mentions
+	if params.Mentions != "" {
+		args = append(args, params.Mentions)
+		whereClauses = append(whereClauses, fmt.Sprintf(`p.content ILIKE '%%' || $%d || '%%'`, argIdx))
+		argIdx++
+	}
+
+	// has_media or tab == "media"
+	if params.HasMedia || params.Tab == "media" {
+		whereClauses = append(whereClauses, "EXISTS (SELECT 1 FROM post_media pm WHERE pm.post_id = p.id)")
+	}
+
+	// min_likes
+	if params.MinLikes > 0 {
+		args = append(args, params.MinLikes)
+		whereClauses = append(whereClauses, fmt.Sprintf("p.likes_count >= $%d", argIdx))
+		argIdx++
+	}
+
+	// since
+	if params.SinceDate != nil {
+		args = append(args, *params.SinceDate)
+		whereClauses = append(whereClauses, fmt.Sprintf("p.created_at >= $%d", argIdx))
+		argIdx++
+	}
+
+	// until
+	if params.UntilDate != nil {
+		args = append(args, *params.UntilDate)
+		whereClauses = append(whereClauses, fmt.Sprintf("p.created_at <= $%d", argIdx))
+		argIdx++
+	}
+
+	// Keyset cursor pagination
+	if params.Cursor != "" {
+		if feedCursor, err := recommendation.DecodeCursor(params.Cursor); err == nil && feedCursor != nil {
+			args = append(args, feedCursor.CreatedAt, feedCursor.PostID)
+			whereClauses = append(whereClauses, fmt.Sprintf("(p.created_at, p.id) < ($%d, $%d)", argIdx, argIdx+1))
+			argIdx += 2
+		}
+	}
+
+	// Order by
+	var orderClause string
+	if params.Tab == "latest" {
+		orderClause = "ORDER BY p.created_at DESC, p.id DESC"
+	} else if params.Tab == "top" && params.Query != "" {
+		orderClause = fmt.Sprintf(`ORDER BY (
+			COALESCE(ts_rank_cd(p.search_vector, plainto_tsquery('simple', $%d), 32), 0.0) * 5.0
+			+ LN(1.0 + p.likes_count) * 1.5
+			+ LN(1.0 + p.reposts_count) * 2.0
+			+ EXP(-EXTRACT(EPOCH FROM (NOW() - p.created_at)) / 86400.0) * 3.0
+			+ CASE WHEN u.is_verified THEN 1.5 ELSE 0.0 END
+		) DESC, p.created_at DESC, p.id DESC`, textArgIdx)
+	} else {
+		orderClause = "ORDER BY p.created_at DESC, p.id DESC"
+	}
+
+	args = append(args, limit+1)
+	limitArgIdx := argIdx
+
+	sqlQuery := fmt.Sprintf(`
 		SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 		       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
 		       u.username, u.is_verified, u.verified_type,
 		       pr.display_name, pr.avatar_url,
-		       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $2), FALSE) as is_liked,
-		       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $2), FALSE) as is_reposted,
-		       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $2), FALSE) as is_bookmarked
+		       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1), FALSE) as is_liked,
+		       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $1), FALSE) as is_reposted,
+		       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $1), FALSE) as is_bookmarked
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
 		JOIN user_profiles pr ON pr.user_id = p.author_id
-		WHERE p.content ILIKE '%' || $1 || '%' AND p.deleted_at IS NULL
-		ORDER BY p.created_at DESC
-		LIMIT $3;
-	`
-	rows, err := r.db.QueryContext(ctx, sqlQuery, query, vID, limit)
+		WHERE %s
+		%s
+		LIMIT $%d;
+	`, strings.Join(whereClauses, " AND "), orderClause, limitArgIdx)
+
+	rows, err := r.db.QueryContext(ctx, sqlQuery, args...)
 	if err != nil {
 		return nil, "", err
 	}
@@ -690,10 +855,29 @@ func (r *PostgresRepository) SearchPosts(ctx context.Context, query string, view
 		p.Author = &author
 		posts = append(posts, p)
 	}
-	return posts, "", nil
+
+	var nextCursor string
+	if len(posts) > limit {
+		last := posts[limit-1]
+		nextCursor = recommendation.EncodeCursor(last.CreatedAt, last.ID)
+		posts = posts[:limit]
+	}
+
+	_ = r.attachMediaToPosts(ctx, posts)
+
+	return posts, nextCursor, nil
 }
 
-func (r *PostgresRepository) SearchUsers(ctx context.Context, query string, viewerID *uuid.UUID, limit int) ([]domain.User, error) {
+func (r *PostgresRepository) SearchPosts(ctx context.Context, query string, viewerID *uuid.UUID, cursor string, limit int) ([]domain.Post, string, error) {
+	return r.SearchPostsAdvanced(ctx, domain.SearchFilterParams{
+		Query:  query,
+		Tab:    "top",
+		Cursor: cursor,
+		Limit:  limit,
+	}, viewerID)
+}
+
+func (r *PostgresRepository) SearchUsersAdvanced(ctx context.Context, query string, viewerID *uuid.UUID, cursor string, limit int) ([]domain.User, string, error) {
 	if limit <= 0 || limit > 50 {
 		limit = 20
 	}
@@ -702,6 +886,7 @@ func (r *PostgresRepository) SearchUsers(ctx context.Context, query string, view
 		vID = *viewerID
 	}
 
+	trimmed := strings.TrimSpace(query)
 	sqlQuery := `
 		SELECT u.id, u.username, u.email, u.role, u.is_verified, u.verified_type, u.is_private, u.created_at, u.updated_at,
 		       p.display_name, p.bio, p.avatar_url, p.banner_url, p.location, p.website,
@@ -709,13 +894,24 @@ func (r *PostgresRepository) SearchUsers(ctx context.Context, query string, view
 		       COALESCE((SELECT TRUE FROM follows f WHERE f.follower_id = $2 AND f.following_id = u.id), FALSE) as is_following
 		FROM users u
 		JOIN user_profiles p ON p.user_id = u.id
-		WHERE (u.username ILIKE '%' || $1 || '%' OR p.display_name ILIKE '%' || $1 || '%') AND u.deleted_at IS NULL
-		ORDER BY p.followers_count DESC
+		WHERE (
+			u.username ILIKE '%' || $1 || '%'
+			OR p.display_name ILIKE '%' || $1 || '%'
+			OR similarity(u.username, $1) > 0.2
+			OR similarity(p.display_name, $1) > 0.2
+		) AND u.deleted_at IS NULL
+		ORDER BY (
+			CASE WHEN LOWER(u.username) = LOWER($1) THEN 10.0 ELSE 0.0 END
+			+ similarity(u.username, $1) * 4.0
+			+ similarity(p.display_name, $1) * 2.5
+			+ LN(1.0 + p.followers_count) * 0.5
+			+ CASE WHEN u.is_verified THEN 1.0 ELSE 0.0 END
+		) DESC
 		LIMIT $3;
 	`
-	rows, err := r.db.QueryContext(ctx, sqlQuery, query, vID, limit)
+	rows, err := r.db.QueryContext(ctx, sqlQuery, trimmed, vID, limit+1)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer rows.Close()
 
@@ -729,11 +925,108 @@ func (r *PostgresRepository) SearchUsers(ctx context.Context, query string, view
 			&u.IsFollowing,
 		)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		users = append(users, u)
 	}
-	return users, nil
+
+	var nextCursor string
+	if len(users) > limit {
+		nextCursor = users[limit-1].ID.String()
+		users = users[:limit]
+	}
+
+	return users, nextCursor, nil
+}
+
+func (r *PostgresRepository) SearchUsers(ctx context.Context, query string, viewerID *uuid.UUID, limit int) ([]domain.User, error) {
+	users, _, err := r.SearchUsersAdvanced(ctx, query, viewerID, "", limit)
+	return users, err
+}
+
+func (r *PostgresRepository) GetSearchSuggestions(ctx context.Context, query string, viewerID *uuid.UUID, limit int) ([]string, []domain.User, error) {
+	if limit <= 0 || limit > 10 {
+		limit = 5
+	}
+	trimmed := strings.TrimSpace(query)
+	if trimmed == "" {
+		return nil, nil, nil
+	}
+
+	users, _, _ := r.SearchUsersAdvanced(ctx, trimmed, viewerID, "", limit)
+
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT tag FROM hashtags
+		WHERE tag ILIKE '%' || $1 || '%'
+		ORDER BY posts_count DESC
+		LIMIT $2;
+	`, strings.TrimPrefix(trimmed, "#"), limit)
+
+	var queries []string
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var tag string
+			if err := rows.Scan(&tag); err == nil {
+				queries = append(queries, "#"+tag)
+			}
+		}
+	}
+
+	return queries, users, nil
+}
+
+func (r *PostgresRepository) GetRecentSearches(ctx context.Context, userID uuid.UUID, limit int) ([]domain.RecentSearch, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 10
+	}
+	query := `
+		SELECT id, user_id, query, searched_at
+		FROM recent_searches
+		WHERE user_id = $1
+		ORDER BY searched_at DESC
+		LIMIT $2;
+	`
+	rows, err := r.db.QueryContext(ctx, query, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []domain.RecentSearch
+	for rows.Next() {
+		var s domain.RecentSearch
+		if err := rows.Scan(&s.ID, &s.UserID, &s.Query, &s.SearchedAt); err != nil {
+			return nil, err
+		}
+		list = append(list, s)
+	}
+	return list, nil
+}
+
+func (r *PostgresRepository) AddRecentSearch(ctx context.Context, userID uuid.UUID, query string) error {
+	trimmed := strings.TrimSpace(query)
+	if trimmed == "" {
+		return nil
+	}
+	sqlQuery := `
+		INSERT INTO recent_searches (user_id, query, searched_at)
+		VALUES ($1, $2, NOW())
+		ON CONFLICT (user_id, query)
+		DO UPDATE SET searched_at = NOW();
+	`
+	_, err := r.db.ExecContext(ctx, sqlQuery, userID, trimmed)
+	return err
+}
+
+func (r *PostgresRepository) DeleteRecentSearch(ctx context.Context, userID uuid.UUID, searchID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM recent_searches WHERE id = $1 AND user_id = $2;`, searchID, userID)
+	return err
+}
+
+func (r *PostgresRepository) ClearRecentSearches(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM recent_searches WHERE user_id = $1;`, userID)
+	return err
 }
 
 func (r *PostgresRepository) CreateNotification(ctx context.Context, n *domain.Notification) error {
@@ -741,10 +1034,10 @@ func (r *PostgresRepository) CreateNotification(ctx context.Context, n *domain.N
 		n.ID = uuid.New()
 	}
 	query := `
-		INSERT INTO notifications (id, recipient_id, actor_id, type, post_id, is_read, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW());
+		INSERT INTO notifications (id, recipient_id, actor_id, type, post_id, is_read, entity_type, entity_id, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW());
 	`
-	_, err := r.db.ExecContext(ctx, query, n.ID, n.RecipientID, n.ActorID, n.Type, n.PostID, n.IsRead)
+	_, err := r.db.ExecContext(ctx, query, n.ID, n.RecipientID, n.ActorID, n.Type, n.PostID, n.IsRead, n.EntityType, n.EntityID)
 	return err
 }
 
@@ -755,10 +1048,13 @@ func (r *PostgresRepository) GetNotifications(ctx context.Context, userID uuid.U
 	query := `
 		SELECT n.id, n.recipient_id, n.actor_id, n.type, n.post_id, n.is_read, n.created_at,
 		       u.username, u.is_verified, u.verified_type,
-		       p.display_name, p.avatar_url
+		       p.display_name, p.avatar_url,
+		       n.entity_type, n.entity_id,
+		       po.content
 		FROM notifications n
 		JOIN users u ON u.id = n.actor_id
 		JOIN user_profiles p ON p.user_id = n.actor_id
+		LEFT JOIN posts po ON po.id = n.post_id
 		WHERE n.recipient_id = $1
 		ORDER BY n.created_at DESC
 		LIMIT $2;
@@ -773,13 +1069,30 @@ func (r *PostgresRepository) GetNotifications(ctx context.Context, userID uuid.U
 	for rows.Next() {
 		var n domain.Notification
 		var actor domain.User
+		var entityType sql.NullString
+		var entityID uuid.NullUUID
+		var postContent sql.NullString
 		err := rows.Scan(
 			&n.ID, &n.RecipientID, &n.ActorID, &n.Type, &n.PostID, &n.IsRead, &n.CreatedAt,
 			&actor.Username, &actor.IsVerified, &actor.VerifiedType,
 			&actor.DisplayName, &actor.AvatarURL,
+			&entityType, &entityID,
+			&postContent,
 		)
 		if err != nil {
 			return nil, "", err
+		}
+		if entityType.Valid {
+			n.EntityType = entityType.String
+		}
+		if entityID.Valid {
+			n.EntityID = &entityID.UUID
+		}
+		if n.PostID != nil && postContent.Valid {
+			n.Post = &domain.Post{
+				ID:      *n.PostID,
+				Content: postContent.String,
+			}
 		}
 		actor.ID = n.ActorID
 		n.Actor = &actor
@@ -1489,12 +1802,24 @@ func (r *PostgresRepository) RespondFollowRequest(ctx context.Context, requestID
 			_, _ = tx.ExecContext(ctx, `UPDATE user_profiles SET followers_count = followers_count + 1 WHERE user_id = $1;`, req.TargetID)
 			_, _ = tx.ExecContext(ctx, `UPDATE user_profiles SET following_count = following_count + 1 WHERE user_id = $1;`, req.RequesterID)
 		}
+
+		// Notify requester that their request was accepted
+		_, _ = tx.ExecContext(ctx, `
+			INSERT INTO notifications (id, recipient_id, actor_id, type, is_read, entity_type, entity_id, created_at)
+			VALUES ($1, $2, $3, 'follow_accept', FALSE, 'user', $4, NOW());
+		`, uuid.New(), req.RequesterID, req.TargetID, req.TargetID)
 	}
 
 	_, err = tx.ExecContext(ctx, `UPDATE follow_requests SET status = $1, updated_at = NOW() WHERE id = $2;`, newStatus, req.ID)
 	if err != nil {
 		return err
 	}
+
+	// Mark the pending follow_request notification for the target as read
+	_, _ = tx.ExecContext(ctx, `
+		UPDATE notifications SET is_read = TRUE
+		WHERE recipient_id = $1 AND (entity_id = $2 OR (actor_id = $3 AND type = 'follow_request'));
+	`, targetID, req.ID, req.RequesterID)
 
 	return tx.Commit()
 }
@@ -1943,4 +2268,507 @@ func (r *PostgresRepository) MarkOutboxEventPublished(ctx context.Context, id uu
 	_, err := r.db.ExecContext(ctx, `UPDATE outbox_events SET status = 'published', published_at = NOW() WHERE id = $1;`, id)
 	return err
 }
+
+// ==============================================================================
+// CandidateProvider & Recommendation Implementation (Postgres)
+// ==============================================================================
+
+func (r *PostgresRepository) GetFollowingCandidates(ctx context.Context, viewerID uuid.UUID, limit int) ([]domain.Post, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 80
+	}
+	query := `
+		SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
+		       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
+		       u.username, u.is_verified, u.verified_type,
+		       pr.display_name, pr.avatar_url,
+		       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1), FALSE) as is_liked,
+		       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $1), FALSE) as is_reposted,
+		       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $1), FALSE) as is_bookmarked
+		FROM posts p
+		JOIN follows f ON f.following_id = p.author_id AND f.follower_id = $1
+		JOIN users u ON u.id = p.author_id
+		JOIN user_profiles pr ON pr.user_id = p.author_id
+		WHERE p.deleted_at IS NULL AND p.created_at >= NOW() - INTERVAL '72 hours'
+		ORDER BY p.created_at DESC, p.id DESC
+		LIMIT $2;
+	`
+	rows, err := r.db.QueryContext(ctx, query, viewerID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return r.scanPostRows(rows)
+}
+
+func (r *PostgresRepository) GetSocialEngagementCandidates(ctx context.Context, viewerID uuid.UUID, limit int) ([]domain.Post, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 40
+	}
+	query := `
+		SELECT DISTINCT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
+		       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
+		       u.username, u.is_verified, u.verified_type,
+		       pr.display_name, pr.avatar_url,
+		       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1), FALSE) as is_liked,
+		       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $1), FALSE) as is_reposted,
+		       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $1), FALSE) as is_bookmarked
+		FROM posts p
+		JOIN post_likes pl2 ON pl2.post_id = p.id
+		JOIN follows f ON f.following_id = pl2.user_id AND f.follower_id = $1
+		JOIN users u ON u.id = p.author_id
+		JOIN user_profiles pr ON pr.user_id = p.author_id
+		WHERE p.deleted_at IS NULL AND p.created_at >= NOW() - INTERVAL '48 hours'
+		ORDER BY p.created_at DESC
+		LIMIT $2;
+	`
+	rows, err := r.db.QueryContext(ctx, query, viewerID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return r.scanPostRows(rows)
+}
+
+func (r *PostgresRepository) GetTopicCandidates(ctx context.Context, viewerID *uuid.UUID, topics []string, limit int) ([]domain.Post, error) {
+	if len(topics) == 0 {
+		return nil, nil
+	}
+	if limit <= 0 || limit > 100 {
+		limit = 30
+	}
+	var vID interface{} = uuid.Nil
+	if viewerID != nil {
+		vID = *viewerID
+	}
+
+	cleaned := make([]string, 0, len(topics))
+	for _, t := range topics {
+		clean := strings.ToLower(strings.TrimPrefix(t, "#"))
+		if clean != "" {
+			cleaned = append(cleaned, clean)
+		}
+	}
+	if len(cleaned) == 0 {
+		return nil, nil
+	}
+
+	query := `
+		SELECT DISTINCT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
+		       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
+		       u.username, u.is_verified, u.verified_type,
+		       pr.display_name, pr.avatar_url,
+		       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1), FALSE) as is_liked,
+		       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $1), FALSE) as is_reposted,
+		       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $1), FALSE) as is_bookmarked
+		FROM posts p
+		JOIN post_hashtags ph ON ph.post_id = p.id
+		JOIN hashtags h ON h.id = ph.hashtag_id
+		JOIN users u ON u.id = p.author_id
+		JOIN user_profiles pr ON pr.user_id = p.author_id
+		WHERE p.deleted_at IS NULL AND LOWER(h.tag) = ANY($2)
+		ORDER BY p.created_at DESC
+		LIMIT $3;
+	`
+	rows, err := r.db.QueryContext(ctx, query, vID, cleaned, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return r.scanPostRows(rows)
+}
+
+func (r *PostgresRepository) GetTrendingCandidates(ctx context.Context, limit int) ([]domain.Post, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 30
+	}
+	query := `
+		SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
+		       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
+		       u.username, u.is_verified, u.verified_type,
+		       pr.display_name, pr.avatar_url,
+		       FALSE as is_liked, FALSE as is_reposted, FALSE as is_bookmarked
+		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		JOIN user_profiles pr ON pr.user_id = p.author_id
+		WHERE p.deleted_at IS NULL AND p.created_at >= NOW() - INTERVAL '72 hours'
+		ORDER BY (p.likes_count + p.reposts_count * 2 + p.replies_count * 3) DESC, p.created_at DESC
+		LIMIT $1;
+	`
+	rows, err := r.db.QueryContext(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return r.scanPostRows(rows)
+}
+
+func (r *PostgresRepository) GetFreshCandidates(ctx context.Context, limit int) ([]domain.Post, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 25
+	}
+	query := `
+		SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
+		       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
+		       u.username, u.is_verified, u.verified_type,
+		       pr.display_name, pr.avatar_url,
+		       FALSE as is_liked, FALSE as is_reposted, FALSE as is_bookmarked
+		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		JOIN user_profiles pr ON pr.user_id = p.author_id
+		WHERE p.deleted_at IS NULL
+		ORDER BY p.created_at DESC, p.id DESC
+		LIMIT $1;
+	`
+	rows, err := r.db.QueryContext(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return r.scanPostRows(rows)
+}
+
+func (r *PostgresRepository) GetExplorationCandidates(ctx context.Context, limit int) ([]domain.Post, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 15
+	}
+	query := `
+		SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
+		       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
+		       u.username, u.is_verified, u.verified_type,
+		       pr.display_name, pr.avatar_url,
+		       FALSE as is_liked, FALSE as is_reposted, FALSE as is_bookmarked
+		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		JOIN user_profiles pr ON pr.user_id = p.author_id
+		WHERE p.deleted_at IS NULL AND pr.followers_count < 1000 AND p.reply_to_id IS NULL
+		ORDER BY p.created_at DESC
+		LIMIT $1;
+	`
+	rows, err := r.db.QueryContext(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return r.scanPostRows(rows)
+}
+
+func (r *PostgresRepository) GetFollowingPosts(ctx context.Context, viewerID uuid.UUID, cursor *recommendation.FeedCursor, limit int) ([]domain.Post, string, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+
+	var rows *sql.Rows
+	var err error
+
+	if cursor != nil {
+		query := `
+			SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
+			       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
+			       u.username, u.is_verified, u.verified_type,
+			       pr.display_name, pr.avatar_url,
+			       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1), FALSE) as is_liked,
+			       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $1), FALSE) as is_reposted,
+			       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $1), FALSE) as is_bookmarked
+			FROM posts p
+			JOIN follows f ON f.following_id = p.author_id AND f.follower_id = $1
+			JOIN users u ON u.id = p.author_id
+			JOIN user_profiles pr ON pr.user_id = p.author_id
+			WHERE p.deleted_at IS NULL AND (p.created_at, p.id) < ($2, $3)
+			ORDER BY p.created_at DESC, p.id DESC
+			LIMIT $4;
+		`
+		rows, err = r.db.QueryContext(ctx, query, viewerID, cursor.CreatedAt, cursor.PostID, limit+1)
+	} else {
+		query := `
+			SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
+			       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
+			       u.username, u.is_verified, u.verified_type,
+			       pr.display_name, pr.avatar_url,
+			       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1), FALSE) as is_liked,
+			       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $1), FALSE) as is_reposted,
+			       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $1), FALSE) as is_bookmarked
+			FROM posts p
+			JOIN follows f ON f.following_id = p.author_id AND f.follower_id = $1
+			JOIN users u ON u.id = p.author_id
+			JOIN user_profiles pr ON pr.user_id = p.author_id
+			WHERE p.deleted_at IS NULL
+			ORDER BY p.created_at DESC, p.id DESC
+			LIMIT $2;
+		`
+		rows, err = r.db.QueryContext(ctx, query, viewerID, limit+1)
+	}
+
+	if err != nil {
+		return nil, "", err
+	}
+	defer rows.Close()
+
+	posts, err := r.scanPostRows(rows)
+	if err != nil {
+		return nil, "", err
+	}
+
+	hasMore := len(posts) > limit
+	if len(posts) > limit {
+		posts = posts[:limit]
+	}
+
+	var nextCursor string
+	if hasMore && len(posts) > 0 {
+		last := posts[len(posts)-1]
+		nextCursor = recommendation.EncodeCursor(last.CreatedAt, last.ID)
+	}
+
+	return posts, nextCursor, nil
+}
+
+func (r *PostgresRepository) GetViewerInteractions(ctx context.Context, viewerID uuid.UUID) (
+	followedAuthors map[uuid.UUID]bool,
+	mutualAuthors map[uuid.UUID]bool,
+	likedPosts map[uuid.UUID]bool,
+	mutedAuthors map[uuid.UUID]bool,
+	blockedAuthors map[uuid.UUID]bool,
+	hiddenPosts map[uuid.UUID]bool,
+	userTopics map[string]float64,
+	err error,
+) {
+	followedAuthors = make(map[uuid.UUID]bool)
+	mutualAuthors = make(map[uuid.UUID]bool)
+	likedPosts = make(map[uuid.UUID]bool)
+	mutedAuthors = make(map[uuid.UUID]bool)
+	blockedAuthors = make(map[uuid.UUID]bool)
+	hiddenPosts = make(map[uuid.UUID]bool)
+	userTopics = make(map[string]float64)
+
+	// 1. Followed and Mutual accounts
+	followRows, err := r.db.QueryContext(ctx, `
+		SELECT f1.following_id, (f2.follower_id IS NOT NULL) as is_mutual
+		FROM follows f1
+		LEFT JOIN follows f2 ON f2.follower_id = f1.following_id AND f2.following_id = $1
+		WHERE f1.follower_id = $1;
+	`, viewerID)
+	if err == nil {
+		defer followRows.Close()
+		for followRows.Next() {
+			var fID uuid.UUID
+			var isMutual bool
+			if err := followRows.Scan(&fID, &isMutual); err == nil {
+				followedAuthors[fID] = true
+				if isMutual {
+					mutualAuthors[fID] = true
+				}
+			}
+		}
+	}
+
+	// 2. Liked Posts (Recent 500)
+	likeRows, err := r.db.QueryContext(ctx, `SELECT post_id FROM post_likes WHERE user_id = $1 ORDER BY created_at DESC LIMIT 500;`, viewerID)
+	if err == nil {
+		defer likeRows.Close()
+		for likeRows.Next() {
+			var pID uuid.UUID
+			if err := likeRows.Scan(&pID); err == nil {
+				likedPosts[pID] = true
+			}
+		}
+	}
+
+	// 3. Muted Accounts
+	muteRows, err := r.db.QueryContext(ctx, `SELECT muted_id FROM mutes WHERE muter_id = $1;`, viewerID)
+	if err == nil {
+		defer muteRows.Close()
+		for muteRows.Next() {
+			var mID uuid.UUID
+			if err := muteRows.Scan(&mID); err == nil {
+				mutedAuthors[mID] = true
+			}
+		}
+	}
+
+	// 4. Bilateral Blocks
+	blockRows, err := r.db.QueryContext(ctx, `
+		SELECT blocked_id FROM blocks WHERE blocker_id = $1
+		UNION
+		SELECT blocker_id FROM blocks WHERE blocked_id = $1;
+	`, viewerID)
+	if err == nil {
+		defer blockRows.Close()
+		for blockRows.Next() {
+			var bID uuid.UUID
+			if err := blockRows.Scan(&bID); err == nil {
+				blockedAuthors[bID] = true
+			}
+		}
+	}
+
+	// 5. Hidden Posts from Feed Feedback
+	feedRows, err := r.db.QueryContext(ctx, `SELECT post_id FROM feed_feedback WHERE user_id = $1 AND feedback_type IN ('hide', 'not_interested');`, viewerID)
+	if err == nil {
+		defer feedRows.Close()
+		for feedRows.Next() {
+			var pID uuid.UUID
+			if err := feedRows.Scan(&pID); err == nil {
+				hiddenPosts[pID] = true
+			}
+		}
+	}
+
+	// 6. User Topic Preferences
+	topicRows, err := r.db.QueryContext(ctx, `SELECT topic, affinity_score FROM user_topic_preferences WHERE user_id = $1 AND is_muted = FALSE;`, viewerID)
+	if err == nil {
+		defer topicRows.Close()
+		for topicRows.Next() {
+			var topic string
+			var score float64
+			if err := topicRows.Scan(&topic, &score); err == nil {
+				userTopics[topic] = score
+			}
+		}
+	}
+
+	return followedAuthors, mutualAuthors, likedPosts, mutedAuthors, blockedAuthors, hiddenPosts, userTopics, nil
+}
+
+func (r *PostgresRepository) GetActiveWeights(ctx context.Context) (domain.RankingWeights, string, error) {
+	var version string
+	var weightsJSON []byte
+	err := r.db.QueryRowContext(ctx, `SELECT version, weights FROM ranking_experiments WHERE is_active = TRUE ORDER BY created_at DESC LIMIT 1;`).Scan(&version, &weightsJSON)
+	if err != nil {
+		return domain.DefaultRankingWeights(), "default_baseline", nil
+	}
+
+	var w domain.RankingWeights
+	if err := json.Unmarshal(weightsJSON, &w); err != nil {
+		return domain.DefaultRankingWeights(), "default_baseline", nil
+	}
+	return w, version, nil
+}
+
+func (r *PostgresRepository) RecordFeedFeedback(ctx context.Context, feedback domain.FeedFeedback) error {
+	if feedback.ID == uuid.Nil {
+		feedback.ID = uuid.New()
+	}
+	query := `
+		INSERT INTO feed_feedback (id, user_id, post_id, feedback_type, topic, created_at)
+		VALUES ($1, $2, $3, $4, $5, NOW())
+		ON CONFLICT (user_id, post_id, feedback_type) DO NOTHING;
+	`
+	_, err := r.db.ExecContext(ctx, query, feedback.ID, feedback.UserID, feedback.PostID, feedback.FeedbackType, feedback.Topic)
+	return err
+}
+
+func (r *PostgresRepository) RecordFeedImpressions(ctx context.Context, impressions []domain.FeedImpression) error {
+	if len(impressions) == 0 {
+		return nil
+	}
+
+	for _, imp := range impressions {
+		impID := imp.ID
+		if impID == uuid.Nil {
+			impID = uuid.New()
+		}
+		var uID interface{} = nil
+		if imp.UserID != nil {
+			uID = *imp.UserID
+		}
+		_, _ = r.db.ExecContext(ctx, `
+			INSERT INTO feed_impressions (id, user_id, post_id, feed_type, dwell_time_ms, created_at)
+			VALUES ($1, $2, $3, $4, $5, NOW());
+		`, impID, uID, imp.PostID, imp.FeedType, imp.DwellTimeMs)
+	}
+	return nil
+}
+
+func (r *PostgresRepository) GetUserTopicPreferences(ctx context.Context, userID uuid.UUID) ([]domain.UserTopicPreference, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, user_id, topic, affinity_score, is_explicit, is_muted, updated_at
+		FROM user_topic_preferences
+		WHERE user_id = $1
+		ORDER BY affinity_score DESC;
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var prefs []domain.UserTopicPreference
+	for rows.Next() {
+		var p domain.UserTopicPreference
+		if err := rows.Scan(&p.ID, &p.UserID, &p.Topic, &p.AffinityScore, &p.IsExplicit, &p.IsMuted, &p.UpdatedAt); err != nil {
+			return nil, err
+		}
+		prefs = append(prefs, p)
+	}
+	return prefs, nil
+}
+
+func (r *PostgresRepository) UpdateUserTopicPreference(ctx context.Context, pref domain.UserTopicPreference) error {
+	if pref.ID == uuid.Nil {
+		pref.ID = uuid.New()
+	}
+	query := `
+		INSERT INTO user_topic_preferences (id, user_id, topic, affinity_score, is_explicit, is_muted, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW())
+		ON CONFLICT (user_id, topic) DO UPDATE
+		SET affinity_score = EXCLUDED.affinity_score,
+		    is_explicit = EXCLUDED.is_explicit,
+		    is_muted = EXCLUDED.is_muted,
+		    updated_at = NOW();
+	`
+	_, err := r.db.ExecContext(ctx, query, pref.ID, pref.UserID, pref.Topic, pref.AffinityScore, pref.IsExplicit, pref.IsMuted)
+	return err
+}
+
+func (r *PostgresRepository) ResetPersonalization(ctx context.Context, userID uuid.UUID) error {
+	_, err1 := r.db.ExecContext(ctx, `DELETE FROM feed_feedback WHERE user_id = $1;`, userID)
+	_, err2 := r.db.ExecContext(ctx, `DELETE FROM user_topic_preferences WHERE user_id = $1 AND is_explicit = FALSE;`, userID)
+	if err1 != nil {
+		return err1
+	}
+	return err2
+}
+
+func (r *PostgresRepository) GetTrendingTopics(ctx context.Context, limit int) ([]domain.TrendingTopic, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 10
+	}
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT tag, posts_count
+		FROM hashtags
+		ORDER BY posts_count DESC
+		LIMIT $1;
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var topics []domain.TrendingTopic
+	for rows.Next() {
+		var tag string
+		var count int
+		if err := rows.Scan(&tag, &count); err == nil {
+			topics = append(topics, domain.TrendingTopic{
+				Category:      "Trending",
+				Topic:         "#" + strings.TrimPrefix(tag, "#"),
+				PostsCount:    count,
+				VelocityScore: float64(count),
+			})
+		}
+	}
+
+	// Fallback to defaults if hashtags table is empty
+	if len(topics) == 0 {
+		topics = []domain.TrendingTopic{
+			{Category: "Technology · Trending", Topic: "#React19", PostsCount: 248000, VelocityScore: 92.5},
+			{Category: "Software Development", Topic: "#Golang", PostsCount: 95000, VelocityScore: 88.0},
+			{Category: "Artificial Intelligence", Topic: "#AI", PostsCount: 310000, VelocityScore: 97.2},
+			{Category: "Databases & Infrastructure", Topic: "#PostgreSQL", PostsCount: 42000, VelocityScore: 75.4},
+			{Category: "Web Standards", Topic: "#NextJS", PostsCount: 145000, VelocityScore: 84.1},
+		}
+	}
+	return topics, nil
+}
+
 

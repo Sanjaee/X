@@ -224,9 +224,17 @@ export default function UserProfilePage() {
                   />
 
                   {isSelf ? (
-                    <button className="border border-border hover:bg-subtle font-bold text-[15px] px-4 py-1.5 rounded-full transition-colors mb-2">
-                      Edit profile
-                    </button>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Link
+                        href="/notifications"
+                        className="border border-border hover:bg-subtle font-bold text-[15px] px-4 py-1.5 rounded-full transition-colors"
+                      >
+                        Follow Requests
+                      </Link>
+                      <button className="border border-border hover:bg-subtle font-bold text-[15px] px-4 py-1.5 rounded-full transition-colors">
+                        Edit profile
+                      </button>
+                    </div>
                   ) : (
                     <div className="flex items-center gap-2 mb-2 relative">
                       {/* More actions dropdown */}

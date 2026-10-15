@@ -14,13 +14,25 @@ export default function ExplorePage() {
   const [activeTab, setActiveTab] = useState<"for_you" | "trending" | "news" | "sports">("for_you");
   const [searchResults, setSearchResults] = useState<Post[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [trendingTopics, setTrendingTopics] = useState<Array<{ category: string; topic: string; posts_count: number }>>([]);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
+  React.useEffect(() => {
+    apiRequest<{ trending: Array<{ category: string; topic: string; posts_count: number }> }>("/explore/trending")
+      .then((res) => {
+        if (res.trending && res.trending.length > 0) {
+          setTrendingTopics(res.trending);
+        }
+      })
+      .catch((e) => console.error("Failed to load trending topics", e));
+  }, []);
+
+  const handleSearch = async (e?: React.FormEvent, customQuery?: string) => {
+    if (e) e.preventDefault();
+    const q = customQuery !== undefined ? customQuery : query;
+    if (!q.trim()) return;
     setIsSearching(true);
     try {
-      const res = await apiRequest<{ posts: Post[] }>(`/search?q=${encodeURIComponent(query)}`);
+      const res = await apiRequest<{ posts: Post[] }>(`/search?q=${encodeURIComponent(q)}`);
       setSearchResults(res.posts || []);
     } catch (e) {
       console.error(e);
@@ -28,14 +40,6 @@ export default function ExplorePage() {
       setIsSearching(false);
     }
   };
-
-  const trendingTopics = [
-    { category: "Technology · Trending", topic: "#React19", posts: 248000 },
-    { category: "Software Development", topic: "#Golang", posts: 95000 },
-    { category: "Artificial Intelligence", topic: "Claude 3.7", posts: 310000 },
-    { category: "Cloud & DevOps", topic: "#PostgreSQL16", posts: 32000 },
-    { category: "Web Standards", topic: "Next.js App Router", posts: 145000 },
-  ];
 
   return (
     <div className="min-h-screen bg-background text-foreground flex justify-center">
@@ -97,13 +101,17 @@ export default function ExplorePage() {
               {trendingTopics.map((t) => (
                 <div
                   key={t.topic}
+                  onClick={() => {
+                    setQuery(t.topic);
+                    handleSearch(undefined, t.topic);
+                  }}
                   className="px-4 py-3.5 hover:bg-subtle cursor-pointer transition-colors flex justify-between items-start"
                 >
                   <div>
                     <span className="text-[13px] text-muted leading-4 block">{t.category}</span>
                     <span className="text-[16px] font-bold leading-5 block mt-0.5">{t.topic}</span>
                     <span className="text-[13px] text-muted leading-4 block mt-0.5">
-                      {formatNumber(t.posts)} posts
+                      {formatNumber(t.posts_count || 1000)} posts
                     </span>
                   </div>
                   <button className="text-muted hover:text-foreground p-1 hover:bg-subtle rounded-full">

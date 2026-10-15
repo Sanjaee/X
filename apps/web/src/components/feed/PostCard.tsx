@@ -22,15 +22,17 @@ interface PostCardProps {
   onLike?: (postId: string) => void;
   onRepost?: (postId: string) => void;
   onBookmark?: (postId: string) => void;
+  onFeedback?: (postId: string, feedbackType: 'not_interested' | 'hide') => void;
 }
 
-export function PostCard({ post, onLike, onRepost, onBookmark }: PostCardProps) {
+export function PostCard({ post, onLike, onRepost, onBookmark, onFeedback }: PostCardProps) {
   const router = useRouter();
   const [isLiked, setIsLiked] = useState(post.is_liked);
   const [likesCount, setLikesCount] = useState(post.likes_count);
   const [isReposted, setIsReposted] = useState(post.is_reposted);
   const [repostsCount, setRepostsCount] = useState(post.reposts_count);
   const [isBookmarked, setIsBookmarked] = useState(post.is_bookmarked);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Avoid triggering card navigation if interactive child clicked
@@ -98,12 +100,51 @@ export function PostCard({ post, onLike, onRepost, onBookmark }: PostCardProps) 
             <span className="text-muted hover:underline">{formatRelativeTime(post.created_at)}</span>
           </div>
 
-          <button
-            onClick={(e) => e.stopPropagation()}
-            className="p-1 hover:bg-subtle rounded-full text-muted hover:text-foreground transition-colors"
-          >
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(!menuOpen);
+              }}
+              className="p-1 hover:bg-subtle rounded-full text-muted hover:text-foreground transition-colors"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+
+            {menuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-30"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(false);
+                  }}
+                />
+                <div className="absolute right-0 top-7 w-52 bg-background border border-border shadow-xl rounded-xl py-1.5 z-40 text-[14px]">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpen(false);
+                      if (onFeedback) onFeedback(post.id, 'not_interested');
+                    }}
+                    className="w-full text-left px-3.5 py-2.5 hover:bg-subtle flex items-center gap-2.5 text-foreground transition-colors"
+                  >
+                    <span>Not interested in this post</span>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpen(false);
+                      if (onFeedback) onFeedback(post.id, 'hide');
+                    }}
+                    className="w-full text-left px-3.5 py-2.5 hover:bg-subtle flex items-center gap-2.5 text-foreground transition-colors"
+                  >
+                    <span>Hide post</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Post Text */}
@@ -111,25 +152,63 @@ export function PostCard({ post, onLike, onRepost, onBookmark }: PostCardProps) 
           {post.content}
         </p>
 
-        {/* Media Attachments */}
+        {/* Media Attachments with CLS-Protected Aspect Ratio */}
         {post.media && post.media.length > 0 && (
-          <div className="mt-3 rounded-2xl overflow-hidden border border-border">
+          <div className="mt-3 rounded-2xl overflow-hidden border border-border bg-muted/20">
             {post.media.length === 1 && (
-              <img
-                src={post.media[0].url}
-                alt="Attachment"
-                className="w-full max-h-[510px] object-cover"
-              />
+              post.media[0].media_type === "video" ? (
+                <div className="w-full aspect-video bg-black flex items-center justify-center">
+                  <video
+                    src={post.media[0].url}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              ) : (
+                <div
+                  className="w-full bg-muted/30 relative overflow-hidden"
+                  style={{
+                    aspectRatio:
+                      post.media[0].width && post.media[0].height
+                        ? `${post.media[0].width}/${post.media[0].height}`
+                        : "16/9",
+                    maxHeight: "510px",
+                  }}
+                >
+                  <img
+                    src={post.media[0].url}
+                    alt="Attachment"
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )
             )}
             {post.media.length > 1 && (
-              <div className="grid grid-cols-2 gap-0.5 max-h-[300px]">
+              <div className="grid grid-cols-2 gap-0.5 aspect-video bg-muted/20">
                 {post.media.slice(0, 4).map((m, idx) => (
-                  <img
-                    key={m.id || idx}
-                    src={m.url}
-                    alt="Attachment"
-                    className="w-full h-[150px] object-cover"
-                  />
+                  <div key={m.id || idx} className="relative w-full h-full overflow-hidden bg-muted/30">
+                    {m.media_type === "video" ? (
+                      <video
+                        src={m.url}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <img
+                        src={m.url}
+                        alt="Attachment"
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                  </div>
                 ))}
               </div>
             )}

@@ -4,11 +4,11 @@ import GoogleProvider from "next-auth/providers/google";
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      clientId: process.env.GOOGLE_CLIENT_ID || "dummy_google_client_id",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "dummy_google_client_secret",
     }),
   ],
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || "D8D3DA7A75F61ACD5A4CD579EDBBC",
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === "google" && user?.email) {

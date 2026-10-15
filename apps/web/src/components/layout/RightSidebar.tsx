@@ -1,16 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
-import { Search, MoreHorizontal, CheckCircle2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { MoreHorizontal, CheckCircle2 } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
+import { SearchBarDropdown } from "@/components/search/SearchBarDropdown";
 
 interface RightSidebarProps {
   onSearch?: (query: string) => void;
+  hideSearchBar?: boolean;
 }
 
-export function RightSidebar({ onSearch }: RightSidebarProps) {
-  const [searchTerm, setSearchTerm] = useState("");
+export function RightSidebar({ onSearch, hideSearchBar = false }: RightSidebarProps) {
+  const router = useRouter();
 
   const trends = [
     { category: "Technology · Trending", topic: "#NextJS15", posts: 142000 },
@@ -37,28 +40,14 @@ export function RightSidebar({ onSearch }: RightSidebarProps) {
     },
   ];
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && onSearch) {
-      onSearch(searchTerm);
-    }
-  };
-
   return (
     <aside className="hidden lg:block w-[350px] xl:w-[420px] px-6 py-3 select-none">
-      {/* Search Bar */}
-      <div className="sticky top-0 bg-background/80 backdrop-blur-md pt-1 pb-3 z-10">
-        <div className="relative flex items-center bg-transparent rounded-full border border-border focus-within:border-brand focus-within:bg-background transition-colors">
-          <Search className="w-5 h-5 text-muted absolute left-4 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="w-full bg-transparent py-2.5 pl-12 pr-4 text-[15px] outline-none placeholder:text-muted rounded-full text-foreground"
-          />
+      {/* Search Bar with Autocomplete Dropdown */}
+      {!hideSearchBar && (
+        <div className="sticky top-0 bg-background/80 backdrop-blur-md pt-1 pb-3 z-20">
+          <SearchBarDropdown onSearchSubmit={onSearch} />
         </div>
-      </div>
+      )}
 
       {/* Subscribe to Premium Card */}
       <div className="bg-transparent rounded-2xl p-4 border border-border mb-4">
@@ -81,6 +70,7 @@ export function RightSidebar({ onSearch }: RightSidebarProps) {
           {trends.map((t) => (
             <div
               key={t.topic}
+              onClick={() => router.push(`/search?q=${encodeURIComponent(t.topic)}`)}
               className="px-4 py-3 hover:bg-subtle cursor-pointer transition-colors flex justify-between items-start"
             >
               <div>

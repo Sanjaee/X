@@ -1,21 +1,26 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { LeftNavRail } from "@/components/layout/LeftNavRail";
 import { RightSidebar } from "@/components/layout/RightSidebar";
 import { PostComposer } from "@/components/composer/PostComposer";
-import { PostCard } from "@/components/feed/PostCard";
+import { VirtualizedFeed } from "@/components/virtualized-list/VirtualizedFeed";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { User, Post } from "@/types";
 import { apiRequest, setStoredToken } from "@/lib/api";
+import { feedKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
-import { Loader2 } from "lucide-react";
+
+interface FeedResponse {
+  posts: Post[];
+  next_cursor?: string;
+}
 
 export default function HomePage() {
+  const queryClient = useQueryClient();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<"for_you" | "following">("for_you");
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
   // Restore authenticated session
@@ -31,37 +36,123 @@ export default function HomePage() {
     return () => window.removeEventListener("x_auth_state_change", syncUser);
   }, []);
 
-  // Fetch timeline feed
-  const loadFeed = async (tab: "for_you" | "following") => {
-    setLoading(true);
-    try {
-      const res = await apiRequest<{ posts: Post[] }>(`/feed?type=${tab}`);
-      setPosts(res.posts || []);
-    } catch (err) {
-      console.error("Failed to load feed", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // TanStack Query with Bounded Cache (maxPages: 5)
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    isError,
+    error,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: feedKeys.list(activeTab),
+    queryFn: async ({ pageParam }) => {
+      const cursorParam = pageParam ? `&cursor=${encodeURIComponent(pageParam as string)}` : "";
+      const res = await apiRequest<FeedResponse>(`/feed?type=${activeTab}&limit=20${cursorParam}`);
 
-  useEffect(() => {
-    loadFeed(activeTab);
-  }, [activeTab]);
+      // Record exposure impressions for ranking feedback
+      if (res.posts && res.posts.length > 0) {
+        apiRequest("/feed/impressions", {
+          method: "POST",
+          body: JSON.stringify({
+            impressions: res.posts.map((p) => ({
+              post_id: p.id,
+              feed_type: activeTab,
+              dwell_time_ms: 1200,
+            })),
+          }),
+        }).catch(() => {});
+      }
+
+      return res;
+    },
+    initialPageParam: "",
+    getNextPageParam: (lastPage) => lastPage?.next_cursor || undefined,
+    maxPages: 5, // Automatically evicts distant pages from browser memory!
+    staleTime: 60 * 1000,
+  });
+
+  // Client-side post deduplication across pages
+  const posts = useMemo(() => {
+    if (!data?.pages) return [];
+    const seen = new Set<string>();
+    const result: Post[] = [];
+
+    for (const page of data.pages) {
+      if (page.posts) {
+        for (const p of page.posts) {
+          if (!seen.has(p.id)) {
+            seen.add(p.id);
+            result.push(p);
+          }
+        }
+      }
+    }
+    return result;
+  }, [data]);
 
   const handlePostCreated = (newPost: Post) => {
-    setPosts((prev) => [newPost, ...prev]);
+    queryClient.setQueryData(
+      feedKeys.list(activeTab),
+      (oldData: { pages: FeedResponse[]; pageParams: string[] } | undefined) => {
+        if (!oldData || !oldData.pages || oldData.pages.length === 0) {
+          return {
+            pages: [{ posts: [newPost], next_cursor: undefined }],
+            pageParams: [""],
+          };
+        }
+        const firstPage = oldData.pages[0];
+        const updatedFirstPage = {
+          ...firstPage,
+          posts: [newPost, ...firstPage.posts],
+        };
+        return {
+          ...oldData,
+          pages: [updatedFirstPage, ...oldData.pages.slice(1)],
+        };
+      }
+    );
+  };
+
+  const handleFeedback = async (postId: string, feedbackType: "not_interested" | "hide") => {
+    // Optimistically update query cache
+    queryClient.setQueryData(
+      feedKeys.list(activeTab),
+      (oldData: { pages: FeedResponse[]; pageParams: string[] } | undefined) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          pages: oldData.pages.map((page) => ({
+            ...page,
+            posts: page.posts.filter((p) => p.id !== postId),
+          })),
+        };
+      }
+    );
+
+    try {
+      await apiRequest("/feed/feedback", {
+        method: "POST",
+        body: JSON.stringify({ post_id: postId, feedback_type: feedbackType }),
+      });
+    } catch (e) {
+      console.error("Failed to record feed feedback", e);
+    }
   };
 
   const handleLogout = async () => {
     try {
       await apiRequest("/auth/logout", { method: "POST" });
-    } catch (e) {}
+    } catch {}
     try {
       const { signOut } = await import("next-auth/react");
       await signOut({ redirect: false });
-    } catch (e) {}
+    } catch {}
     setStoredToken(null);
     setCurrentUser(null);
+    queryClient.clear();
   };
 
   const handleLike = async (postId: string) => {
@@ -169,43 +260,44 @@ export default function HomePage() {
             onOpenAuth={() => setAuthModalOpen(true)}
           />
 
-          {/* Feed List */}
+          {/* Virtualized Infinite Feed with Bounded Cache */}
           <div className="flex-1 flex flex-col">
-            {loading ? (
-              <div className="flex justify-center items-center p-12 text-brand">
-                <Loader2 className="w-8 h-8 animate-spin" />
-              </div>
-            ) : posts.length === 0 ? (
-              <div className="text-center py-16 px-6">
-                <h3 className="font-bold text-[22px] mb-2">Welcome to X!</h3>
-                <p className="text-muted text-[15px] max-w-sm mx-auto mb-6">
-                  This is the best place to see what’s happening in your world. Find people and topics to follow now.
-                </p>
-                {!currentUser && (
-                  <button
-                    onClick={() => setAuthModalOpen(true)}
-                    className="bg-brand hover:bg-brand-hover text-white font-bold py-2.5 px-6 rounded-full text-[15px]"
-                  >
-                    Sign in to customize
-                  </button>
-                )}
-              </div>
-            ) : (
-              posts.map((post) => (
-                <PostCard
-                  key={post.id}
-                  post={post}
-                  onLike={handleLike}
-                  onRepost={handleRepost}
-                  onBookmark={handleBookmark}
-                />
-              ))
-            )}
+            <VirtualizedFeed
+              posts={posts}
+              isLoading={isLoading}
+              isFetchingNextPage={isFetchingNextPage}
+              hasNextPage={hasNextPage}
+              fetchNextPage={fetchNextPage}
+              isError={isError}
+              error={error as Error}
+              refetch={refetch}
+              onLike={handleLike}
+              onRepost={handleRepost}
+              onBookmark={handleBookmark}
+              onFeedback={handleFeedback}
+              storageKey={`feed_${activeTab}`}
+              emptyState={
+                <div className="text-center py-16 px-6">
+                  <h3 className="font-bold text-[22px] mb-2">Welcome to X!</h3>
+                  <p className="text-muted text-[15px] max-w-sm mx-auto mb-6">
+                    This is the best place to see what’s happening in your world. Find people and topics to follow now.
+                  </p>
+                  {!currentUser && (
+                    <button
+                      onClick={() => setAuthModalOpen(true)}
+                      className="bg-brand hover:bg-brand-hover text-white font-bold py-2.5 px-6 rounded-full text-[15px]"
+                    >
+                      Sign in to customize
+                    </button>
+                  )}
+                </div>
+              }
+            />
           </div>
         </main>
 
         {/* Right Sidebar (420px max) */}
-        <RightSidebar onSearch={(q) => alert(`Searching for: ${q}`)} />
+        <RightSidebar />
 
         {/* Auth Modal */}
         <AuthModal
@@ -213,7 +305,7 @@ export default function HomePage() {
           onClose={() => setAuthModalOpen(false)}
           onSuccess={(user) => {
             setCurrentUser(user);
-            loadFeed(activeTab);
+            refetch();
           }}
         />
       </div>

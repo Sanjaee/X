@@ -51,7 +51,7 @@ export interface Notification {
   recipient_id: string;
   actor_id: string;
   actor: User;
-  type: 'like' | 'reply' | 'repost' | 'mention' | 'follow' | 'follow_request' | 'dm';
+  type: 'like' | 'reply' | 'repost' | 'mention' | 'follow' | 'follow_request' | 'follow_accept' | 'dm';
   post_id?: string;
   post?: Post;
   entity_type?: string;

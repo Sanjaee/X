@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -28,6 +29,7 @@ import (
 	"github.com/x-reconstruction/api/internal/payment"
 	"github.com/x-reconstruction/api/internal/realtime"
 	"github.com/x-reconstruction/api/internal/repository"
+	"github.com/x-reconstruction/api/internal/search"
 )
 
 type Handler struct {
@@ -72,14 +74,47 @@ func (h *Handler) HealthLive(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) HealthReady(w http.ResponseWriter, r *http.Request) {
-	if err := h.repo.Ping(r.Context()); err != nil {
-		writeError(w, http.StatusServiceUnavailable, "database unavailable")
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+
+	dbStatus := "connected"
+	if err := h.repo.Ping(ctx); err != nil {
+		writeError(w, http.StatusServiceUnavailable, fmt.Sprintf("database unavailable: %v", err))
 		return
 	}
+
+	redisStatus := "disabled"
+	if h.rdb != nil {
+		if err := h.rdb.Ping(ctx).Err(); err != nil {
+			redisStatus = fmt.Sprintf("degraded: %v", err)
+		} else {
+			redisStatus = "connected"
+		}
+	}
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"status":   "healthy",
-		"database": "connected",
+		"status":   "ready",
+		"database": dbStatus,
+		"redis":    redisStatus,
 		"time":     time.Now().UTC().Format(time.RFC3339),
+	})
+}
+
+func (h *Handler) HealthMetrics(w http.ResponseWriter, r *http.Request) {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status":           "ok",
+		"active_requests":  middleware.GetActiveRequests(),
+		"goroutines":       runtime.NumGoroutine(),
+		"alloc_bytes":      m.Alloc,
+		"alloc_mb":         fmt.Sprintf("%.2f MB", float64(m.Alloc)/1024/1024),
+		"total_alloc_mb":   fmt.Sprintf("%.2f MB", float64(m.TotalAlloc)/1024/1024),
+		"sys_mb":           fmt.Sprintf("%.2f MB", float64(m.Sys)/1024/1024),
+		"num_gc":           m.NumGC,
+		"gc_pause_total_ms": fmt.Sprintf("%.2f ms", float64(m.PauseTotalNs)/1e6),
+		"timestamp":        time.Now().UTC().Format(time.RFC3339),
 	})
 }
 
@@ -464,11 +499,9 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 	// If this was a reply, notify author of parent
 	if post.ReplyToID != nil {
 		if parent, err := h.repo.GetPostByID(r.Context(), *post.ReplyToID, nil); err == nil && parent.AuthorID != user.ID {
-			_ = h.repo.CreateNotification(r.Context(), &domain.Notification{
-				RecipientID: parent.AuthorID,
-				ActorID:     user.ID,
-				Type:        "reply",
-				PostID:      &post.ID,
+			h.notifyUser(r.Context(), parent.AuthorID, user.ID, "reply", "post", &post.ID, &post.ID, map[string]interface{}{
+				"post_id": post.ID.String(),
+				"content": post.Content,
 			})
 		}
 	}
@@ -536,6 +569,192 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"posts":       posts,
 		"next_cursor": nextCursor,
+	})
+}
+
+// ==========================================
+// RECOMMENDATION, FEEDBACK & TRENDING
+// ==========================================
+
+type FeedFeedbackRequest struct {
+	PostID       uuid.UUID `json:"post_id"`
+	FeedbackType string    `json:"feedback_type"` // 'hide', 'not_interested', 'show_less', 'report'
+	Topic        string    `json:"topic,omitempty"`
+}
+
+func (h *Handler) RecordFeedFeedback(w http.ResponseWriter, r *http.Request) {
+	viewerID := middleware.GetViewerID(r.Context())
+	if viewerID == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	var req FeedFeedbackRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if req.PostID == uuid.Nil || req.FeedbackType == "" {
+		writeError(w, http.StatusBadRequest, "post_id and feedback_type are required")
+		return
+	}
+
+	fb := domain.FeedFeedback{
+		ID:           uuid.New(),
+		UserID:       *viewerID,
+		PostID:       req.PostID,
+		FeedbackType: req.FeedbackType,
+		Topic:        req.Topic,
+		CreatedAt:    time.Now(),
+	}
+
+	if err := h.repo.RecordFeedFeedback(r.Context(), fb); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to record feedback")
+		return
+	}
+
+	// Emit transactional outbox event
+	_ = h.repo.CreateOutboxEvent(r.Context(), &domain.OutboxEvent{
+		EventType:     "feed.feedback.created",
+		AggregateType: "feed_feedback",
+		AggregateID:   fb.ID,
+		Payload: map[string]interface{}{
+			"user_id":       viewerID.String(),
+			"post_id":       req.PostID.String(),
+			"feedback_type": req.FeedbackType,
+			"topic":         req.Topic,
+		},
+		Status: "pending",
+	})
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status":  "recorded",
+		"post_id": req.PostID,
+	})
+}
+
+type FeedImpressionsRequest struct {
+	Impressions []struct {
+		PostID      uuid.UUID `json:"post_id"`
+		FeedType    string    `json:"feed_type"`
+		DwellTimeMs int       `json:"dwell_time_ms"`
+	} `json:"impressions"`
+}
+
+func (h *Handler) RecordFeedImpressions(w http.ResponseWriter, r *http.Request) {
+	viewerID := middleware.GetViewerID(r.Context())
+
+	var req FeedImpressionsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	domainImpressions := make([]domain.FeedImpression, 0, len(req.Impressions))
+	for _, imp := range req.Impressions {
+		if imp.PostID == uuid.Nil {
+			continue
+		}
+		fType := imp.FeedType
+		if fType == "" {
+			fType = "for_you"
+		}
+		domainImpressions = append(domainImpressions, domain.FeedImpression{
+			ID:          uuid.New(),
+			UserID:      viewerID,
+			PostID:      imp.PostID,
+			FeedType:    fType,
+			DwellTimeMs: imp.DwellTimeMs,
+			CreatedAt:   time.Now(),
+		})
+	}
+
+	if err := h.repo.RecordFeedImpressions(r.Context(), domainImpressions); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to record impressions")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status": "recorded",
+		"count":  len(domainImpressions),
+	})
+}
+
+func (h *Handler) GetTrendingTopics(w http.ResponseWriter, r *http.Request) {
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit <= 0 {
+		limit = 10
+	}
+
+	topics, err := h.repo.GetTrendingTopics(r.Context(), limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to fetch trending topics")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"trending": topics,
+	})
+}
+
+func (h *Handler) GetTopicPreferences(w http.ResponseWriter, r *http.Request) {
+	viewerID := middleware.GetViewerID(r.Context())
+	if viewerID == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	prefs, err := h.repo.GetUserTopicPreferences(r.Context(), *viewerID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to get topic preferences")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"preferences": prefs,
+	})
+}
+
+func (h *Handler) UpdateTopicPreference(w http.ResponseWriter, r *http.Request) {
+	viewerID := middleware.GetViewerID(r.Context())
+	if viewerID == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	var req domain.UserTopicPreference
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	req.UserID = *viewerID
+	if err := h.repo.UpdateUserTopicPreference(r.Context(), req); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to update topic preference")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status": "updated",
+	})
+}
+
+func (h *Handler) ResetPersonalization(w http.ResponseWriter, r *http.Request) {
+	viewerID := middleware.GetViewerID(r.Context())
+	if viewerID == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	if err := h.repo.ResetPersonalization(r.Context(), *viewerID); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to reset personalization")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status":  "reset_successful",
+		"message": "personalization history and feedback successfully cleared",
 	})
 }
 
@@ -614,11 +833,8 @@ func (h *Handler) LikePost(w http.ResponseWriter, r *http.Request) {
 
 	// Trigger notification
 	if p, err := h.repo.GetPostByID(r.Context(), postID, nil); err == nil && p.AuthorID != user.ID {
-		_ = h.repo.CreateNotification(r.Context(), &domain.Notification{
-			RecipientID: p.AuthorID,
-			ActorID:     user.ID,
-			Type:        "like",
-			PostID:      &postID,
+		h.notifyUser(r.Context(), p.AuthorID, user.ID, "like", "post", &postID, &postID, map[string]interface{}{
+			"post_id": postID.String(),
 		})
 	}
 
@@ -666,11 +882,8 @@ func (h *Handler) RepostPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if p, err := h.repo.GetPostByID(r.Context(), postID, nil); err == nil && p.AuthorID != user.ID {
-		_ = h.repo.CreateNotification(r.Context(), &domain.Notification{
-			RecipientID: p.AuthorID,
-			ActorID:     user.ID,
-			Type:        "repost",
-			PostID:      &postID,
+		h.notifyUser(r.Context(), p.AuthorID, user.ID, "repost", "post", &postID, &postID, map[string]interface{}{
+			"post_id": postID.String(),
 		})
 	}
 
@@ -740,6 +953,48 @@ func (h *Handler) RemoveBookmark(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{"status": status, "count": count})
 }
 
+// notifyUser creates a persisted notification and broadcasts real-time events over WebSocket
+func (h *Handler) notifyUser(ctx context.Context, recipientID, actorID uuid.UUID, notifType, entityType string, entityID *uuid.UUID, postID *uuid.UUID, extra map[string]interface{}) {
+	if recipientID == actorID {
+		return
+	}
+
+	_ = h.repo.CreateNotification(ctx, &domain.Notification{
+		RecipientID: recipientID,
+		ActorID:     actorID,
+		Type:        notifType,
+		EntityType:  entityType,
+		EntityID:    entityID,
+		PostID:      postID,
+	})
+
+	if h.hub != nil {
+		payload := map[string]interface{}{
+			"recipient_id": recipientID.String(),
+			"actor_id":     actorID.String(),
+			"type":         notifType,
+		}
+		if entityType != "" {
+			payload["entity_type"] = entityType
+		}
+		if entityID != nil {
+			payload["entity_id"] = entityID.String()
+		}
+		if postID != nil {
+			payload["post_id"] = postID.String()
+		}
+		for k, v := range extra {
+			payload[k] = v
+		}
+
+		h.hub.BroadcastToUser(recipientID, "notification.created", payload)
+		count, _ := h.repo.GetUnreadNotificationsCount(ctx, recipientID)
+		h.hub.BroadcastToUser(recipientID, "notification.count.updated", map[string]interface{}{
+			"unread_count": count,
+		})
+	}
+}
+
 func (h *Handler) FollowUser(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r.Context())
 	if user == nil {
@@ -754,16 +1009,47 @@ func (h *Handler) FollowUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if user.ID == target.ID {
+		writeError(w, http.StatusBadRequest, "cannot follow yourself")
+		return
+	}
+
+	// If target account is private, create a follow request instead of immediately following
+	if target.IsPrivate {
+		req := &domain.FollowRequest{
+			RequesterID: user.ID,
+			TargetID:    target.ID,
+		}
+		if err := h.repo.CreateFollowRequest(r.Context(), req); err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to submit follow request")
+			return
+		}
+
+		h.notifyUser(r.Context(), target.ID, user.ID, "follow_request", "follow_request", &req.ID, nil, map[string]interface{}{
+			"requester_username": user.Username,
+			"requester_name":     user.DisplayName,
+			"requester_avatar":   user.AvatarURL,
+		})
+
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"is_following":               false,
+			"has_pending_follow_request": true,
+			"followers_count":            target.FollowersCount,
+			"status":                     "requested",
+		})
+		return
+	}
+
 	status, followersCount, err := h.repo.FollowUser(r.Context(), user.ID, target.ID)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	_ = h.repo.CreateNotification(r.Context(), &domain.Notification{
-		RecipientID: target.ID,
-		ActorID:     user.ID,
-		Type:        "follow",
+	h.notifyUser(r.Context(), target.ID, user.ID, "follow", "user", &user.ID, nil, map[string]interface{}{
+		"follower_username": user.Username,
+		"follower_name":     user.DisplayName,
+		"follower_avatar":   user.AvatarURL,
 	})
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -799,14 +1085,207 @@ func (h *Handler) UnfollowUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // ==========================================
-// SEARCH
+// SEARCH & AUTOCOMPLETE
 // ==========================================
+
+func (h *Handler) SearchPosts(w http.ResponseWriter, r *http.Request) {
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	tab := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("tab")))
+	if tab == "" {
+		tab = "top"
+	}
+	cursor := r.URL.Query().Get("cursor")
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+
+	viewerID := middleware.GetViewerID(r.Context())
+	params := search.ParseQuery(q)
+	params.Tab = tab
+	params.Cursor = cursor
+	params.Limit = limit
+
+	if user := middleware.GetUserFromContext(r.Context()); user != nil && q != "" && cursor == "" {
+		go func(uid uuid.UUID, searchQ string) {
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			_ = h.repo.AddRecentSearch(ctx, uid, searchQ)
+		}(user.ID, q)
+	}
+
+	cacheKey := fmt.Sprintf("search:posts:%s:%x", tab, sha256.Sum256([]byte(q+cursor)))
+	if h.rdb != nil && viewerID == nil {
+		if val, err := h.rdb.Get(r.Context(), cacheKey).Result(); err == nil && val != "" {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("X-Cache", "HIT")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(val))
+			return
+		}
+	}
+
+	posts, nextCursor, err := h.repo.SearchPostsAdvanced(r.Context(), params, viewerID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to search posts")
+		return
+	}
+	if posts == nil {
+		posts = []domain.Post{}
+	}
+
+	resp := map[string]interface{}{
+		"data": posts,
+		"page_info": map[string]interface{}{
+			"next_cursor":   nextCursor,
+			"has_next_page": nextCursor != "",
+		},
+	}
+
+	if h.rdb != nil && viewerID == nil && cursor == "" {
+		if dataBytes, err := json.Marshal(resp); err == nil {
+			_ = h.rdb.Set(r.Context(), cacheKey, dataBytes, 60*time.Second).Err()
+		}
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) SearchUsers(w http.ResponseWriter, r *http.Request) {
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	cursor := r.URL.Query().Get("cursor")
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+
+	viewerID := middleware.GetViewerID(r.Context())
+	users, nextCursor, err := h.repo.SearchUsersAdvanced(r.Context(), q, viewerID, cursor, limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to search users")
+		return
+	}
+	if users == nil {
+		users = []domain.User{}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"data": users,
+		"page_info": map[string]interface{}{
+			"next_cursor":   nextCursor,
+			"has_next_page": nextCursor != "",
+		},
+	})
+}
+
+func (h *Handler) GetSearchSuggestions(w http.ResponseWriter, r *http.Request) {
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	if q == "" {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"queries": []string{},
+			"users":   []domain.User{},
+		})
+		return
+	}
+
+	cacheKey := fmt.Sprintf("search:sugg:%s", strings.ToLower(q))
+	if h.rdb != nil {
+		if val, err := h.rdb.Get(r.Context(), cacheKey).Result(); err == nil && val != "" {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("X-Cache", "HIT")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(val))
+			return
+		}
+	}
+
+	viewerID := middleware.GetViewerID(r.Context())
+	queries, users, err := h.repo.GetSearchSuggestions(r.Context(), q, viewerID, 5)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to get suggestions")
+		return
+	}
+	if queries == nil {
+		queries = []string{}
+	}
+	if users == nil {
+		users = []domain.User{}
+	}
+
+	resp := map[string]interface{}{
+		"queries": queries,
+		"users":   users,
+	}
+
+	if h.rdb != nil {
+		if dataBytes, err := json.Marshal(resp); err == nil {
+			_ = h.rdb.Set(r.Context(), cacheKey, dataBytes, 5*time.Minute).Err()
+		}
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) GetRecentSearches(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	searches, err := h.repo.GetRecentSearches(r.Context(), user.ID, 10)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to get recent searches")
+		return
+	}
+	if searches == nil {
+		searches = []domain.RecentSearch{}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"data": searches,
+	})
+}
+
+func (h *Handler) DeleteRecentSearch(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	searchIDStr := chi.URLParam(r, "searchId")
+	searchID, err := uuid.Parse(searchIDStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid search id")
+		return
+	}
+
+	if err := h.repo.DeleteRecentSearch(r.Context(), user.ID, searchID); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to delete recent search")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
+}
+
+func (h *Handler) ClearRecentSearches(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	if err := h.repo.ClearRecentSearches(r.Context(), user.ID); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to clear recent searches")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
+}
+
 func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	searchType := r.URL.Query().Get("type")
-	if searchType == "" {
-		searchType = "top"
-	}
 	viewerID := middleware.GetViewerID(r.Context())
 
 	posts, _, _ := h.repo.SearchPosts(r.Context(), q, viewerID, "", 20)
@@ -1769,10 +2248,10 @@ func (h *Handler) CreateFollowRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = h.repo.CreateNotification(r.Context(), &domain.Notification{
-		RecipientID: target.ID,
-		ActorID:     user.ID,
-		Type:        "follow_request",
+	h.notifyUser(r.Context(), target.ID, user.ID, "follow_request", "follow_request", &req.ID, nil, map[string]interface{}{
+		"requester_username": user.Username,
+		"requester_name":     user.DisplayName,
+		"requester_avatar":   user.AvatarURL,
 	})
 
 	writeJSON(w, http.StatusCreated, map[string]interface{}{
@@ -1820,7 +2299,75 @@ func (h *Handler) RespondFollowRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Update recipient's unread count
+	if h.hub != nil {
+		count, _ := h.repo.GetUnreadNotificationsCount(r.Context(), user.ID)
+		h.hub.BroadcastToUser(user.ID, "notification.count.updated", map[string]interface{}{
+			"unread_count": count,
+		})
+	}
+
 	writeJSON(w, http.StatusOK, map[string]string{"status": body.Action})
+}
+
+func (h *Handler) RespondFollowRequestByUsername(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	requesterUsername := chi.URLParam(r, "username")
+	requester, err := h.repo.GetUserByUsername(r.Context(), requesterUsername, nil)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "requester not found")
+		return
+	}
+
+	var body struct {
+		Action string `json:"action"` // 'accept' or 'reject'
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	if body.Action != "accept" && body.Action != "reject" {
+		body.Action = "accept"
+	}
+
+	reqs, err := h.repo.GetFollowRequests(r.Context(), user.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to fetch follow requests")
+		return
+	}
+
+	var targetReq *domain.FollowRequest
+	for _, req := range reqs {
+		if req.RequesterID == requester.ID {
+			targetReq = &req
+			break
+		}
+	}
+
+	if targetReq == nil {
+		writeError(w, http.StatusNotFound, "no pending follow request from this user")
+		return
+	}
+
+	accept := body.Action == "accept"
+	if err := h.repo.RespondFollowRequest(r.Context(), targetReq.ID, user.ID, accept); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to respond to follow request")
+		return
+	}
+
+	if h.hub != nil {
+		count, _ := h.repo.GetUnreadNotificationsCount(r.Context(), user.ID)
+		h.hub.BroadcastToUser(user.ID, "notification.count.updated", map[string]interface{}{
+			"unread_count": count,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status":     body.Action,
+		"request_id": targetReq.ID.String(),
+	})
 }
 
 func (h *Handler) CancelFollowRequest(w http.ResponseWriter, r *http.Request) {
@@ -2025,6 +2572,17 @@ func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
 			recipientID = &conv.OtherMember.ID
 		}
 		h.hub.BroadcastMessage(convID, recipientID, &user.ID, msg)
+	}
+
+	if conv.OtherMember != nil {
+		h.notifyUser(r.Context(), conv.OtherMember.ID, user.ID, "dm", "conversation", &convID, nil, map[string]interface{}{
+			"conversation_id": convID.String(),
+			"message_id":      msg.ID.String(),
+			"sender_username": user.Username,
+			"sender_name":     user.DisplayName,
+			"sender_avatar":   user.AvatarURL,
+			"content":         msg.Content,
+		})
 	}
 
 	outboxPayload := map[string]interface{}{

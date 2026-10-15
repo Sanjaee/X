@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/x-reconstruction/api/internal/domain"
+	"github.com/x-reconstruction/api/internal/recommendation"
 )
 
 type Repository interface {
@@ -65,7 +66,14 @@ type Repository interface {
 
 	// Search
 	SearchPosts(ctx context.Context, query string, viewerID *uuid.UUID, cursor string, limit int) ([]domain.Post, string, error)
+	SearchPostsAdvanced(ctx context.Context, params domain.SearchFilterParams, viewerID *uuid.UUID) ([]domain.Post, string, error)
 	SearchUsers(ctx context.Context, query string, viewerID *uuid.UUID, limit int) ([]domain.User, error)
+	SearchUsersAdvanced(ctx context.Context, query string, viewerID *uuid.UUID, cursor string, limit int) ([]domain.User, string, error)
+	GetSearchSuggestions(ctx context.Context, query string, viewerID *uuid.UUID, limit int) ([]string, []domain.User, error)
+	GetRecentSearches(ctx context.Context, userID uuid.UUID, limit int) ([]domain.RecentSearch, error)
+	AddRecentSearch(ctx context.Context, userID uuid.UUID, query string) error
+	DeleteRecentSearch(ctx context.Context, userID uuid.UUID, searchID uuid.UUID) error
+	ClearRecentSearches(ctx context.Context, userID uuid.UUID) error
 
 	// Notifications
 	CreateNotification(ctx context.Context, n *domain.Notification) error
@@ -105,6 +113,34 @@ type Repository interface {
 	CreateVerificationApplication(ctx context.Context, app *domain.VerificationApplication) error
 	GetVerificationApplication(ctx context.Context, userID uuid.UUID) (*domain.VerificationApplication, error)
 	UpdateUserVerification(ctx context.Context, userID uuid.UUID, isVerified bool, verifiedType string) error
+
+	// Recommendation & Ranking Candidates
+	GetFollowingCandidates(ctx context.Context, viewerID uuid.UUID, limit int) ([]domain.Post, error)
+	GetSocialEngagementCandidates(ctx context.Context, viewerID uuid.UUID, limit int) ([]domain.Post, error)
+	GetTopicCandidates(ctx context.Context, viewerID *uuid.UUID, topics []string, limit int) ([]domain.Post, error)
+	GetTrendingCandidates(ctx context.Context, limit int) ([]domain.Post, error)
+	GetFreshCandidates(ctx context.Context, limit int) ([]domain.Post, error)
+	GetExplorationCandidates(ctx context.Context, limit int) ([]domain.Post, error)
+	GetFollowingPosts(ctx context.Context, viewerID uuid.UUID, cursor *recommendation.FeedCursor, limit int) ([]domain.Post, string, error)
+	GetViewerInteractions(ctx context.Context, viewerID uuid.UUID) (
+		followedAuthors map[uuid.UUID]bool,
+		mutualAuthors map[uuid.UUID]bool,
+		likedPosts map[uuid.UUID]bool,
+		mutedAuthors map[uuid.UUID]bool,
+		blockedAuthors map[uuid.UUID]bool,
+		hiddenPosts map[uuid.UUID]bool,
+		userTopics map[string]float64,
+		err error,
+	)
+	GetActiveWeights(ctx context.Context) (domain.RankingWeights, string, error)
+
+	// Feed Feedback & Personalization
+	RecordFeedFeedback(ctx context.Context, feedback domain.FeedFeedback) error
+	RecordFeedImpressions(ctx context.Context, impressions []domain.FeedImpression) error
+	GetUserTopicPreferences(ctx context.Context, userID uuid.UUID) ([]domain.UserTopicPreference, error)
+	UpdateUserTopicPreference(ctx context.Context, pref domain.UserTopicPreference) error
+	ResetPersonalization(ctx context.Context, userID uuid.UUID) error
+	GetTrendingTopics(ctx context.Context, limit int) ([]domain.TrendingTopic, error)
 
 	// Health
 	Ping(ctx context.Context) error

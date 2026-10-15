@@ -773,6 +773,187 @@ paths:
                     type: string
                     nullable: true
 
+  /search/posts:
+    get:
+      summary: High-performance full-text post search with tabs and cursor pagination
+      operationId: searchPosts
+      tags: [Search]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search keywords and optional operators (e.g. from:user min_faves:10)
+          schema:
+            type: string
+        - name: tab
+          in: query
+          description: Search tab ranking (top, latest, media)
+          schema:
+            type: string
+            enum: [top, latest, media]
+            default: top
+        - name: cursor
+          in: query
+          description: Opaque keyset pagination cursor
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Post'
+                  page_info:
+                    type: object
+                    properties:
+                      next_cursor:
+                        type: string
+                      has_next_page:
+                        type: boolean
+
+  /search/users:
+    get:
+      summary: Search user accounts by username or display name with trigram similarity
+      operationId: searchUsers
+      tags: [Search]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserProfile'
+                  page_info:
+                    type: object
+                    properties:
+                      next_cursor:
+                        type: string
+                      has_next_page:
+                        type: boolean
+
+  /search/suggestions:
+    get:
+      summary: Debounced typeahead search suggestions for queries and users
+      operationId: getSearchSuggestions
+      tags: [Search]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  queries:
+                    type: array
+                    items:
+                      type: string
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserProfile'
+
+  /search/recent:
+    get:
+      summary: Get authenticated user recent search history
+      operationId: getRecentSearches
+      tags: [Search]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        query:
+                          type: string
+                        searched_at:
+                          type: string
+                          format: date-time
+    delete:
+      summary: Clear entire recent search history
+      operationId: clearRecentSearches
+      tags: [Search]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
+  /search/recent/{searchId}:
+    delete:
+      summary: Delete an individual recent search pill
+      operationId: deleteRecentSearch
+      tags: [Search]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: searchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
   /notifications:
     get:
       summary: List user notifications

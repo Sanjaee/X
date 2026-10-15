@@ -315,3 +315,138 @@ type VerificationApplication struct {
 	CreatedAt   time.Time  `json:"created_at"`
 }
 
+// FeedImpression tracks post exposure on client viewport
+type FeedImpression struct {
+	ID          uuid.UUID  `json:"id"`
+	UserID      *uuid.UUID `json:"user_id,omitempty"`
+	PostID      uuid.UUID  `json:"post_id"`
+	FeedType    string     `json:"feed_type"`
+	DwellTimeMs int        `json:"dwell_time_ms"`
+	CreatedAt   time.Time  `json:"created_at"`
+}
+
+// FeedFeedback represents user negative or positive feedback signals
+type FeedFeedback struct {
+	ID           uuid.UUID `json:"id"`
+	UserID       uuid.UUID `json:"user_id"`
+	PostID       uuid.UUID `json:"post_id"`
+	FeedbackType string    `json:"feedback_type"` // 'hide', 'not_interested', 'show_less', 'report'
+	Topic        string    `json:"topic,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+// UserTopicPreference stores explicitly followed or algorithmically inferred topics
+type UserTopicPreference struct {
+	ID            uuid.UUID `json:"id"`
+	UserID        uuid.UUID `json:"user_id"`
+	Topic         string    `json:"topic"`
+	AffinityScore float64   `json:"affinity_score"`
+	IsExplicit    bool      `json:"is_explicit"`
+	IsMuted       bool      `json:"is_muted"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+// PostFeatures stores precomputed content quality, topic vectors, and velocity
+type PostFeatures struct {
+	PostID        uuid.UUID `json:"post_id"`
+	QualityScore  float64   `json:"quality_score"`
+	PrimaryTopic  string    `json:"primary_topic"`
+	VelocityScore float64   `json:"velocity_score"`
+	HasMedia      bool      `json:"has_media"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+// RankingWeights defines the configurable, versionable weights for the linear scoring model
+type RankingWeights struct {
+	RelationshipWeight     float64 `json:"relationship_weight"`
+	FreshnessWeight        float64 `json:"freshness_weight"`
+	EngagementWeight       float64 `json:"engagement_weight"`
+	TopicWeight            float64 `json:"topic_weight"`
+	QualityWeight          float64 `json:"quality_weight"`
+	ExplorationWeight      float64 `json:"exploration_weight"`
+	NegativePenaltyWeight  float64 `json:"negative_penalty_weight"`
+	RepetitionWeight       float64 `json:"repetition_weight"`
+	FreshnessHalfLifeHours float64 `json:"freshness_half_life_hours"`
+}
+
+// DefaultRankingWeights returns calibrated default production weights
+func DefaultRankingWeights() RankingWeights {
+	return RankingWeights{
+		RelationshipWeight:     2.5,
+		FreshnessWeight:        3.0,
+		EngagementWeight:       2.0,
+		TopicWeight:            1.8,
+		QualityWeight:          1.2,
+		ExplorationWeight:      1.0,
+		NegativePenaltyWeight:  5.0,
+		RepetitionWeight:       3.0,
+		FreshnessHalfLifeHours: 12.0,
+	}
+}
+
+// RankingExperiment represents an active or candidate versioned scoring configuration
+type RankingExperiment struct {
+	ID        uuid.UUID      `json:"id"`
+	Name      string         `json:"name"`
+	Version   string         `json:"version"`
+	Weights   RankingWeights `json:"weights"`
+	IsActive  bool           `json:"is_active"`
+	CreatedAt time.Time      `json:"created_at"`
+}
+
+// Hashtag represents a tracked topic tag
+type Hashtag struct {
+	ID         uuid.UUID `json:"id"`
+	Tag        string    `json:"tag"`
+	PostsCount int       `json:"posts_count"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+// TrendingTopic represents an aggregated trending subject with velocity
+type TrendingTopic struct {
+	Category      string  `json:"category"`
+	Topic         string  `json:"topic"`
+	PostsCount    int     `json:"posts_count"`
+	VelocityScore float64 `json:"velocity_score"`
+}
+
+// PageInfo represents cursor pagination metadata
+type PageInfo struct {
+	NextCursor  string `json:"next_cursor,omitempty"`
+	HasNextPage bool   `json:"has_next_page"`
+}
+
+// SearchFilterParams holds parsed search criteria
+type SearchFilterParams struct {
+	Query        string     `json:"query"`
+	RawQuery     string     `json:"raw_query"`
+	Tab          string     `json:"tab"` // "top", "latest", "people", "media"
+	FromUsername string     `json:"from_username,omitempty"`
+	ToUsername   string     `json:"to_username,omitempty"`
+	Mentions     string     `json:"mentions,omitempty"`
+	HasMedia     bool       `json:"has_media,omitempty"`
+	MediaType    string     `json:"media_type,omitempty"` // "image", "video"
+	MinLikes     int        `json:"min_likes,omitempty"`
+	SinceDate    *time.Time `json:"since_date,omitempty"`
+	UntilDate    *time.Time `json:"until_date,omitempty"`
+	Language     string     `json:"language,omitempty"`
+	Cursor       string     `json:"cursor,omitempty"`
+	Limit        int        `json:"limit,omitempty"`
+}
+
+// SearchSuggestionsResponse provides autocomplete results
+type SearchSuggestionsResponse struct {
+	Queries []string `json:"queries"`
+	Users   []User   `json:"users"`
+}
+
+// RecentSearch represents a saved search query
+type RecentSearch struct {
+	ID         uuid.UUID `json:"id"`
+	UserID     uuid.UUID `json:"user_id"`
+	Query      string    `json:"query"`
+	SearchedAt time.Time `json:"searched_at"`
+}
+
+
+

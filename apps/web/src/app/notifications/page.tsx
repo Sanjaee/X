@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
   Settings,
@@ -11,12 +11,13 @@ import {
   Mail,
   UserCheck,
   CheckCheck,
+  Check,
   Loader2,
 } from "lucide-react";
 import { LeftNavRail } from "@/components/layout/LeftNavRail";
 import { RightSidebar } from "@/components/layout/RightSidebar";
 import { AuthModal } from "@/components/auth/AuthModal";
-import { Notification, User } from "@/types";
+import { Notification, User, FollowRequest } from "@/types";
 import { apiRequest } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useRealtime } from "@/lib/useRealtime";
@@ -24,19 +25,36 @@ import { useRealtime } from "@/lib/useRealtime";
 export default function NotificationsPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [followRequests, setFollowRequests] = useState<FollowRequest[]>([]);
+  const [requestStates, setRequestStates] = useState<Record<string, "accepted" | "rejected">>({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"all" | "verified" | "mentions">("all");
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const { setUnreadNotifCount } = useRealtime();
 
+  const fetchNotifs = useCallback(() => {
+    return apiRequest<{ notifications: Notification[] }>("/notifications?limit=50")
+      .then((res) => {
+        setNotifications(res.notifications || []);
+      })
+      .catch(() => {});
+  }, []);
+
+  const fetchFollowRequests = useCallback(() => {
+    return apiRequest<{ requests: FollowRequest[] }>("/follow-requests")
+      .then((res) => {
+        setFollowRequests(res.requests || []);
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     apiRequest<User>("/me")
       .then((u) => {
         setCurrentUser(u);
-        return apiRequest<{ notifications: Notification[] }>("/notifications?limit=50");
+        return Promise.all([fetchNotifs(), fetchFollowRequests()]);
       })
-      .then((res) => {
-        setNotifications(res.notifications || []);
+      .then(() => {
         // Automatically mark as read on visit
         apiRequest("/notifications/read", { method: "PATCH" })
           .then(() => setUnreadNotifCount(0))
@@ -44,7 +62,18 @@ export default function NotificationsPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [setUnreadNotifCount]);
+
+    // Listen for live incoming notifications
+    const handleNewNotif = () => {
+      fetchNotifs();
+      fetchFollowRequests();
+    };
+
+    window.addEventListener("x_new_notification", handleNewNotif);
+    return () => {
+      window.removeEventListener("x_new_notification", handleNewNotif);
+    };
+  }, [setUnreadNotifCount, fetchNotifs, fetchFollowRequests]);
 
   const handleMarkAllRead = async () => {
     try {
@@ -53,6 +82,30 @@ export default function NotificationsPage() {
       setUnreadNotifCount(0);
     } catch (e) {
       console.error("Failed to mark all as read", e);
+    }
+  };
+
+  const handleRespondFollowRequest = async (n: Notification, action: "accept" | "reject") => {
+    // Optimistic state
+    setRequestStates((prev) => ({ ...prev, [n.id]: action === "accept" ? "accepted" : "rejected" }));
+
+    try {
+      // 1. Try by entity_id (the follow_request UUID)
+      if (n.entity_id) {
+        await apiRequest(`/follow-requests/${n.entity_id}/respond`, {
+          method: "POST",
+          body: JSON.stringify({ action }),
+        });
+      } else if (n.actor?.username) {
+        // 2. Fallback to responding by username
+        await apiRequest(`/users/${n.actor.username}/follow-request/respond`, {
+          method: "POST",
+          body: JSON.stringify({ action }),
+        });
+      }
+      fetchFollowRequests();
+    } catch (e) {
+      console.error("Failed to respond to follow request", e);
     }
   };
 
@@ -66,6 +119,8 @@ export default function NotificationsPage() {
         return <UserPlus className="w-7 h-7 fill-brand text-brand" />;
       case "follow_request":
         return <UserCheck className="w-7 h-7 text-amber-500" />;
+      case "follow_accept":
+        return <UserCheck className="w-7 h-7 fill-emerald-500 text-emerald-500" />;
       case "dm":
         return <Mail className="w-7 h-7 fill-blue-400 text-blue-400" />;
       case "reply":
@@ -141,6 +196,33 @@ export default function NotificationsPage() {
 
           {/* Notifications List */}
           <div className="flex-1 flex flex-col">
+            {/* Pending Follow Requests Banner */}
+            {followRequests.length > 0 && (
+              <div className="p-4 border-b border-border bg-subtle/20 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-500/15 flex items-center justify-center text-amber-500 shrink-0">
+                    <UserCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[15px] leading-5 text-foreground">Follow requests</h4>
+                    <p className="text-[13px] text-muted">
+                      {followRequests.length} pending {followRequests.length === 1 ? "request" : "requests"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex -space-x-2 overflow-hidden">
+                  {followRequests.slice(0, 3).map((fr) => (
+                    <img
+                      key={fr.id}
+                      src={fr.requester?.avatar_url || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"}
+                      alt={fr.requester?.display_name || "User"}
+                      className="inline-block h-7 w-7 rounded-full ring-2 ring-background object-cover"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {loading ? (
               <div className="flex justify-center items-center p-16 text-brand">
                 <Loader2 className="w-8 h-8 animate-spin" />
@@ -175,12 +257,12 @@ export default function NotificationsPage() {
                   <div
                     key={n.id}
                     className={cn(
-                      "flex gap-4 p-4 hover:bg-subtle/50 transition-colors cursor-pointer",
+                      "flex gap-4 p-4 hover:bg-subtle/50 transition-colors",
                       !n.is_read && "bg-brand/5"
                     )}
                   >
                     <div className="shrink-0 pt-0.5">{getIconForType(n.type)}</div>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <Link href={`/${n.actor?.username || "user"}`} className="block mb-2">
                         <img
                           src={
@@ -203,10 +285,63 @@ export default function NotificationsPage() {
                         {n.type === "reply" && "replied to your post"}
                         {n.type === "follow" && "followed you"}
                         {n.type === "follow_request" && "requested to follow you"}
+                        {n.type === "follow_accept" && "accepted your follow request"}
                         {n.type === "dm" && "sent you a direct message"}
                       </p>
+
+                      {/* Follow Request Action Buttons */}
+                      {n.type === "follow_request" && (
+                        <div className="flex items-center gap-2 mt-3">
+                          {requestStates[n.id] === "accepted" ? (
+                            <span className="text-emerald-500 font-bold text-[13px] flex items-center gap-1.5 bg-emerald-500/10 px-3.5 py-1.5 rounded-full">
+                              <Check className="w-4 h-4" /> Request accepted
+                            </span>
+                          ) : requestStates[n.id] === "rejected" ? (
+                            <span className="text-muted font-bold text-[13px] bg-subtle px-3.5 py-1.5 rounded-full">
+                              Request declined
+                            </span>
+                          ) : (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleRespondFollowRequest(n, "accept");
+                                }}
+                                className="bg-foreground text-background hover:opacity-90 font-bold px-4 py-1.5 rounded-full text-[13px] transition-all shadow-sm active:scale-95 cursor-pointer"
+                              >
+                                Accept
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleRespondFollowRequest(n, "reject");
+                                }}
+                                className="border border-border hover:bg-subtle text-foreground font-bold px-4 py-1.5 rounded-full text-[13px] transition-all active:scale-95 cursor-pointer"
+                              >
+                                Decline
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Direct Message Link */}
+                      {n.type === "dm" && (
+                        <div className="mt-1.5">
+                          <Link
+                            href={n.entity_id ? `/messages/${n.entity_id}` : "/messages"}
+                            className="inline-flex items-center gap-1 text-[13px] text-brand hover:underline font-semibold"
+                          >
+                            Open message →
+                          </Link>
+                        </div>
+                      )}
+
+                      {/* Post Snippet */}
                       {n.post && (
-                        <p className="text-[14px] text-muted mt-1 line-clamp-2">
+                        <p className="text-[14px] text-muted mt-1.5 line-clamp-2 bg-subtle/30 p-2.5 rounded-xl border border-border/50">
                           {n.post.content}
                         </p>
                       )}

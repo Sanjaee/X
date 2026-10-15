@@ -241,7 +241,7 @@ export default function PostDetailPage() {
                 </div>
 
                 {/* Primary Action Bar */}
-                <div className="flex items-center justify-around py-2 border-b border-border text-muted">
+                <div className="flex items-center justify-around pt-2 text-muted">
                   <button className="p-2 hover:bg-brand/10 hover:text-brand rounded-full transition-colors">
                     <MessageCircle className="w-5 h-5" />
                   </button>
