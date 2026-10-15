@@ -88,8 +88,17 @@ func main() {
 	r.Use(middleware.RequestTimeoutMiddleware(15))
 
 	// CORS configuration
+	allowedOrigins := []string{
+		"http://localhost:3000", "http://127.0.0.1:3000",
+		"http://localhost:80", "http://127.0.0.1:80", "http://localhost",
+		"https://lostmedia.pro", "https://www.lostmedia.pro", "http://lostmedia.pro",
+	}
+	if cfg.AppURL != "" {
+		allowedOrigins = append(allowedOrigins, cfg.AppURL)
+	}
+
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:80", "http://127.0.0.1:80", "http://localhost"},
+		AllowedOrigins:   allowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link", "Set-Cookie"},
