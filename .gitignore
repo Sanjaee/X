@@ -15,7 +15,7 @@ build/
 dist/
 
 # Go build binaries
-server
+/server
 *.exe
 *.exe~
 *.dll
