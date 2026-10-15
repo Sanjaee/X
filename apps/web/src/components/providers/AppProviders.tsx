@@ -5,6 +5,8 @@ import { SessionProvider, useSession } from "next-auth/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RealtimeProvider } from "@/lib/useRealtime";
 import { setStoredToken } from "@/lib/api";
+import { MediaViewerProvider } from "@/components/media/MediaViewerContext";
+import { PhotoViewerModal } from "@/components/media/PhotoViewerModal";
 
 function NextAuthSync() {
   const { data: session, status } = useSession();
@@ -42,7 +44,12 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
     <SessionProvider>
       <QueryClientProvider client={queryClient}>
         <NextAuthSync />
-        <RealtimeProvider>{children}</RealtimeProvider>
+        <RealtimeProvider>
+          <MediaViewerProvider>
+            {children}
+            <PhotoViewerModal />
+          </MediaViewerProvider>
+        </RealtimeProvider>
       </QueryClientProvider>
     </SessionProvider>
   );

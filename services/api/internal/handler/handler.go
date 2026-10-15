@@ -441,10 +441,11 @@ func (h *Handler) setSessionCookie(w http.ResponseWriter, token string) {
 // POSTS & FEED
 // ==========================================
 type CreatePostRequest struct {
-	Content     string      `json:"content"`
-	MediaIDs    []uuid.UUID `json:"media_ids"`
-	ReplyToID   *uuid.UUID  `json:"reply_to_id"`
-	QuotePostID *uuid.UUID  `json:"quote_post_id"`
+	Content     string               `json:"content"`
+	MediaIDs    []uuid.UUID          `json:"media_ids"`
+	Media       []domain.MediaObject `json:"media"`
+	ReplyToID   *uuid.UUID           `json:"reply_to_id"`
+	QuotePostID *uuid.UUID           `json:"quote_post_id"`
 }
 
 func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
@@ -461,7 +462,7 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req.Content = strings.TrimSpace(req.Content)
-	if req.Content == "" && len(req.MediaIDs) == 0 {
+	if req.Content == "" && len(req.MediaIDs) == 0 && len(req.Media) == 0 {
 		writeError(w, http.StatusBadRequest, "content or media required")
 		return
 	}
@@ -478,7 +479,6 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	post := &domain.Post{
-
 		AuthorID:    user.ID,
 		Content:     req.Content,
 		ReplyToID:   req.ReplyToID,
@@ -489,6 +489,37 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		if media, err := h.repo.GetMediaObjectByID(r.Context(), mID); err == nil {
 			post.Media = append(post.Media, *media)
 		}
+	}
+
+	for _, m := range req.Media {
+		if m.ID == uuid.Nil {
+			m.ID = uuid.New()
+		}
+		m.UploaderID = user.ID
+		if m.StorageKey == "" {
+			m.StorageKey = fmt.Sprintf("media/%s/%s", user.ID, m.ID)
+		}
+		if m.MediaType == "" {
+			m.MediaType = "image"
+		}
+		if m.MimeType == "" {
+			if m.MediaType == "video" {
+				m.MimeType = "video/mp4"
+			} else {
+				m.MimeType = "image/jpeg"
+			}
+		}
+		if m.FileSizeBytes == 0 {
+			m.FileSizeBytes = 1024
+		}
+		if m.CreatedAt.IsZero() {
+			m.CreatedAt = time.Now()
+		}
+		if err := h.repo.CreateMediaObject(r.Context(), &m); err != nil {
+			slog.Error("failed to create inline media object", "error", err)
+			continue
+		}
+		post.Media = append(post.Media, m)
 	}
 
 	if err := h.repo.CreatePost(r.Context(), post); err != nil {

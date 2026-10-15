@@ -52,17 +52,21 @@ export function VirtualizedFeed({
 
   const virtualItems = virtualizer.getVirtualItems();
 
-  // Scroll restoration: store and restore anchor post ID
+  // Scroll restoration: store and restore anchor post ID seamlessly
   useEffect(() => {
     if (!storageKey || typeof window === "undefined" || posts.length === 0) return;
 
-    const savedAnchor = sessionStorage.getItem(`${storageKey}_anchor`);
+    const mediaAnchor = sessionStorage.getItem("x_last_media_anchor");
+    const savedAnchor = mediaAnchor || sessionStorage.getItem(`${storageKey}_anchor`);
+
     if (savedAnchor) {
       const targetIndex = posts.findIndex((p) => p.id === savedAnchor);
-      if (targetIndex > 0) {
-        // Small delay to allow layout to settle
+      if (targetIndex >= 0) {
         requestAnimationFrame(() => {
           virtualizer.scrollToIndex(targetIndex, { align: "start" });
+          if (mediaAnchor) {
+            sessionStorage.removeItem("x_last_media_anchor");
+          }
         });
       }
     }
@@ -173,6 +177,7 @@ export function VirtualizedFeed({
             <div
               key={post.id}
               data-index={virtualRow.index}
+              data-post-id={post.id}
               ref={virtualizer.measureElement}
               style={{
                 position: "absolute",

@@ -16,6 +16,8 @@ import {
 import { Post } from "@/types";
 import { formatRelativeTime, formatNumber, cn } from "@/lib/utils";
 import { VerifiedBadge } from "@/components/common/VerifiedBadge";
+import { useMediaViewer } from "@/components/media/MediaViewerContext";
+import { VideoPlayer } from "@/components/media/VideoPlayer";
 
 interface PostCardProps {
   post: Post;
@@ -27,6 +29,7 @@ interface PostCardProps {
 
 export function PostCard({ post, onLike, onRepost, onBookmark, onFeedback }: PostCardProps) {
   const router = useRouter();
+  const { openMedia } = useMediaViewer();
   const [isLiked, setIsLiked] = useState(post.is_liked);
   const [likesCount, setLikesCount] = useState(post.likes_count);
   const [isReposted, setIsReposted] = useState(post.is_reposted);
@@ -63,6 +66,7 @@ export function PostCard({ post, onLike, onRepost, onBookmark, onFeedback }: Pos
 
   return (
     <article
+      data-post-id={post.id}
       onClick={handleCardClick}
       className="flex gap-3 px-4 py-3 border-b border-border hover:bg-subtle/50 transition-colors cursor-pointer select-none"
     >
@@ -152,23 +156,28 @@ export function PostCard({ post, onLike, onRepost, onBookmark, onFeedback }: Pos
           {post.content}
         </p>
 
-        {/* Media Attachments with CLS-Protected Aspect Ratio */}
+        {/* Media Attachments with CLS-Protected Aspect Ratio & Photo Viewer */}
         {post.media && post.media.length > 0 && (
           <div className="mt-3 rounded-2xl overflow-hidden border border-border bg-muted/20">
             {post.media.length === 1 && (
               post.media[0].media_type === "video" ? (
-                <div className="w-full aspect-video bg-black flex items-center justify-center">
-                  <video
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full aspect-video bg-black flex items-center justify-center"
+                >
+                  <VideoPlayer
                     src={post.media[0].url}
-                    controls
-                    playsInline
-                    preload="metadata"
-                    className="w-full h-full object-contain"
+                    mode="in_feed"
+                    onOpenViewer={() => openMedia(post, 0)}
                   />
                 </div>
               ) : (
                 <div
-                  className="w-full bg-muted/30 relative overflow-hidden"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openMedia(post, 0);
+                  }}
+                  className="w-full bg-muted/30 relative overflow-hidden cursor-pointer group"
                   style={{
                     aspectRatio:
                       post.media[0].width && post.media[0].height
@@ -182,7 +191,7 @@ export function PostCard({ post, onLike, onRepost, onBookmark, onFeedback }: Pos
                     alt="Attachment"
                     loading="lazy"
                     decoding="async"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover group-hover:opacity-95 transition-opacity"
                   />
                 </div>
               )
@@ -190,14 +199,19 @@ export function PostCard({ post, onLike, onRepost, onBookmark, onFeedback }: Pos
             {post.media.length > 1 && (
               <div className="grid grid-cols-2 gap-0.5 aspect-video bg-muted/20">
                 {post.media.slice(0, 4).map((m, idx) => (
-                  <div key={m.id || idx} className="relative w-full h-full overflow-hidden bg-muted/30">
+                  <div
+                    key={m.id || idx}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openMedia(post, idx);
+                    }}
+                    className="relative w-full h-full overflow-hidden bg-muted/30 cursor-pointer group"
+                  >
                     {m.media_type === "video" ? (
-                      <video
+                      <VideoPlayer
                         src={m.url}
-                        controls
-                        playsInline
-                        preload="metadata"
-                        className="w-full h-full object-cover"
+                        mode="in_feed"
+                        onOpenViewer={() => openMedia(post, idx)}
                       />
                     ) : (
                       <img
@@ -205,7 +219,7 @@ export function PostCard({ post, onLike, onRepost, onBookmark, onFeedback }: Pos
                         alt="Attachment"
                         loading="lazy"
                         decoding="async"
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover group-hover:opacity-95 transition-opacity"
                       />
                     )}
                   </div>

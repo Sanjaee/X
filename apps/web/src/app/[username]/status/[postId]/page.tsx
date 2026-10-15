@@ -22,10 +22,13 @@ import { AuthModal } from "@/components/auth/AuthModal";
 import { User, Post } from "@/types";
 import { apiRequest } from "@/lib/api";
 import { formatFullTimestamp, formatNumber, cn } from "@/lib/utils";
+import { useMediaViewer } from "@/components/media/MediaViewerContext";
+import { VideoPlayer } from "@/components/media/VideoPlayer";
 
 export default function PostDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { openMedia } = useMediaViewer();
   const postId = params.postId as string;
 
   const [post, setPost] = useState<Post | null>(null);
@@ -199,14 +202,56 @@ export default function PostDetailPage() {
                   {post.content}
                 </p>
 
-                {/* Media gallery */}
+                {/* Media gallery with Photo & Video Viewer */}
                 {post.media && post.media.length > 0 && (
-                  <div className="mb-4 rounded-2xl overflow-hidden border border-border">
-                    <img
-                      src={post.media[0].url}
-                      alt="Attachment"
-                      className="w-full max-h-[510px] object-cover"
-                    />
+                  <div className="mb-4 rounded-2xl overflow-hidden border border-border bg-muted/20">
+                    {post.media.length === 1 && (
+                      post.media[0].media_type === "video" ? (
+                        <div className="w-full aspect-video bg-black flex items-center justify-center">
+                          <VideoPlayer
+                            src={post.media[0].url}
+                            mode="in_feed"
+                            onOpenViewer={() => openMedia(post, 0)}
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => openMedia(post, 0)}
+                          className="w-full bg-muted/30 relative overflow-hidden cursor-pointer group"
+                        >
+                          <img
+                            src={post.media[0].url}
+                            alt="Attachment"
+                            className="w-full max-h-[510px] object-cover group-hover:opacity-95 transition-opacity"
+                          />
+                        </div>
+                      )
+                    )}
+                    {post.media.length > 1 && (
+                      <div className="grid grid-cols-2 gap-0.5 aspect-video bg-muted/20">
+                        {post.media.slice(0, 4).map((m, idx) => (
+                          <div
+                            key={m.id || idx}
+                            onClick={() => openMedia(post, idx)}
+                            className="relative w-full h-full overflow-hidden bg-muted/30 cursor-pointer group"
+                          >
+                            {m.media_type === "video" ? (
+                              <VideoPlayer
+                                src={m.url}
+                                mode="in_feed"
+                                onOpenViewer={() => openMedia(post, idx)}
+                              />
+                            ) : (
+                              <img
+                                src={m.url}
+                                alt="Attachment"
+                                className="w-full h-full object-cover group-hover:opacity-95 transition-opacity"
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 

@@ -24,6 +24,7 @@ export interface MediaObject {
   media_type: 'image' | 'video' | 'gif';
   width?: number;
   height?: number;
+  duration_seconds?: number;
 }
 
 export interface Post {
