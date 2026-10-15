@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useCallback } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { PostCard } from "@/components/feed/PostCard";
 import { Post } from "@/types";
@@ -41,20 +41,36 @@ export function VirtualizedFeed({
 }: VirtualizedFeedProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const hasRestoredRef = useRef(false);
+  const [scrollMargin, setScrollMargin] = useState(0);
 
-  // Set up window virtualizer for natural window scrolling
+  // Sync scroll margin with list offset reliably
+  useEffect(() => {
+    if (listRef.current) {
+      setScrollMargin(listRef.current.offsetTop);
+    }
+  }, []);
+
+  const getItemKey = useCallback(
+    (index: number) => posts[index]?.id ?? index,
+    [posts]
+  );
+
+  // Set up window virtualizer for natural window scrolling with stable keys
   const virtualizer = useWindowVirtualizer({
     count: posts.length,
-    estimateSize: () => 180, // estimated tweet height
-    overscan: 5,
-    scrollMargin: listRef.current?.offsetTop ?? 0,
+    estimateSize: () => 160,
+    overscan: 4,
+    getItemKey,
+    scrollMargin,
   });
 
   const virtualItems = virtualizer.getVirtualItems();
 
-  // Scroll restoration: store and restore anchor post ID seamlessly
+  // Scroll restoration: run strictly ONCE when posts mount/hydrate to avoid bouncing
   useEffect(() => {
     if (!storageKey || typeof window === "undefined" || posts.length === 0) return;
+    if (hasRestoredRef.current) return;
 
     const mediaAnchor = sessionStorage.getItem("x_last_media_anchor");
     const savedAnchor = mediaAnchor || sessionStorage.getItem(`${storageKey}_anchor`);
@@ -62,28 +78,42 @@ export function VirtualizedFeed({
     if (savedAnchor) {
       const targetIndex = posts.findIndex((p) => p.id === savedAnchor);
       if (targetIndex >= 0) {
+        hasRestoredRef.current = true;
+        sessionStorage.removeItem("x_last_media_anchor");
+        sessionStorage.removeItem(`${storageKey}_anchor`);
         requestAnimationFrame(() => {
           virtualizer.scrollToIndex(targetIndex, { align: "start" });
-          if (mediaAnchor) {
-            sessionStorage.removeItem("x_last_media_anchor");
-          }
         });
+        return;
       }
     }
+    hasRestoredRef.current = true;
+  }, [posts.length, storageKey, virtualizer]);
 
-    const handleBeforeUnload = () => {
-      // Find the top-most visible item
-      if (virtualItems.length > 0) {
-        const topItem = posts[virtualItems[0].index];
-        if (topItem) {
-          sessionStorage.setItem(`${storageKey}_anchor`, topItem.id);
+  // Persist scroll anchor only when navigating away or closing page (not during active scroll)
+  useEffect(() => {
+    const handleSaveAnchor = () => {
+      if (typeof window === "undefined") return;
+      if (window.scrollY > 250) {
+        const items = virtualizer.getVirtualItems();
+        if (items.length > 0) {
+          const topItem = posts[items[0].index];
+          if (topItem) {
+            sessionStorage.setItem(`${storageKey}_anchor`, topItem.id);
+          }
         }
+      } else {
+        sessionStorage.removeItem(`${storageKey}_anchor`);
       }
     };
 
-    window.addEventListener("scroll", handleBeforeUnload, { passive: true });
-    return () => window.removeEventListener("scroll", handleBeforeUnload);
-  }, [posts, storageKey, virtualItems, virtualizer]);
+    window.addEventListener("beforeunload", handleSaveAnchor);
+    window.addEventListener("pagehide", handleSaveAnchor);
+    return () => {
+      window.removeEventListener("beforeunload", handleSaveAnchor);
+      window.removeEventListener("pagehide", handleSaveAnchor);
+    };
+  }, [posts, storageKey, virtualizer]);
 
   // Bottom Sentinel IntersectionObserver with 800px prefetch margin
   useEffect(() => {

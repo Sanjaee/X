@@ -129,7 +129,11 @@ export default function PostDetailPage() {
   };
 
   const handleReplyCreated = (newReply: Post) => {
-    setReplies((prev) => [newReply, ...prev]);
+    const completeReply: Post = {
+      ...newReply,
+      author: newReply.author || (currentUser ? { ...currentUser } : undefined),
+    };
+    setReplies((prev) => [completeReply, ...prev]);
   };
 
   return (

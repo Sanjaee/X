@@ -94,19 +94,27 @@ export default function HomePage() {
   }, [data]);
 
   const handlePostCreated = (newPost: Post) => {
+    // Ensure post author is populated even before refetching
+    const postWithAuthor: Post = {
+      ...newPost,
+      author: newPost.author || (currentUser ? { ...currentUser } : undefined),
+    };
+
     queryClient.setQueryData(
       feedKeys.list(activeTab),
       (oldData: { pages: FeedResponse[]; pageParams: string[] } | undefined) => {
         if (!oldData || !oldData.pages || oldData.pages.length === 0) {
           return {
-            pages: [{ posts: [newPost], next_cursor: undefined }],
+            pages: [{ posts: [postWithAuthor], next_cursor: undefined }],
             pageParams: [""],
           };
         }
         const firstPage = oldData.pages[0];
+        // Deduplicate in case it already exists
+        const filteredPosts = firstPage.posts.filter((p) => p.id !== postWithAuthor.id);
         const updatedFirstPage = {
           ...firstPage,
-          posts: [newPost, ...firstPage.posts],
+          posts: [postWithAuthor, ...filteredPosts],
         };
         return {
           ...oldData,
@@ -114,6 +122,13 @@ export default function HomePage() {
         };
       }
     );
+
+    // Reset scroll position to top and clear anchors
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("x_feed_scroll_anchor");
+      sessionStorage.removeItem("x_last_media_anchor");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   const handleFeedback = async (postId: string, feedbackType: "not_interested" | "hide") => {

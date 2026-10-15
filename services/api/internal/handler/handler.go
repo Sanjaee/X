@@ -480,6 +480,7 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 
 	post := &domain.Post{
 		AuthorID:    user.ID,
+		Author:      user,
 		Content:     req.Content,
 		ReplyToID:   req.ReplyToID,
 		QuotePostID: req.QuotePostID,
