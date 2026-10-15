@@ -1,4 +1,20 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+export function getApiBase(): string {
+  let base = process.env.NEXT_PUBLIC_API_URL;
+  if (!base) {
+    if (typeof window !== "undefined") {
+      base = `${window.location.origin}/api/v1`;
+    } else {
+      base = "http://api:8080/api/v1";
+    }
+  }
+  base = base.replace(/\/+$/, "");
+  if (base.endsWith("/api")) {
+    base = `${base}/v1`;
+  } else if (!base.includes("/api/v1")) {
+    base = `${base}/api/v1`;
+  }
+  return base;
+}
 
 function getStoredToken(): string | null {
   if (typeof window !== "undefined") {
@@ -35,7 +51,11 @@ export async function apiRequest<T = any>(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const url = `${API_BASE}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
+  const base = getApiBase();
+  const normalizedEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const url = normalizedEndpoint.startsWith("/api/v1")
+    ? (base.endsWith("/api/v1") ? `${base.slice(0, -7)}${normalizedEndpoint}` : `${base}${normalizedEndpoint}`)
+    : `${base}${normalizedEndpoint}`;
 
   const res = await fetch(url, {
     ...options,

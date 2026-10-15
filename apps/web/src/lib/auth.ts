@@ -15,6 +15,7 @@ export const authOptions: NextAuthOptions = {
         try {
           // Sync with Go backend API to register/login user and generate backend session_token
           const candidates = [
+            process.env.INTERNAL_API_URL,
             process.env.INTERNAL_BACKEND_URL,
             process.env.BACKEND_URL,
             "http://api:8080/api/v1",
@@ -58,10 +59,45 @@ export const authOptions: NextAuthOptions = {
       }
       return true;
     },
-    async jwt({ token, user }) {
-      if (user) {
+    async jwt({ token, user, account }) {
+      if (user && (user as any).sessionToken) {
         token.sessionToken = (user as any).sessionToken;
         token.backendUser = (user as any).backendUser;
+      }
+      if (!token.sessionToken && account?.provider === "google" && token?.email) {
+        try {
+          const candidates = [
+            process.env.INTERNAL_API_URL,
+            process.env.INTERNAL_BACKEND_URL,
+            process.env.BACKEND_URL,
+            "http://api:8080/api/v1",
+            "http://localhost:8080/api/v1",
+          ].filter(Boolean) as string[];
+
+          for (const baseUrl of candidates) {
+            try {
+              const url = baseUrl.endsWith("/api/v1")
+                ? `${baseUrl}/auth/google`
+                : `${baseUrl}/api/v1/auth/google`;
+              const res = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  email: token.email,
+                  display_name: token.name || (token.email as string).split("@")[0],
+                  avatar_url: token.picture || "",
+                  google_id: account.providerAccountId,
+                }),
+              });
+              if (res.ok) {
+                const data = await res.json();
+                token.sessionToken = data.session_token;
+                token.backendUser = data.user;
+                break;
+              }
+            } catch (e) {}
+          }
+        } catch (e) {}
       }
       return token;
     },

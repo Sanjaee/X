@@ -115,8 +115,8 @@ func main() {
 	r.Get("/health/ready", h.HealthReady)
 	r.Get("/health/metrics", h.HealthMetrics)
 
-	// API v1 Routes
-	r.Route("/api/v1", func(v1 chi.Router) {
+	// API Routes (mounted on both /api/v1 and /api for seamless frontend compatibility)
+	registerAPIRoutes := func(v1 chi.Router) {
 		// WebSocket Realtime Gateway (Section 4G & 10)
 		v1.Get("/ws", h.ServeWebSocket)
 
@@ -230,7 +230,10 @@ func main() {
 			auth.Delete("/search/recent", h.ClearRecentSearches)
 			auth.Delete("/search/recent/{searchId}", h.DeleteRecentSearch)
 		})
-	})
+	}
+
+	r.Route("/api/v1", registerAPIRoutes)
+	r.Route("/api", registerAPIRoutes)
 
 
 	server := &http.Server{

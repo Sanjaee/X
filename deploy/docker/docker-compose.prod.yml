@@ -71,7 +71,7 @@ services:
     environment:
       PORT: 3000
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${BACKEND_URL:-https://lostmedia.pro/api}
+      NEXT_PUBLIC_API_URL: ${BACKEND_URL:-https://lostmedia.pro/api/v1}
       NEXTAUTH_URL: ${NEXTAUTH_URL:-https://lostmedia.pro}
       AUTH_URL: ${AUTH_URL:-https://lostmedia.pro}
       AUTH_TRUST_HOST: "true"
