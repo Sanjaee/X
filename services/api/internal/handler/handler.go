@@ -672,6 +672,21 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// If this was a quote post, notify author of quoted post
+	if post.QuotePostID != nil {
+		if quoted, err := h.repo.GetPostByID(r.Context(), *post.QuotePostID, nil); err == nil && quoted.AuthorID != user.ID {
+			h.notifyUser(r.Context(), quoted.AuthorID, user.ID, "quote", "post", &post.ID, post.QuotePostID, map[string]interface{}{
+				"post_id": post.ID.String(),
+				"content": post.Content,
+			})
+		}
+	}
+
+	// Broadcast feed.post_created to active sessions for immediate real-time feed updates
+	if h.hub != nil {
+		h.hub.BroadcastAll(&user.ID, "feed.post_created", post)
+	}
+
 	writeJSON(w, http.StatusCreated, post)
 }
 
@@ -847,6 +862,35 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *Handler) GetNewPosts(w http.ResponseWriter, r *http.Request) {
+	feedType := r.URL.Query().Get("type")
+	if feedType == "" {
+		feedType = r.URL.Query().Get("tab")
+	}
+	if feedType == "" {
+		feedType = "for_you"
+	}
+	sinceCursor := r.URL.Query().Get("since")
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit <= 0 {
+		limit = 20
+	}
+
+	viewerID := middleware.GetViewerID(r.Context())
+	posts, count, nextCursor, err := h.repo.GetNewPosts(r.Context(), feedType, viewerID, sinceCursor, limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to check new posts")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, domain.NewPostsCheckResponse{
+		Count:      count,
+		HasNew:     count > 0,
+		NextCursor: nextCursor,
+		Posts:      posts,
+	})
+}
+
 // ==========================================
 // RECOMMENDATION, FEEDBACK & TRENDING
 // ==========================================
@@ -973,6 +1017,48 @@ func (h *Handler) GetTrendingTopics(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *Handler) GetWhoToFollow(w http.ResponseWriter, r *http.Request) {
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit <= 0 {
+		limit = 5
+	}
+
+	viewerID := middleware.GetViewerID(r.Context())
+	recs, err := h.repo.GetWhoToFollow(r.Context(), viewerID, limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to fetch user recommendations")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"recommendations": recs,
+	})
+}
+
+func (h *Handler) DismissUserRecommendation(w http.ResponseWriter, r *http.Request) {
+	viewerID := middleware.GetViewerID(r.Context())
+	if viewerID == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	targetParam := chi.URLParam(r, "userId")
+	targetID, err := uuid.Parse(targetParam)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+
+	if err := h.repo.DismissUserRecommendation(r.Context(), *viewerID, targetID, 7*24*time.Hour); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to dismiss recommendation")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status": "dismissed",
+	})
+}
+
 func (h *Handler) GetTopicPreferences(w http.ResponseWriter, r *http.Request) {
 	viewerID := middleware.GetViewerID(r.Context())
 	if viewerID == nil {
@@ -1066,15 +1152,42 @@ func (h *Handler) GetPostReplies(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cursor := r.URL.Query().Get("cursor")
+	sort := r.URL.Query().Get("sort")
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	if limit <= 0 {
 		limit = 20
 	}
 
 	viewerID := middleware.GetViewerID(r.Context())
-	posts, nextCursor, err := h.repo.GetPostReplies(r.Context(), postID, viewerID, cursor, limit)
+	posts, nextCursor, err := h.repo.GetPostReplies(r.Context(), postID, viewerID, cursor, limit, sort)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to fetch replies")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"posts":       posts,
+		"next_cursor": nextCursor,
+	})
+}
+
+func (h *Handler) GetPostQuotes(w http.ResponseWriter, r *http.Request) {
+	postID, err := uuid.Parse(chi.URLParam(r, "postId"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid post id")
+		return
+	}
+
+	cursor := r.URL.Query().Get("cursor")
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit <= 0 {
+		limit = 20
+	}
+
+	viewerID := middleware.GetViewerID(r.Context())
+	posts, nextCursor, err := h.repo.GetPostQuotes(r.Context(), postID, viewerID, cursor, limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to fetch quote posts")
 		return
 	}
 
@@ -1113,7 +1226,15 @@ func (h *Handler) LikePost(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	writeJSON(w, http.StatusOK, map[string]interface{}{"status": status, "count": count})
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status":      status,
+		"is_liked":    status,
+		"liked_by_me": status,
+		"count":       count,
+		"like_count":  count,
+		"likes_count": count,
+		"post_id":     postID,
+	})
 }
 
 func (h *Handler) UnlikePost(w http.ResponseWriter, r *http.Request) {
@@ -1134,7 +1255,15 @@ func (h *Handler) UnlikePost(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to unlike post")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]interface{}{"status": status, "count": count})
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status":      status,
+		"is_liked":    status,
+		"liked_by_me": status,
+		"count":       count,
+		"like_count":  count,
+		"likes_count": count,
+		"post_id":     postID,
+	})
 }
 
 func (h *Handler) RepostPost(w http.ResponseWriter, r *http.Request) {
@@ -1162,7 +1291,15 @@ func (h *Handler) RepostPost(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	writeJSON(w, http.StatusOK, map[string]interface{}{"status": status, "count": count})
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status":         status,
+		"is_reposted":    status,
+		"reposted_by_me": status,
+		"count":          count,
+		"repost_count":   count,
+		"reposts_count":  count,
+		"post_id":        postID,
+	})
 }
 
 func (h *Handler) UndoRepost(w http.ResponseWriter, r *http.Request) {
@@ -1183,7 +1320,53 @@ func (h *Handler) UndoRepost(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to undo repost")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]interface{}{"status": status, "count": count})
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status":         status,
+		"is_reposted":    status,
+		"reposted_by_me": status,
+		"count":          count,
+		"repost_count":   count,
+		"reposts_count":  count,
+		"post_id":        postID,
+	})
+}
+
+func (h *Handler) ReconcileCounters(w http.ResponseWriter, r *http.Request) {
+	dryRun := r.URL.Query().Get("dry_run") == "true"
+	batchSize, _ := strconv.Atoi(r.URL.Query().Get("batch_size"))
+	if batchSize <= 0 {
+		batchSize, _ = strconv.Atoi(r.URL.Query().Get("limit"))
+	}
+
+	if r.Header.Get("Content-Type") == "application/json" {
+		var body struct {
+			DryRun    *bool `json:"dry_run"`
+			BatchSize int   `json:"batch_size"`
+			Limit     int   `json:"limit"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err == nil {
+			if body.DryRun != nil {
+				dryRun = *body.DryRun
+			}
+			if body.BatchSize > 0 {
+				batchSize = body.BatchSize
+			} else if body.Limit > 0 {
+				batchSize = body.Limit
+			}
+		}
+	}
+
+	if batchSize <= 0 {
+		batchSize = 250
+	}
+
+	res, err := h.repo.ReconcileCounters(r.Context(), dryRun, batchSize)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to reconcile counters: "+err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, res)
 }
 
 func (h *Handler) BookmarkPost(w http.ResponseWriter, r *http.Request) {

@@ -197,6 +197,37 @@ func (h *Hub) BroadcastToConversation(convID uuid.UUID, excludeUser *uuid.UUID, 
 	}
 }
 
+// BroadcastAll broadcasts an event to every active client session (with optional sender exclusion)
+func (h *Hub) BroadcastAll(excludeUser *uuid.UUID, eventType string, payload interface{}) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	event := OutboundEvent{
+		EventID:    uuid.New().String(),
+		EventType:  eventType,
+		Type:       eventType,
+		OccurredAt: time.Now().UTC().Format(time.RFC3339),
+		Payload:    payload,
+	}
+
+	bytes, err := json.Marshal(event)
+	if err != nil {
+		return
+	}
+
+	for uid, userClients := range h.clients {
+		if excludeUser != nil && uid == *excludeUser {
+			continue
+		}
+		for client := range userClients {
+			select {
+			case client.send <- bytes:
+			default:
+			}
+		}
+	}
+}
+
 // BroadcastMessage dispatches a new message to conversation subscribers AND direct user sessions without duplicates
 func (h *Hub) BroadcastMessage(convID uuid.UUID, recipientID *uuid.UUID, senderID *uuid.UUID, msg interface{}) {
 	h.mu.RLock()

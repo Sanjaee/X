@@ -75,6 +75,7 @@ type Post struct {
 	RepliesCount int        `json:"replies_count"`
 	RepostsCount int        `json:"reposts_count"`
 	LikesCount   int        `json:"likes_count"`
+	QuotesCount  int        `json:"quotes_count"`
 	ViewsCount   int64      `json:"views_count"`
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
@@ -86,6 +87,10 @@ type Post struct {
 	IsLiked          bool          `json:"is_liked"`
 	IsReposted       bool          `json:"is_reposted"`
 	IsBookmarked     bool          `json:"is_bookmarked"`
+
+	// Reposter context (for timeline repost attribution and Repost tab)
+	Reposter   *User      `json:"reposter,omitempty"`
+	RepostedAt *time.Time `json:"reposted_at,omitempty"`
 }
 
 // Follow represents a directional social connection
@@ -412,6 +417,23 @@ type TrendingTopic struct {
 	VelocityScore float64 `json:"velocity_score"`
 }
 
+// UserRecommendation represents a personalized account suggestion for Who to Follow
+type UserRecommendation struct {
+	User          User    `json:"user"`
+	Reason        string  `json:"reason"` // e.g. "Followed by @alice", "Popular in Technology"
+	Score         float64 `json:"score"`
+	MutualCount   int     `json:"mutual_count"`
+	MutualNames   []string `json:"mutual_names,omitempty"`
+}
+
+// NewPostsCheckResponse represents real-time new posts check for the floating indicator
+type NewPostsCheckResponse struct {
+	Count      int    `json:"count"`
+	HasNew     bool   `json:"has_new"`
+	NextCursor string `json:"next_cursor,omitempty"`
+	Posts      []Post `json:"posts,omitempty"`
+}
+
 // PageInfo represents cursor pagination metadata
 type PageInfo struct {
 	NextCursor  string `json:"next_cursor,omitempty"`
@@ -612,6 +634,24 @@ type AdminPostFilter struct {
 	Visibility       string `json:"visibility"`
 	Limit            int    `json:"limit"`
 	Offset           int    `json:"offset"`
+}
+
+// CounterReconciliationResult reports results of batch reconciliation of interaction counters
+type CounterReconciliationResult struct {
+	TotalScanned    int                     `json:"total_scanned"`
+	MismatchesFound int                     `json:"mismatches_found"`
+	MismatchesFixed int                     `json:"mismatches_fixed"`
+	DryRun          bool                    `json:"dry_run"`
+	Details         []CounterMismatchDetail `json:"details"`
+}
+
+// CounterMismatchDetail tracks a single post counter divergence
+type CounterMismatchDetail struct {
+	PostID        uuid.UUID `json:"post_id"`
+	Type          string    `json:"type"` // "likes", "reposts", "replies", "quotes"
+	ReportedCount int       `json:"reported_count"`
+	ActualCount   int       `json:"actual_count"`
+	Fixed         bool      `json:"fixed"`
 }
 
 

@@ -23,6 +23,8 @@ import { useMediaViewer } from "@/components/media/MediaViewerContext";
 import { VideoPlayer } from "@/components/media/VideoPlayer";
 import { apiRequest } from "@/lib/api";
 
+import { PostModal } from "@/components/composer/PostModal";
+
 interface PostCardProps {
   post: Post;
   currentUser?: User | null;
@@ -32,6 +34,7 @@ interface PostCardProps {
   onFeedback?: (postId: string, feedbackType: 'not_interested' | 'hide') => void;
   onPostUpdated?: (updatedPost: Post) => void;
   onPostDeleted?: (postId: string) => void;
+  onOpenAuth?: () => void;
 }
 
 export function PostCard({
@@ -43,6 +46,7 @@ export function PostCard({
   onFeedback,
   onPostUpdated,
   onPostDeleted,
+  onOpenAuth,
 }: PostCardProps) {
   const router = useRouter();
   const { openMedia } = useMediaViewer();
@@ -54,6 +58,9 @@ export function PostCard({
   const [repostsCount, setRepostsCount] = useState(post.reposts_count);
   const [isBookmarked, setIsBookmarked] = useState(post.is_bookmarked);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [repostMenuOpen, setRepostMenuOpen] = useState(false);
+  const [quoteModalOpen, setQuoteModalOpen] = useState(false);
+  const [replyModalOpen, setReplyModalOpen] = useState(false);
 
   // Edit & Delete State
   const [isEditing, setIsEditing] = useState(false);
@@ -94,24 +101,81 @@ export function PostCard({
     router.push(`/${post.author?.username || "user"}/status/${post.id}`);
   };
 
-  const handleLike = (e: React.MouseEvent) => {
+  const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsLiked(!isLiked);
-    setLikesCount(isLiked ? Math.max(0, likesCount - 1) : likesCount + 1);
-    if (onLike) onLike(post.id);
+    if (!currentUser) {
+      if (onOpenAuth) onOpenAuth();
+      return;
+    }
+    const prevLiked = isLiked;
+    const prevCount = likesCount;
+
+    // Optimistic toggle
+    setIsLiked(!prevLiked);
+    setLikesCount(prevLiked ? Math.max(0, prevCount - 1) : prevCount + 1);
+
+    try {
+      const res = await apiRequest<{ is_liked: boolean; like_count: number }>(`/posts/${post.id}/like`, {
+        method: prevLiked ? "DELETE" : "PUT",
+      });
+      if (res && typeof res.is_liked === "boolean") {
+        setIsLiked(res.is_liked);
+        setLikesCount(res.like_count);
+      }
+      if (onLike) onLike(post.id);
+    } catch (err) {
+      // Rollback on failure
+      setIsLiked(prevLiked);
+      setLikesCount(prevCount);
+    }
   };
 
-  const handleRepost = (e: React.MouseEvent) => {
+  const handleToggleRepost = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsReposted(!isReposted);
-    setRepostsCount(isReposted ? Math.max(0, repostsCount - 1) : repostsCount + 1);
-    if (onRepost) onRepost(post.id);
+    setRepostMenuOpen(false);
+    if (!currentUser) {
+      if (onOpenAuth) onOpenAuth();
+      return;
+    }
+    const prevReposted = isReposted;
+    const prevCount = repostsCount;
+
+    // Optimistic toggle
+    setIsReposted(!prevReposted);
+    setRepostsCount(prevReposted ? Math.max(0, prevCount - 1) : prevCount + 1);
+
+    try {
+      const res = await apiRequest<{ is_reposted: boolean; repost_count: number }>(`/posts/${post.id}/repost`, {
+        method: prevReposted ? "DELETE" : "POST",
+      });
+      if (res && typeof res.is_reposted === "boolean") {
+        setIsReposted(res.is_reposted);
+        setRepostsCount(res.repost_count);
+      }
+      if (onRepost) onRepost(post.id);
+    } catch (err) {
+      // Rollback on failure
+      setIsReposted(prevReposted);
+      setRepostsCount(prevCount);
+    }
   };
 
-  const handleBookmark = (e: React.MouseEvent) => {
+  const handleBookmark = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsBookmarked(!isBookmarked);
-    if (onBookmark) onBookmark(post.id);
+    if (!currentUser) {
+      if (onOpenAuth) onOpenAuth();
+      return;
+    }
+    const prev = isBookmarked;
+    setIsBookmarked(!prev);
+    try {
+      await apiRequest(`/posts/${post.id}/bookmarks`, {
+        method: prev ? "DELETE" : "POST",
+      });
+      if (onBookmark) onBookmark(post.id);
+    } catch (err) {
+      setIsBookmarked(prev);
+    }
   };
 
   const handleSaveEdit = async (e: React.MouseEvent) => {
@@ -156,23 +220,41 @@ export function PostCard({
   }
 
   return (
-    <article
-      data-post-id={post.id}
-      onClick={handleCardClick}
-      className="flex gap-3 px-4 py-3 border-b border-border hover:bg-subtle/50 transition-colors cursor-pointer select-none"
-    >
-      {/* Left Avatar */}
-      <Link
-        href={`/${post.author?.username || "user"}`}
-        onClick={(e) => e.stopPropagation()}
-        className="shrink-0"
+    <>
+      <article
+        data-post-id={post.id}
+        onClick={handleCardClick}
+        className="flex flex-col px-4 py-3 border-b border-border hover:bg-subtle/50 transition-colors cursor-pointer select-none"
       >
-        <img
-          src={post.author?.avatar_url || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"}
-          alt={post.author?.display_name || "User"}
-          className="w-10 h-10 rounded-full object-cover hover:opacity-90 transition-opacity border border-border"
-        />
-      </Link>
+        {/* Repost attribution header */}
+        {post.reposter && (
+          <div className="flex items-center gap-2 text-xs font-bold text-muted ml-8 mb-1.5">
+            <Repeat2 className="w-3.5 h-3.5 text-muted shrink-0" />
+            <Link
+              href={`/${post.reposter.username}`}
+              onClick={(e) => e.stopPropagation()}
+              className="hover:underline text-muted hover:text-foreground"
+            >
+              {post.reposter.display_name || `@${post.reposter.username}`} reposted
+            </Link>
+          </div>
+        )}
+
+        <div className="flex gap-3">
+          {/* Left Avatar - Clicks navigate to post detail (X-like behavior as requested) */}
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/${post.author?.username || "user"}/status/${post.id}`);
+            }}
+            className="shrink-0 cursor-pointer"
+          >
+            <img
+              src={post.author?.avatar_url || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"}
+              alt={post.author?.display_name || "User"}
+              className="w-10 h-10 rounded-full object-cover hover:opacity-90 transition-opacity border border-border"
+            />
+          </div>
 
       {/* Content Column */}
       <div className="flex-1 min-w-0">
@@ -386,11 +468,51 @@ export function PostCard({
           </div>
         )}
 
-        {/* Engagement Action Bar */}
-        <div className="flex items-center justify-between text-muted mt-3 max-w-[425px]">
+        {/* Quoted Post Card Preview */}
+        {post.quote_post && (
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/${post.quote_post?.author?.username || "user"}/status/${post.quote_post?.id}`);
+            }}
+            className="mt-3 p-3 rounded-2xl border border-border bg-subtle/20 hover:bg-subtle/40 transition-colors flex flex-col gap-1.5 cursor-pointer"
+          >
+            <div className="flex items-center gap-1.5 text-[14px]">
+              <img
+                src={post.quote_post.author?.avatar_url || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"}
+                alt={post.quote_post.author?.display_name || "User"}
+                className="w-5 h-5 rounded-full object-cover"
+              />
+              <span className="font-bold text-foreground hover:underline">
+                {post.quote_post.author?.display_name || post.quote_post.author?.username || "User"}
+              </span>
+              {post.quote_post.author?.is_verified && (
+                <VerifiedBadge type={post.quote_post.author.verified_type} />
+              )}
+              <span className="text-muted">@{post.quote_post.author?.username || "user"}</span>
+              <span className="text-muted">·</span>
+              <span className="text-muted hover:underline">{formatRelativeTime(post.quote_post.created_at)}</span>
+            </div>
+            {post.quote_post.content && (
+              <p className="text-[14px] leading-5 text-foreground whitespace-pre-wrap break-words">
+                {post.quote_post.content}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Engagement Action Bar - Full width with space-between and bookmark/share on far right (Observable X layout) */}
+        <div className="flex items-center justify-between text-muted mt-3 w-full pr-1">
           {/* Reply */}
           <button
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!currentUser) {
+                if (onOpenAuth) onOpenAuth();
+                return;
+              }
+              setReplyModalOpen(true);
+            }}
             className="group flex items-center gap-1.5 hover:text-brand transition-colors text-[13px]"
           >
             <div className="p-2 rounded-full group-hover:bg-brand/10 transition-colors">
@@ -399,19 +521,60 @@ export function PostCard({
             <span>{post.replies_count > 0 ? formatNumber(post.replies_count) : ""}</span>
           </button>
 
-          {/* Repost */}
-          <button
-            onClick={handleRepost}
-            className={cn(
-              "group flex items-center gap-1.5 transition-colors text-[13px]",
-              isReposted ? "text-repost" : "hover:text-repost"
+          {/* Repost Popover */}
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!currentUser) {
+                  if (onOpenAuth) onOpenAuth();
+                  return;
+                }
+                setRepostMenuOpen(!repostMenuOpen);
+              }}
+              className={cn(
+                "group flex items-center gap-1.5 transition-colors text-[13px]",
+                isReposted ? "text-repost" : "hover:text-repost"
+              )}
+            >
+              <div className="p-2 rounded-full group-hover:bg-repost/10 transition-colors">
+                <Repeat2 className="w-4 h-4" />
+              </div>
+              <span>{repostsCount > 0 ? formatNumber(repostsCount) : ""}</span>
+            </button>
+
+            {repostMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-30"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRepostMenuOpen(false);
+                  }}
+                />
+                <div className="absolute left-0 bottom-9 w-44 bg-background border border-border shadow-2xl rounded-2xl py-1.5 z-40 text-[14px] font-bold">
+                  <button
+                    onClick={handleToggleRepost}
+                    className="w-full text-left px-4 py-3 hover:bg-subtle flex items-center gap-3 text-foreground transition-colors"
+                  >
+                    <Repeat2 className="w-4 h-4" />
+                    <span>{isReposted ? "Undo repost" : "Repost"}</span>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setRepostMenuOpen(false);
+                      setQuoteModalOpen(true);
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-subtle flex items-center gap-3 text-foreground transition-colors"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    <span>Quote</span>
+                  </button>
+                </div>
+              </>
             )}
-          >
-            <div className="p-2 rounded-full group-hover:bg-repost/10 transition-colors">
-              <Repeat2 className="w-4 h-4" />
-            </div>
-            <span>{repostsCount > 0 ? formatNumber(repostsCount) : ""}</span>
-          </button>
+          </div>
 
           {/* Like */}
           <button
@@ -435,8 +598,8 @@ export function PostCard({
             <span>{post.views_count > 0 ? formatNumber(post.views_count) : "0"}</span>
           </div>
 
-          {/* Bookmark & Share */}
-          <div className="flex items-center">
+          {/* Bookmark & Share (Far Right) */}
+          <div className="flex items-center gap-1">
             <button
               onClick={handleBookmark}
               className={cn(
@@ -447,7 +610,18 @@ export function PostCard({
               <Bookmark className={cn("w-4 h-4", isBookmarked && "fill-current")} />
             </button>
             <button
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (navigator.share) {
+                  navigator.share({
+                    title: `Post by ${post.author?.display_name || "user"}`,
+                    url: `${window.location.origin}/${post.author?.username || "user"}/status/${post.id}`,
+                  }).catch(() => {});
+                } else {
+                  navigator.clipboard.writeText(`${window.location.origin}/${post.author?.username || "user"}/status/${post.id}`);
+                  alert("Link copied to clipboard!");
+                }
+              }}
               className="p-2 rounded-full hover:bg-brand/10 hover:text-brand transition-colors"
             >
               <Share className="w-4 h-4" />
@@ -455,6 +629,46 @@ export function PostCard({
           </div>
         </div>
       </div>
+      </div>
     </article>
+
+    {/* Reply Modal Popup (Screenshot behavior) */}
+    {replyModalOpen && (
+      <PostModal
+        isOpen={replyModalOpen}
+        onClose={() => setReplyModalOpen(false)}
+        currentUser={currentUser}
+        replyToPost={post}
+        onPostSuccess={(newReply) => {
+          setReplyModalOpen(false);
+          if (onPostUpdated) onPostUpdated(newReply);
+        }}
+        onOpenAuth={() => {
+          setReplyModalOpen(false);
+          if (onOpenAuth) onOpenAuth();
+          else router.push("/login");
+        }}
+      />
+    )}
+
+    {/* Quote Post Composer Modal */}
+    {quoteModalOpen && (
+      <PostModal
+        isOpen={quoteModalOpen}
+        onClose={() => setQuoteModalOpen(false)}
+        currentUser={currentUser}
+        quotedPost={post}
+        onPostSuccess={(newPost) => {
+          setQuoteModalOpen(false);
+          if (onPostUpdated) onPostUpdated(newPost);
+        }}
+        onOpenAuth={() => {
+          setQuoteModalOpen(false);
+          if (onOpenAuth) onOpenAuth();
+          else router.push("/login");
+        }}
+      />
+    )}
+  </>
   );
 }

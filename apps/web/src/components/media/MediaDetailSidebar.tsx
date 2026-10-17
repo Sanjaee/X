@@ -177,7 +177,7 @@ export function MediaDetailSidebar({
         <span>{dateStr}</span>
         <span>·</span>
         <span className="font-bold text-foreground">{formatNumber(viewsCount)}</span>
-        <span>Tayangan</span>
+        <span>Views</span>
       </div>
 
       {/* 4. Metric Counts Bar */}
@@ -186,25 +186,25 @@ export function MediaDetailSidebar({
           <span className="font-bold text-foreground">
             {formatNumber(post.replies_count || replies.length)}
           </span>
-          <span>Balasan</span>
+          <span>Replies</span>
         </div>
         <div className="flex items-center gap-1">
           <span className="font-bold text-foreground">
             {formatNumber(repostsCount)}
           </span>
-          <span>Repost</span>
+          <span>Reposts</span>
         </div>
         <div className="flex items-center gap-1">
           <span className="font-bold text-foreground">
             {formatNumber(likesCount)}
           </span>
-          <span>Suka</span>
+          <span>Likes</span>
         </div>
         <div className="flex items-center gap-1">
           <span className="font-bold text-foreground">
             {formatNumber(post.views_count ? Math.round(post.views_count / 100) : 103)}
           </span>
-          <span>Markah</span>
+          <span>Bookmarks</span>
         </div>
       </div>
 
@@ -216,7 +216,7 @@ export function MediaDetailSidebar({
             input?.focus();
           }}
           className="p-2 hover:bg-brand/10 hover:text-brand rounded-full transition-colors"
-          title="Balas"
+          title="Reply"
         >
           <MessageCircle className="w-5 h-5" />
         </button>
@@ -238,7 +238,7 @@ export function MediaDetailSidebar({
             "p-2 hover:bg-pink-500/10 hover:text-pink-500 rounded-full transition-colors",
             isLiked && "text-pink-500"
           )}
-          title="Suka"
+          title="Like"
         >
           <Heart className={cn("w-5 h-5", isLiked && "fill-current")} />
         </button>
@@ -249,7 +249,7 @@ export function MediaDetailSidebar({
             "p-2 hover:bg-brand/10 hover:text-brand rounded-full transition-colors",
             isBookmarked && "text-brand"
           )}
-          title="Markah"
+          title="Bookmark"
         >
           <Bookmark className={cn("w-5 h-5", isBookmarked && "fill-current")} />
         </button>
@@ -257,12 +257,12 @@ export function MediaDetailSidebar({
         <button
           onClick={handleShare}
           className="p-2 hover:bg-brand/10 hover:text-brand rounded-full transition-colors relative"
-          title="Bagikan"
+          title="Share"
         >
           <Share className="w-5 h-5" />
           {copied && (
             <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black text-white text-[11px] px-2 py-0.5 rounded shadow">
-              Tautan disalin!
+              Link copied!
             </span>
           )}
         </button>
@@ -283,13 +283,13 @@ export function MediaDetailSidebar({
             id="media-reply-input"
             value={replyContent}
             onChange={(e) => setReplyContent(e.target.value)}
-            placeholder="Posting balasan"
+            placeholder="Post your reply"
             rows={2}
             className="w-full bg-transparent resize-none outline-none text-[15px] placeholder:text-muted leading-relaxed"
           />
           <div className="flex items-center justify-between pt-1">
             <span className="text-xs text-muted">
-              Membalas <span className="text-brand">@{author.username}</span>
+              Replying to <span className="text-brand">@{author.username}</span>
             </span>
             <button
               onClick={handleSendReply}
@@ -297,7 +297,7 @@ export function MediaDetailSidebar({
               className="bg-brand hover:bg-brand-hover text-white text-sm font-bold py-1.5 px-4 rounded-full disabled:opacity-50 transition-colors flex items-center gap-1.5"
             >
               {isSubmittingReply && <Loader2 className="w-4 h-4 animate-spin" />}
-              <span>Balas</span>
+              <span>Reply</span>
             </button>
           </div>
         </div>
@@ -311,7 +311,7 @@ export function MediaDetailSidebar({
           </div>
         ) : replies.length === 0 ? (
           <div className="p-8 text-center text-muted text-sm">
-            Belum ada balasan. Jadilah yang pertama membalas!
+            No replies yet. Be the first to reply!
           </div>
         ) : (
           replies.map((reply) => (

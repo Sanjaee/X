@@ -111,6 +111,8 @@ services:
       - ../../services/api/migrations/000004_recommendation_feed_ranking.up.sql:/docker-entrypoint-initdb.d/04_recommendations.sql:ro
       - ../../services/api/migrations/000005_search_indexing_and_history.up.sql:/docker-entrypoint-initdb.d/05_search.sql:ro
       - ../../services/api/migrations/000006_rbac_roles_memberships_quotas.up.sql:/docker-entrypoint-initdb.d/06_rbac.sql:ro
+      - ../../services/api/migrations/000007_trending_and_user_recommendations.up.sql:/docker-entrypoint-initdb.d/07_trending.sql:ro
+      - ../../services/api/migrations/000008_post_interactions_and_reposts.up.sql:/docker-entrypoint-initdb.d/08_interactions.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-x_prod}"]
       interval: 5s

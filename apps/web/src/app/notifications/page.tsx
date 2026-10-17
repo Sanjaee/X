@@ -383,7 +383,10 @@ export default function NotificationsPage() {
           </div>
         </main>
 
-        <RightSidebar />
+        <RightSidebar
+          currentUser={currentUser}
+          onOpenAuth={() => setAuthModalOpen(true)}
+        />
 
         {/* Mobile Navigation Drawer */}
         <MobileDrawer

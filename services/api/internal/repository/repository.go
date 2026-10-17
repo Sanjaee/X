@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/x-reconstruction/api/internal/domain"
@@ -27,7 +28,8 @@ type Repository interface {
 	DeletePost(ctx context.Context, postID, authorID uuid.UUID) error
 	GetFeed(ctx context.Context, feedType string, viewerID *uuid.UUID, cursor string, limit int) ([]domain.Post, string, error)
 	GetUserPosts(ctx context.Context, username string, tab string, viewerID *uuid.UUID, cursor string, limit int) ([]domain.Post, string, error)
-	GetPostReplies(ctx context.Context, postID uuid.UUID, viewerID *uuid.UUID, cursor string, limit int) ([]domain.Post, string, error)
+	GetPostReplies(ctx context.Context, postID uuid.UUID, viewerID *uuid.UUID, cursor string, limit int, sortBy string) ([]domain.Post, string, error)
+	GetPostQuotes(ctx context.Context, postID uuid.UUID, viewerID *uuid.UUID, cursor string, limit int) ([]domain.Post, string, error)
 
 	// Engagements
 	LikePost(ctx context.Context, postID, userID uuid.UUID) (bool, int, error)
@@ -141,6 +143,9 @@ type Repository interface {
 	UpdateUserTopicPreference(ctx context.Context, pref domain.UserTopicPreference) error
 	ResetPersonalization(ctx context.Context, userID uuid.UUID) error
 	GetTrendingTopics(ctx context.Context, limit int) ([]domain.TrendingTopic, error)
+	GetNewPosts(ctx context.Context, feedType string, viewerID *uuid.UUID, sinceCursor string, limit int) ([]domain.Post, int, string, error)
+	GetWhoToFollow(ctx context.Context, viewerID *uuid.UUID, limit int) ([]domain.UserRecommendation, error)
+	DismissUserRecommendation(ctx context.Context, viewerID, targetID uuid.UUID, duration time.Duration) error
 
 	// Health
 	Ping(ctx context.Context) error
@@ -193,5 +198,8 @@ type Repository interface {
 	GetAdminPosts(ctx context.Context, filter domain.AdminPostFilter) ([]domain.Post, int64, error)
 	UpdatePostModeration(ctx context.Context, postID uuid.UUID, status string, moderatorID uuid.UUID, reason string) error
 	AdminDeletePost(ctx context.Context, postID uuid.UUID, moderatorID uuid.UUID, reason string) error
+
+	// Counter Reconciliation Maintenance
+	ReconcileCounters(ctx context.Context, dryRun bool, batchSize int) (*domain.CounterReconciliationResult, error)
 }
 

@@ -2,6 +2,8 @@ package recommendation
 
 import (
 	"context"
+	"math"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -233,6 +235,19 @@ func (e *Engine) GenerateFeed(ctx context.Context, opts FeedOptions) (*FeedResul
 			followers = p.Author.FollowersCount
 		}
 		f.ExplorationScore = CalculateExplorationScore(followers, ageHours)
+
+		// 6. Topic Relevance & Interest Affinity
+		if userTopics != nil && len(userTopics) > 0 {
+			lowerContent := strings.ToLower(p.Content)
+			for topic, aff := range userTopics {
+				cleanTopic := strings.ToLower(strings.TrimPrefix(topic, "#"))
+				if cleanTopic != "" && strings.Contains(lowerContent, cleanTopic) {
+					if aff > f.TopicRelevanceScore {
+						f.TopicRelevanceScore = math.Min(1.0, aff)
+					}
+				}
+			}
+		}
 
 		// Compute final score
 		cand.Features = f

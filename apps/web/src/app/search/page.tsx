@@ -621,7 +621,11 @@ function SearchPageContent() {
         </main>
 
         {/* Right Sidebar (with search bar hidden on search page) */}
-        <RightSidebar hideSearchBar />
+        <RightSidebar
+          hideSearchBar
+          currentUser={currentUser}
+          onOpenAuth={() => setAuthModalOpen(true)}
+        />
 
         {/* Mobile Navigation Drawer */}
         <MobileDrawer

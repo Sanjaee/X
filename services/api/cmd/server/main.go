@@ -169,11 +169,13 @@ func main() {
 		v1.Group(func(pub chi.Router) {
 			pub.Use(middleware.AuthMiddleware(repo, true)) // optional auth
 			pub.Get("/feed", h.GetFeed)
+			pub.Get("/feed/new-posts", h.GetNewPosts)
 			pub.Get("/users/{username}", h.GetUserByUsername)
 			pub.Get("/users/{username}/posts", h.GetUserPosts)
 			pub.Get("/users/{username}/badges", h.GetUserBadges)
 			pub.Get("/posts/{postId}", h.GetPostByID)
 			pub.Get("/posts/{postId}/replies", h.GetPostReplies)
+			pub.Get("/posts/{postId}/quotes", h.GetPostQuotes)
 			pub.Get("/search", h.Search)
 			pub.Get("/search/posts", h.SearchPosts)
 			pub.Get("/search/users", h.SearchUsers)
@@ -188,6 +190,7 @@ func main() {
 
 			// Recommendation & Discovery
 			pub.Get("/explore/trending", h.GetTrendingTopics)
+			pub.Get("/users/recommendations", h.GetWhoToFollow)
 			pub.Post("/feed/impressions", h.RecordFeedImpressions)
 		})
 
@@ -207,11 +210,19 @@ func main() {
 			// Membership
 			auth.Get("/membership/me", h.GetMyMembershipStatus)
 
-			// Interactions
+			// Interactions (Idempotent Like, Repost, Bookmark)
 			auth.Post("/posts/{postId}/likes", h.LikePost)
+			auth.Put("/posts/{postId}/likes", h.LikePost)
+			auth.Post("/posts/{postId}/like", h.LikePost)
+			auth.Put("/posts/{postId}/like", h.LikePost)
 			auth.Delete("/posts/{postId}/likes", h.UnlikePost)
+			auth.Delete("/posts/{postId}/like", h.UnlikePost)
+
 			auth.Post("/posts/{postId}/reposts", h.RepostPost)
+			auth.Post("/posts/{postId}/repost", h.RepostPost)
 			auth.Delete("/posts/{postId}/reposts", h.UndoRepost)
+			auth.Delete("/posts/{postId}/repost", h.UndoRepost)
+
 			auth.Post("/posts/{postId}/bookmarks", h.BookmarkPost)
 			auth.Delete("/posts/{postId}/bookmarks", h.RemoveBookmark)
 
@@ -263,6 +274,7 @@ func main() {
 
 			// Feed Feedback & Personalization Controls
 			auth.Post("/feed/feedback", h.RecordFeedFeedback)
+			auth.Post("/users/recommendations/{userId}/dismiss", h.DismissUserRecommendation)
 			auth.Get("/me/topic-preferences", h.GetTopicPreferences)
 			auth.Put("/me/topic-preferences", h.UpdateTopicPreference)
 			auth.Post("/me/personalization/reset", h.ResetPersonalization)
@@ -312,6 +324,9 @@ func main() {
 
 				// Audit Logs
 				admin.Get("/admin/audit-logs", h.AdminGetAuditLogs)
+
+				// System Maintenance
+				admin.Post("/admin/maintenance/reconcile-counters", h.ReconcileCounters)
 			})
 		})
 	}

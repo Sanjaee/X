@@ -23,6 +23,17 @@ interface FeedResponse {
   next_cursor?: string;
 }
 
+function encodeFeedCursor(createdAt: string, id: string): string {
+  try {
+    const nano = new Date(createdAt).getTime() * 1_000_000;
+    const raw = `${nano}:${id}`;
+    if (typeof window !== "undefined") {
+      return btoa(raw).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    }
+  } catch {}
+  return "";
+}
+
 export default function HomePage() {
   const queryClient = useQueryClient();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -31,10 +42,27 @@ export default function HomePage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [composerModalOpen, setComposerModalOpen] = useState(false);
   const [desktopPostModalOpen, setDesktopPostModalOpen] = useState(false);
-  const [showNewPostsPill, setShowNewPostsPill] = useState(true);
 
-  // Restore authenticated session
+  // Real-time new posts detection state
+  const [unseenCount, setUnseenCount] = useState<number>(0);
+  const [pendingPosts, setPendingPosts] = useState<Post[]>([]);
+
+  // Restore authenticated session & persisted tab preference
   useEffect(() => {
+    // Restore tab from URL search param or localStorage
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (tabParam === "following") {
+        setActiveTab("following");
+      } else {
+        const savedTab = localStorage.getItem("x_home_tab");
+        if (savedTab === "following") {
+          setActiveTab("following");
+        }
+      }
+    }
+
     const syncUser = () => {
       apiRequest<User>("/me")
         .then((user) => setCurrentUser(user))
@@ -49,13 +77,51 @@ export default function HomePage() {
       }
     };
 
+    const handleRemoteFeedPost = (e: Event) => {
+      const customEvent = e as CustomEvent<Post>;
+      const newPost = customEvent.detail;
+      if (!newPost || !newPost.id) return;
+
+      const userToken = localStorage.getItem("x_session_user");
+      let myId: string | null = null;
+      if (userToken) {
+        try {
+          myId = JSON.parse(userToken).id;
+        } catch {}
+      }
+      if (myId && newPost.author_id === myId) return;
+
+      setPendingPosts((prev) => {
+        if (prev.some((p) => p.id === newPost.id)) return prev;
+        return [newPost, ...prev];
+      });
+      setUnseenCount((prev) => prev + 1);
+    };
+
     window.addEventListener("x_auth_state_change", syncUser);
     window.addEventListener("x_post_created", handleCreated);
+    window.addEventListener("x_feed_post_created", handleRemoteFeedPost);
     return () => {
       window.removeEventListener("x_auth_state_change", syncUser);
       window.removeEventListener("x_post_created", handleCreated);
+      window.removeEventListener("x_feed_post_created", handleRemoteFeedPost);
     };
-  }, [activeTab]);
+  }, []);
+
+  const handleTabSwitch = (tab: "for_you" | "following") => {
+    if (tab === "following" && !currentUser) {
+      setAuthModalOpen(true);
+      return;
+    }
+    setActiveTab(tab);
+    setUnseenCount(0);
+    setPendingPosts([]);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("x_home_tab", tab);
+      const url = tab === "following" ? "/?tab=following" : "/";
+      window.history.replaceState(null, "", url);
+    }
+  };
 
   // TanStack Query with Bounded Cache (maxPages: 5)
   const {
@@ -113,6 +179,106 @@ export default function HomePage() {
     }
     return result;
   }, [data]);
+
+  // Extract distinct author avatars for the floating indicator (matching X UI)
+  const pendingAuthors = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; avatar_url?: string }>();
+    for (const p of pendingPosts) {
+      if (p.author && !map.has(p.author.id)) {
+        map.set(p.author.id, {
+          id: p.author.id,
+          name: p.author.display_name || p.author.username || "User",
+          avatar_url: p.author.avatar_url,
+        });
+      }
+    }
+    return Array.from(map.values()).slice(0, 3);
+  }, [pendingPosts]);
+
+  // Real-time Detection of New Eligible Posts (Feature B)
+  useEffect(() => {
+    if (!posts || posts.length === 0) return;
+    const newestPost = posts[0];
+    const sinceCursor = encodeFeedCursor(newestPost.created_at, newestPost.id);
+    if (!sinceCursor) return;
+
+    let isCancelled = false;
+
+    const checkNewPosts = async () => {
+      // Suspend polling when tab is inactive or hidden
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return;
+      }
+
+      try {
+        const res = await apiRequest<{
+          count: number;
+          has_new: boolean;
+          posts?: Post[];
+        }>(`/feed/new-posts?type=${activeTab}&since=${encodeURIComponent(sinceCursor)}&limit=20`);
+
+        if (!isCancelled && res.count > 0) {
+          setUnseenCount(res.count);
+          if (res.posts && res.posts.length > 0) {
+            setPendingPosts(res.posts);
+          }
+        }
+      } catch (err) {
+        // Silently tolerate transient failures
+      }
+    };
+
+    // Initial check after 10s, then poll every 20s
+    const timer = setTimeout(checkNewPosts, 10000);
+    const interval = setInterval(checkNewPosts, 20000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        checkNewPosts();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [activeTab, posts[0]?.id]);
+
+  const handleLoadNewPosts = () => {
+    if (pendingPosts.length > 0) {
+      queryClient.setQueryData(
+        feedKeys.list(activeTab),
+        (oldData: { pages: FeedResponse[]; pageParams: string[] } | undefined) => {
+          if (!oldData || !oldData.pages || oldData.pages.length === 0) {
+            return oldData;
+          }
+          const firstPage = oldData.pages[0];
+          const existingIDs = new Set(firstPage.posts.map((p) => p.id));
+          const newUnique = pendingPosts.filter((p) => !existingIDs.has(p.id));
+
+          return {
+            ...oldData,
+            pages: [
+              {
+                ...firstPage,
+                posts: [...newUnique, ...firstPage.posts],
+              },
+              ...oldData.pages.slice(1),
+            ],
+          };
+        }
+      );
+    } else {
+      refetch();
+    }
+
+    setUnseenCount(0);
+    setPendingPosts([]);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const handlePostCreated = (newPost: Post) => {
     // Ensure post author is populated even before refetching
@@ -282,7 +448,7 @@ export default function HomePage() {
             {/* Feed Tabs: For you & Following + Add List Button */}
             <div className="flex w-full h-[53px] items-center">
               <button
-                onClick={() => setActiveTab("for_you")}
+                onClick={() => handleTabSwitch("for_you")}
                 className="flex-1 flex justify-center items-center hover:bg-subtle transition-colors relative h-full"
               >
                 <span
@@ -299,13 +465,7 @@ export default function HomePage() {
               </button>
 
               <button
-                onClick={() => {
-                  if (!currentUser) {
-                    setAuthModalOpen(true);
-                    return;
-                  }
-                  setActiveTab("following");
-                }}
+                onClick={() => handleTabSwitch("following")}
                 className="flex-1 flex justify-center items-center hover:bg-subtle transition-colors relative h-full"
               >
                 <span
@@ -332,30 +492,36 @@ export default function HomePage() {
             </div>
           </header>
 
-          {/* Floating Pill: New Posts Indicator (↑ 👥 New posts) */}
-          {showNewPostsPill && (
+          {/* Floating Blue Pill: Real-Time New Posts Indicator (Exact X Style with Overlapping Avatars) */}
+          {unseenCount > 0 && (
             <button
-              onClick={() => {
-                window.scrollTo({ top: 0, behavior: "smooth" });
-                setShowNewPostsPill(false);
-                setTimeout(() => setShowNewPostsPill(true), 30000);
-              }}
-              className="fixed top-24 left-1/2 -translate-x-1/2 z-30 bg-[#1d9bf0] hover:bg-[#1a8cd8] active:scale-95 text-white px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-2 text-xs font-bold transition-transform cursor-pointer"
+              onClick={handleLoadNewPosts}
+              className="fixed top-20 sm:top-24 left-1/2 -translate-x-1/2 z-30 bg-[#1d9bf0] hover:bg-[#1a8cd8] active:scale-95 text-white px-3.5 py-1.5 rounded-full shadow-[0_4px_16px_rgba(29,155,240,0.45)] flex items-center gap-2 text-[14px] font-bold transition-all cursor-pointer animate-in fade-in slide-in-from-top-2 duration-200 select-none"
             >
-              <ArrowUp className="w-3.5 h-3.5 stroke-[2.5]" />
-              <div className="flex -space-x-1.5 overflow-hidden">
-                <img
-                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=50"
-                  alt="user"
-                  className="w-4 h-4 rounded-full ring-1 ring-white object-cover"
-                />
-                <img
-                  src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=50"
-                  alt="user"
-                  className="w-4 h-4 rounded-full ring-1 ring-white object-cover"
-                />
-              </div>
-              <span>New posts</span>
+              <ArrowUp className="w-4 h-4 stroke-[2.75]" />
+              {pendingAuthors.length > 0 && (
+                <div className="flex -space-x-2 items-center">
+                  {pendingAuthors.map((author) => (
+                    <div
+                      key={author.id}
+                      className="w-5 h-5 rounded-full overflow-hidden border-2 border-[#1d9bf0] bg-[#16181c] shrink-0"
+                    >
+                      {author.avatar_url ? (
+                        <img
+                          src={author.avatar_url}
+                          alt={author.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[9px] font-bold text-white bg-slate-700">
+                          {author.name.charAt(0)}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <span>posted</span>
             </button>
           )}
 
@@ -405,7 +571,10 @@ export default function HomePage() {
         </main>
 
         {/* Right Sidebar (420px max) */}
-        <RightSidebar />
+        <RightSidebar
+          currentUser={currentUser}
+          onOpenAuth={() => setAuthModalOpen(true)}
+        />
 
         {/* Mobile Navigation Drawer */}
         <MobileDrawer

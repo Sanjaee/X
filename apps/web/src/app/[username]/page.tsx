@@ -24,18 +24,27 @@ import { User, Post, SocialRelationship } from "@/types";
 import { apiRequest } from "@/lib/api";
 import { formatNumber, cn } from "@/lib/utils";
 
+import { useSearchParams } from "next/navigation";
+
 export default function UserProfilePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const username = params.username as string;
+
+  const urlTab = searchParams.get("tab");
+  const initialTab: "posts" | "replies" | "reposts" | "media" =
+    urlTab === "replies" || urlTab === "reposts" || urlTab === "media" ? urlTab : "posts";
 
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [relationship, setRelationship] = useState<SocialRelationship | null>(null);
   const [mutuals, setMutuals] = useState<User[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [activeTab, setActiveTab] = useState<"posts" | "replies" | "media" | "likes">("posts");
+  const [activeTab, setActiveTab] = useState<"posts" | "replies" | "reposts" | "media">(initialTab);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -46,18 +55,55 @@ export default function UserProfilePage() {
       .catch(() => setCurrentUser(null));
   }, []);
 
+  const handleTabChange = (newTab: "posts" | "replies" | "reposts" | "media") => {
+    if (newTab === activeTab) return;
+    setActiveTab(newTab);
+    const newUrl = newTab === "posts" ? `/${username}` : `/${username}?tab=${newTab}`;
+    window.history.pushState({ tab: newTab }, "", newUrl);
+  };
+
+  // Support browser Back/Forward navigation for tabs
+  useEffect(() => {
+    const handlePopState = () => {
+      const sp = new URLSearchParams(window.location.search);
+      const t = sp.get("tab");
+      const valid: "posts" | "replies" | "reposts" | "media" =
+        t === "replies" || t === "reposts" || t === "media" ? t : "posts";
+      setActiveTab(valid);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  // Restore and persist scroll position per tab
+  useEffect(() => {
+    const saved = sessionStorage.getItem(`profile_scroll_${username}_${activeTab}`);
+    if (saved) {
+      window.scrollTo(0, parseInt(saved, 10));
+    }
+    const handleScroll = () => {
+      sessionStorage.setItem(
+        `profile_scroll_${username}_${activeTab}`,
+        window.scrollY.toString()
+      );
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [username, activeTab]);
+
   useEffect(() => {
     if (!username) return;
     setLoading(true);
 
     Promise.all([
       apiRequest<User>(`/users/${username}`),
-      apiRequest<{ posts: Post[] }>(`/users/${username}/posts?tab=${activeTab}`),
+      apiRequest<{ posts: Post[]; next_cursor?: string }>(`/users/${username}/posts?tab=${activeTab}&limit=20`),
     ])
       .then(([user, postsRes]) => {
         setProfileUser(user);
         setFollowersCount(user.followers_count || 0);
         setPosts(postsRes.posts || []);
+        setNextCursor(postsRes.next_cursor || null);
       })
       .catch((err) => {
         console.error("Failed to load profile", err);
@@ -66,6 +112,28 @@ export default function UserProfilePage() {
         setLoading(false);
       });
   }, [username, activeTab]);
+
+  const handleLoadMore = async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await apiRequest<{ posts: Post[]; next_cursor?: string }>(
+        `/users/${username}/posts?tab=${activeTab}&cursor=${encodeURIComponent(nextCursor)}&limit=20`
+      );
+      if (res.posts && res.posts.length > 0) {
+        setPosts((prev) => {
+          const ids = new Set(prev.map((p) => p.id));
+          const unique = res.posts.filter((p) => !ids.has(p.id));
+          return [...prev, ...unique];
+        });
+      }
+      setNextCursor(res.next_cursor || null);
+    } catch (err) {
+      console.error("Failed to load more posts", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   // Load relationship and mutual connections if authenticated
   useEffect(() => {
@@ -438,20 +506,25 @@ export default function UserProfilePage() {
                 <>
                   {/* Profile Sub-tabs */}
                   <div className="flex border-b border-border h-[53px]">
-                    {(["posts", "replies", "media", "likes"] as const).map((tab) => (
+                    {[
+                      { id: "posts", label: "Posts" },
+                      { id: "replies", label: "Replies" },
+                      { id: "reposts", label: "Reposts" },
+                      { id: "media", label: "Media" },
+                    ].map((tab) => (
                       <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        className="flex-1 flex justify-center items-center hover:bg-subtle transition-colors relative capitalize text-[15px]"
+                        key={tab.id}
+                        onClick={() => handleTabChange(tab.id as any)}
+                        className="flex-1 flex justify-center items-center hover:bg-subtle transition-colors relative text-[15px]"
                       >
                         <span
                           className={cn(
                             "font-bold py-3.5 relative",
-                            activeTab === tab ? "text-foreground" : "text-muted"
+                            activeTab === tab.id ? "text-foreground" : "text-muted"
                           )}
                         >
-                          {tab}
-                          {activeTab === tab && (
+                          {tab.label}
+                          {activeTab === tab.id && (
                             <div className="absolute bottom-0 left-0 right-0 h-1 bg-brand rounded-full" />
                           )}
                         </span>
@@ -462,11 +535,30 @@ export default function UserProfilePage() {
                   {/* Tab Content List */}
                   <div className="flex flex-col">
                     {posts.length === 0 ? (
-                      <div className="text-center py-12 text-muted text-[15px]">
-                        No {activeTab} yet.
+                      <div className="text-center py-16 px-4 text-muted text-[15px]">
+                        {activeTab === "posts" && "No posts yet. When they post, their posts will show up here."}
+                        {activeTab === "replies" && "No replies yet. When they reply to posts, their replies will show up here."}
+                        {activeTab === "reposts" && "No reposts yet. When they repost posts, they will show up here."}
+                        {activeTab === "media" && "No media yet. When they post photos or videos, they will show up here."}
                       </div>
                     ) : (
-                      posts.map((post) => <PostCard key={post.id} post={post} />)
+                      <>
+                        {posts.map((post, idx) => (
+                          <PostCard key={`${post.id}-${post.reposted_at || post.created_at || idx}`} post={post} />
+                        ))}
+                        {nextCursor && (
+                          <div className="p-4 flex justify-center">
+                            <button
+                              onClick={handleLoadMore}
+                              disabled={loadingMore}
+                              className="px-6 py-2.5 rounded-full border border-border text-foreground hover:bg-subtle font-bold text-sm transition-colors disabled:opacity-50 flex items-center gap-2"
+                            >
+                              {loadingMore && <Loader2 className="w-4 h-4 animate-spin text-brand" />}
+                              Show more posts
+                            </button>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </>
@@ -475,7 +567,11 @@ export default function UserProfilePage() {
           )}
         </main>
 
-        <RightSidebar onSearch={(q) => router.push(`/search?q=${encodeURIComponent(q)}`)} />
+        <RightSidebar
+          currentUser={currentUser}
+          onSearch={(q) => router.push(`/search?q=${encodeURIComponent(q)}`)}
+          onOpenAuth={() => setAuthModalOpen(true)}
+        />
 
         <AuthModal
           isOpen={authModalOpen}

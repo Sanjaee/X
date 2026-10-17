@@ -51,7 +51,7 @@ export default function BookmarksPage() {
           )}
         </main>
 
-        <RightSidebar />
+        <RightSidebar currentUser={currentUser} />
       </div>
     </div>
   );

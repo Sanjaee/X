@@ -10,6 +10,7 @@ import { apiRequest } from "@/lib/api";
 import { formatNumber, cn } from "@/lib/utils";
 
 export default function ExplorePage() {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"for_you" | "trending" | "news" | "sports">("for_you");
   const [searchResults, setSearchResults] = useState<Post[]>([]);
@@ -17,6 +18,10 @@ export default function ExplorePage() {
   const [trendingTopics, setTrendingTopics] = useState<Array<{ category: string; topic: string; posts_count: number }>>([]);
 
   React.useEffect(() => {
+    apiRequest<User>("/me")
+      .then((u) => setCurrentUser(u))
+      .catch(() => setCurrentUser(null));
+
     apiRequest<{ trending: Array<{ category: string; topic: string; posts_count: number }> }>("/explore/trending")
       .then((res) => {
         if (res.trending && res.trending.length > 0) {
@@ -44,7 +49,7 @@ export default function ExplorePage() {
   return (
     <div className="min-h-screen bg-background text-foreground flex justify-center">
       <div className="w-full max-w-[1280px] flex">
-        <LeftNavRail currentUser={null} />
+        <LeftNavRail currentUser={currentUser} />
 
         <main className="w-full sm:w-[600px] border-r border-border min-h-screen flex flex-col">
           {/* Top Search Header */}
@@ -111,7 +116,7 @@ export default function ExplorePage() {
                     <span className="text-[13px] text-muted leading-4 block">{t.category}</span>
                     <span className="text-[16px] font-bold leading-5 block mt-0.5">{t.topic}</span>
                     <span className="text-[13px] text-muted leading-4 block mt-0.5">
-                      {formatNumber(t.posts_count || 1000)} posts
+                      {formatNumber(t.posts_count || 0)} posts
                     </span>
                   </div>
                   <button className="text-muted hover:text-foreground p-1 hover:bg-subtle rounded-full">
@@ -123,7 +128,7 @@ export default function ExplorePage() {
           )}
         </main>
 
-        <RightSidebar />
+        <RightSidebar currentUser={currentUser} />
       </div>
     </div>
   );

@@ -44,6 +44,7 @@ export interface Post {
   replies_count: number;
   reposts_count: number;
   likes_count: number;
+  quotes_count?: number;
   views_count: number;
   media?: MediaObject[];
   moderation_status?: 'normal' | 'flagged' | 'hidden' | 'removed';
@@ -51,6 +52,8 @@ export interface Post {
   is_liked: boolean;
   is_reposted: boolean;
   is_bookmarked: boolean;
+  reposter?: User | null;
+  reposted_at?: string | null;
   created_at: string;
   updated_at?: string;
   deleted_at?: string | null;
@@ -280,5 +283,28 @@ export interface AdminOverview {
   recent_audit_logs: AuditLog[];
   recent_security_events: AuditLog[];
 }
+
+export interface TrendingTopic {
+  category: string;
+  topic: string;
+  posts_count: number;
+  velocity_score?: number;
+}
+
+export interface UserRecommendation {
+  user: User;
+  reason: string;
+  score: number;
+  mutual_count: number;
+  mutual_names?: string[];
+}
+
+export interface NewPostsResponse {
+  count: number;
+  has_new: boolean;
+  next_cursor?: string;
+  posts?: Post[];
+}
+
 
 

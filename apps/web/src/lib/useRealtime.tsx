@@ -256,6 +256,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
             if (typeof window !== "undefined") {
               window.dispatchEvent(new CustomEvent("x_new_notification", { detail: payload }));
             }
+          } else if (type === "feed.post_created") {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("x_feed_post_created", { detail: payload }));
+            }
           } else if (type === "notification.count.updated") {
             if (typeof payload?.unread_count === "number") {
               setUnreadNotifCount(payload.unread_count);

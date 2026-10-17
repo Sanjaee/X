@@ -13,11 +13,17 @@ import {
 } from "lucide-react";
 import { User, Post, MediaObject } from "@/types";
 import { apiRequest } from "@/lib/api";
+import {
+  X_ALLOWED_MEDIA_ACCEPT,
+  filterValidMediaFiles,
+} from "@/lib/mediaValidation";
 
 interface PostModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentUser: User | null;
+  quotedPost?: Post | null;
+  replyToPost?: Post | null;
   onPostSuccess: (newPost: Post) => void;
   onOpenAuth: () => void;
 }
@@ -33,6 +39,8 @@ export function PostModal({
   isOpen,
   onClose,
   currentUser,
+  quotedPost,
+  replyToPost,
   onPostSuccess,
   onOpenAuth,
 }: PostModalProps) {
@@ -45,7 +53,7 @@ export function PostModal({
   const maxChars = currentUser?.is_verified ? 4000 : 280;
   const charsRemaining = maxChars - content.length;
   const canPost =
-    (content.trim().length > 0 || stagedFiles.length > 0) &&
+    (content.trim().length > 0 || stagedFiles.length > 0 || Boolean(quotedPost)) &&
     charsRemaining >= 0 &&
     !isSubmitting;
 
@@ -70,8 +78,8 @@ export function PostModal({
   if (!isOpen) return null;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
+    const rawFiles = Array.from(e.target.files || []);
+    if (!rawFiles.length) return;
 
     if (!currentUser) {
       onClose();
@@ -79,10 +87,20 @@ export function PostModal({
       return;
     }
 
-    const newAttachments: StagedAttachment[] = files.map((file) => {
-      const type = file.type.startsWith("video")
+    const { valid, rejected } = filterValidMediaFiles(rawFiles);
+    if (rejected.length > 0) {
+      alert("Unsupported file format. Please select valid images or videos (*.pjp, *.jfif, *.jpe, *.pjpeg, *.jpeg, *.jpg, *.png, *.webp, *.gif, *.m4v, *.mp4, *.mov).");
+    }
+
+    if (!valid.length) {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    const newAttachments: StagedAttachment[] = valid.map((file) => {
+      const type = file.type.startsWith("video") || file.name.endsWith(".mp4") || file.name.endsWith(".mov") || file.name.endsWith(".m4v")
         ? "video"
-        : file.type.includes("gif")
+        : file.type.includes("gif") || file.name.endsWith(".gif")
         ? "gif"
         : "image";
 
@@ -137,6 +155,8 @@ export function PostModal({
       const payload = {
         content: content.trim(),
         media_ids: uploadedMediaIds,
+        quote_post_id: quotedPost ? quotedPost.id : null,
+        reply_to_id: replyToPost ? replyToPost.id : null,
       };
 
       const res = await apiRequest<Post>("/posts", {
@@ -185,25 +205,67 @@ export function PostModal({
         </div>
 
         {/* Content Body */}
-        <div className="px-4 pb-3 flex gap-3">
-          <img
-            src={
-              currentUser?.avatar_url ||
-              "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"
-            }
-            alt={currentUser?.display_name || "User"}
-            className="w-10 h-10 rounded-full object-cover shrink-0 border border-border"
-          />
+        <div className="px-4 pb-3 flex flex-col">
+          {/* If replying to a post: render parent post context with connecting line (Screenshot layout) */}
+          {replyToPost && (
+            <div className="flex gap-3 mb-2 relative">
+              {/* Left Column: Avatar & Connecting Line */}
+              <div className="flex flex-col items-center shrink-0">
+                <img
+                  src={
+                    replyToPost.author?.avatar_url ||
+                    "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"
+                  }
+                  alt={replyToPost.author?.display_name || "User"}
+                  className="w-10 h-10 rounded-full object-cover border border-border"
+                />
+                <div className="w-0.5 grow bg-border my-1 min-h-[24px]" />
+              </div>
 
-          <div className="flex-1 min-w-0">
-            <textarea
-              ref={textareaRef}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="What is happening?!"
-              rows={4}
-              className="w-full bg-transparent text-[20px] text-foreground placeholder:text-muted outline-none resize-none leading-normal font-normal"
+              {/* Right Column: Author info, text snippet, and Replying to tag */}
+              <div className="flex-1 min-w-0 pb-3">
+                <div className="flex items-center gap-1.5 flex-wrap text-[15px] leading-5">
+                  <span className="font-bold text-foreground">
+                    {replyToPost.author?.display_name || replyToPost.author?.username || "User"}
+                  </span>
+                  {replyToPost.author?.is_verified && (
+                    <span className="text-brand">●</span>
+                  )}
+                  <span className="text-muted">@{replyToPost.author?.username || "user"}</span>
+                </div>
+                {replyToPost.content && (
+                  <p className="text-[15px] leading-5 text-foreground mt-1 whitespace-pre-wrap break-words line-clamp-4">
+                    {replyToPost.content}
+                  </p>
+                )}
+                <div className="text-muted text-[14px] mt-2">
+                  <span>Replying to </span>
+                  <span className="text-brand">@{replyToPost.author?.username || "user"}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* User Reply Input Row */}
+          <div className="flex gap-3">
+            <img
+              src={
+                currentUser?.avatar_url ||
+                "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"
+              }
+              alt={currentUser?.display_name || "User"}
+              className="w-10 h-10 rounded-full object-cover shrink-0 border border-border"
             />
+
+            <div className="flex-1 min-w-0">
+              <textarea
+                ref={textareaRef}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder={replyToPost ? "Post your reply" : "What is happening?!"}
+                rows={replyToPost ? 3 : 4}
+                className="w-full bg-transparent text-[20px] text-foreground placeholder:text-muted outline-none resize-none leading-normal font-normal"
+              />
 
             {/* Staged Attachments Grid */}
             {stagedFiles.length > 0 && (
@@ -242,6 +304,24 @@ export function PostModal({
               </div>
             )}
 
+            {/* Quoted Post Card Preview */}
+            {quotedPost && (
+              <div className="mb-3 p-3 rounded-2xl border border-border bg-subtle/30 flex flex-col gap-1.5 text-[14px]">
+                <div className="flex items-center gap-1.5 font-bold text-foreground">
+                  <img
+                    src={quotedPost.author?.avatar_url || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"}
+                    alt={quotedPost.author?.display_name || "User"}
+                    className="w-5 h-5 rounded-full object-cover"
+                  />
+                  <span>{quotedPost.author?.display_name || quotedPost.author?.username || "User"}</span>
+                  <span className="font-normal text-muted">@{quotedPost.author?.username || "user"}</span>
+                </div>
+                {quotedPost.content && (
+                  <p className="text-foreground/90 line-clamp-3 whitespace-pre-wrap">{quotedPost.content}</p>
+                )}
+              </div>
+            )}
+
             {/* Audience Pill: Everyone can reply (Screenshot) */}
             <div className="flex items-center gap-1 text-brand font-bold text-[13px] hover:bg-brand/10 py-1 px-3 rounded-full w-fit cursor-pointer transition-colors -ml-3 mb-2">
               <Globe className="w-4 h-4 stroke-[2.2]" />
@@ -257,7 +337,7 @@ export function PostModal({
                   ref={fileInputRef}
                   onChange={handleFileChange}
                   multiple
-                  accept="image/*,video/*"
+                  accept={X_ALLOWED_MEDIA_ACCEPT}
                   className="hidden"
                 />
 
@@ -338,10 +418,10 @@ export function PostModal({
                   {isSubmitting ? (
                     <div className="flex items-center gap-1.5">
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Posting...</span>
+                      <span>{replyToPost ? "Replying..." : "Posting..."}</span>
                     </div>
                   ) : (
-                    "Post"
+                    replyToPost ? "Reply" : "Post"
                   )}
                 </button>
               </div>
@@ -350,5 +430,6 @@ export function PostModal({
         </div>
       </div>
     </div>
+  </div>
   );
 }

@@ -317,7 +317,7 @@ export function StandalonePhotoView() {
                 input?.focus();
               }}
               className="flex items-center gap-2 hover:text-brand transition-colors text-xs font-medium group"
-              title="Balas"
+              title="Reply"
             >
               <div className="p-2 rounded-full group-hover:bg-brand/20 transition-colors">
                 <MessageCircle className="w-4 h-4" />
@@ -347,7 +347,7 @@ export function StandalonePhotoView() {
                 "flex items-center gap-2 hover:text-pink-500 transition-colors text-xs font-medium group",
                 isLiked && "text-pink-500"
               )}
-              title="Suka"
+              title="Like"
             >
               <div className="p-2 rounded-full group-hover:bg-pink-500/20 transition-colors">
                 <Heart className={cn("w-4 h-4", isLiked && "fill-current")} />
@@ -370,7 +370,7 @@ export function StandalonePhotoView() {
                 "p-2 rounded-full hover:bg-brand/20 hover:text-brand transition-colors",
                 isBookmarked && "text-brand"
               )}
-              title="Markah"
+              title="Bookmark"
             >
               <Bookmark className={cn("w-4 h-4", isBookmarked && "fill-current")} />
             </button>
@@ -379,12 +379,12 @@ export function StandalonePhotoView() {
             <button
               onClick={handleShare}
               className="p-2 rounded-full hover:bg-brand/20 hover:text-brand transition-colors relative"
-              title="Bagikan"
+              title="Share"
             >
               <Share className="w-4 h-4" />
               {copied && (
                 <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-white text-black text-[11px] px-2 py-0.5 rounded shadow font-bold">
-                  Tautan disalin!
+                  Link copied!
                 </span>
               )}
             </button>

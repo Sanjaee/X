@@ -13,6 +13,10 @@ import {
 import { User, MediaObject } from "@/types";
 import { apiRequest } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import {
+  X_ALLOWED_MEDIA_ACCEPT,
+  filterValidMediaFiles,
+} from "@/lib/mediaValidation";
 
 interface PostComposerProps {
   currentUser: User | null;
@@ -54,18 +58,28 @@ export function PostComposer({
 
   // Stage files locally in state without uploading immediately (Observable X flow)
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
+    const rawFiles = Array.from(e.target.files || []);
+    if (!rawFiles.length) return;
 
     if (!currentUser) {
       if (onOpenAuth) onOpenAuth();
       return;
     }
 
-    const newAttachments: StagedAttachment[] = files.map((file) => {
-      const type = file.type.startsWith("video")
+    const { valid, rejected } = filterValidMediaFiles(rawFiles);
+    if (rejected.length > 0) {
+      alert("Unsupported file format. Please select valid images or videos (*.pjp, *.jfif, *.jpe, *.pjpeg, *.jpeg, *.jpg, *.png, *.webp, *.gif, *.m4v, *.mp4, *.mov).");
+    }
+
+    if (!valid.length) {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    const newAttachments: StagedAttachment[] = valid.map((file) => {
+      const type = file.type.startsWith("video") || file.name.endsWith(".mp4") || file.name.endsWith(".mov") || file.name.endsWith(".m4v")
         ? "video"
-        : file.type.includes("gif")
+        : file.type.includes("gif") || file.name.endsWith(".gif")
         ? "gif"
         : "image";
 
@@ -213,7 +227,7 @@ export function PostComposer({
               type="file"
               ref={fileInputRef}
               onChange={handleFileChange}
-              accept="image/*,video/*"
+              accept={X_ALLOWED_MEDIA_ACCEPT}
               multiple
               className="hidden"
             />

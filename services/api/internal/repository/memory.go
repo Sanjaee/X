@@ -54,9 +54,10 @@ type MemoryRepository struct {
 	// Recommendation & Feedback
 	feedFeedback         map[string]*domain.FeedFeedback
 	feedImpressions      []*domain.FeedImpression
-	userTopicPreferences map[string]*domain.UserTopicPreference
-	activeWeights        domain.RankingWeights
-	recentSearches       map[uuid.UUID][]domain.RecentSearch
+	userTopicPreferences    map[string]*domain.UserTopicPreference
+	activeWeights           domain.RankingWeights
+	recentSearches          map[uuid.UUID][]domain.RecentSearch
+	dismissedRecommendations map[string]time.Time // "viewerID:targetID" -> dismissedUntil
 
 	// Dynamic Roles, Memberships, Quotas, Audit
 	rbacRoles       map[uuid.UUID]*domain.Role
@@ -101,6 +102,7 @@ func NewMemoryRepository() *MemoryRepository {
 		userTopicPreferences: make(map[string]*domain.UserTopicPreference),
 		activeWeights:        domain.DefaultRankingWeights(),
 		recentSearches:       make(map[uuid.UUID][]domain.RecentSearch),
+		dismissedRecommendations: make(map[string]time.Time),
 
 		rbacRoles:       make(map[uuid.UUID]*domain.Role),
 		rbacPermissions: make(map[uuid.UUID]*domain.Permission),
@@ -492,15 +494,88 @@ func (r *MemoryRepository) GetUserPosts(ctx context.Context, username, tab strin
 
 	uID, exists := r.userByUname[strings.ToLower(username)]
 	if !exists {
-		return nil, "", ErrNotFound
+		return []domain.Post{}, "", nil
 	}
+	targetUser := r.users[uID]
+
+	normTab := strings.ToLower(strings.TrimSpace(tab))
+	result := make([]domain.Post, 0)
+
+	switch normTab {
+	case "replies", "reply":
+		for _, p := range r.posts {
+			if p.AuthorID == uID && p.ReplyToID != nil && p.DeletedAt == nil {
+				cloned := *p
+				if viewerID != nil {
+					cloned.IsLiked = r.isLikedInternal(p.ID, *viewerID)
+					cloned.IsReposted = r.isRepostedInternal(p.ID, *viewerID)
+					cloned.IsBookmarked = r.isBookmarkedInternal(p.ID, *viewerID)
+				}
+				result = append(result, cloned)
+			}
+		}
+
+	case "reposts", "repost":
+		for key, repTime := range r.reposts {
+			parts := strings.Split(key, ":")
+			if len(parts) == 2 {
+				postID, _ := uuid.Parse(parts[0])
+				reposterID, _ := uuid.Parse(parts[1])
+				if reposterID == uID {
+					if orig, ok := r.posts[postID]; ok && orig.DeletedAt == nil {
+						cloned := *orig
+						repCopy := *targetUser
+						cloned.Reposter = &repCopy
+						t := repTime
+						cloned.RepostedAt = &t
+						if viewerID != nil {
+							cloned.IsLiked = r.isLikedInternal(orig.ID, *viewerID)
+							cloned.IsReposted = r.isRepostedInternal(orig.ID, *viewerID)
+							cloned.IsBookmarked = r.isBookmarkedInternal(orig.ID, *viewerID)
+						}
+						result = append(result, cloned)
+					}
+				}
+			}
+		}
+
+	case "media":
+		for _, p := range r.posts {
+			if p.AuthorID == uID && p.DeletedAt == nil && len(p.Media) > 0 {
+				cloned := *p
+				if viewerID != nil {
+					cloned.IsLiked = r.isLikedInternal(p.ID, *viewerID)
+					cloned.IsReposted = r.isRepostedInternal(p.ID, *viewerID)
+					cloned.IsBookmarked = r.isBookmarkedInternal(p.ID, *viewerID)
+				}
+				result = append(result, cloned)
+			}
+		}
+
+	default:
+		for _, p := range r.posts {
+			if p.AuthorID == uID && p.ReplyToID == nil && p.DeletedAt == nil {
+				cloned := *p
+				if viewerID != nil {
+					cloned.IsLiked = r.isLikedInternal(p.ID, *viewerID)
+					cloned.IsReposted = r.isRepostedInternal(p.ID, *viewerID)
+					cloned.IsBookmarked = r.isBookmarkedInternal(p.ID, *viewerID)
+				}
+				result = append(result, cloned)
+			}
+		}
+	}
+
+	return result, "", nil
+}
+
+func (r *MemoryRepository) GetPostReplies(ctx context.Context, postID uuid.UUID, viewerID *uuid.UUID, cursor string, limit int, sortBy string) ([]domain.Post, string, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 
 	var result []domain.Post
 	for _, p := range r.posts {
-		if p.AuthorID == uID && p.DeletedAt == nil {
-			if tab == "replies" && p.ReplyToID == nil {
-				continue
-			}
+		if p.ReplyToID != nil && *p.ReplyToID == postID && p.DeletedAt == nil {
 			cloned := *p
 			if viewerID != nil {
 				cloned.IsLiked = r.isLikedInternal(p.ID, *viewerID)
@@ -510,16 +585,33 @@ func (r *MemoryRepository) GetUserPosts(ctx context.Context, username, tab strin
 			result = append(result, cloned)
 		}
 	}
+
+	switch strings.ToLower(sortBy) {
+	case "recent", "terkini":
+		sort.Slice(result, func(i, j int) bool {
+			return result[i].CreatedAt.After(result[j].CreatedAt)
+		})
+	case "likes", "suka":
+		sort.Slice(result, func(i, j int) bool {
+			return result[i].LikesCount > result[j].LikesCount
+		})
+	default:
+		// Default relevant or chronological
+		sort.Slice(result, func(i, j int) bool {
+			return result[i].CreatedAt.Before(result[j].CreatedAt)
+		})
+	}
+
 	return result, "", nil
 }
 
-func (r *MemoryRepository) GetPostReplies(ctx context.Context, postID uuid.UUID, viewerID *uuid.UUID, cursor string, limit int) ([]domain.Post, string, error) {
+func (r *MemoryRepository) GetPostQuotes(ctx context.Context, postID uuid.UUID, viewerID *uuid.UUID, cursor string, limit int) ([]domain.Post, string, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	var result []domain.Post
 	for _, p := range r.posts {
-		if p.ReplyToID != nil && *p.ReplyToID == postID && p.DeletedAt == nil {
+		if p.QuotePostID != nil && *p.QuotePostID == postID && p.DeletedAt == nil {
 			cloned := *p
 			if viewerID != nil {
 				cloned.IsLiked = r.isLikedInternal(p.ID, *viewerID)
@@ -2018,18 +2110,348 @@ func (r *MemoryRepository) GetTrendingTopics(ctx context.Context, limit int) ([]
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	// Default representative trending topics
-	defaults := []domain.TrendingTopic{
-		{Category: "Technology · Trending", Topic: "#React19", PostsCount: 248000, VelocityScore: 92.5},
-		{Category: "Software Development", Topic: "#Golang", PostsCount: 95000, VelocityScore: 88.0},
-		{Category: "Artificial Intelligence", Topic: "#AI", PostsCount: 310000, VelocityScore: 97.2},
-		{Category: "Databases & Infrastructure", Topic: "#PostgreSQL", PostsCount: 42000, VelocityScore: 75.4},
-		{Category: "Web Standards", Topic: "#NextJS", PostsCount: 145000, VelocityScore: 84.1},
+	if limit <= 0 || limit > 50 {
+		limit = 10
 	}
-	if limit > 0 && limit < len(defaults) {
-		return defaults[:limit], nil
+
+	// 1. Scan in-memory posts for hashtags in rolling 24-hour window
+	now := time.Now()
+	cutoff := now.Add(-24 * time.Hour)
+
+	type topicStat struct {
+		tag             string
+		postIDs         map[uuid.UUID]bool
+		authorIDs       map[uuid.UUID]bool
+		totalEngagement int
 	}
-	return defaults, nil
+
+	topicMap := make(map[string]*topicStat)
+
+	for _, post := range r.posts {
+		if post.DeletedAt != nil {
+			continue
+		}
+		if post.CreatedAt.Before(cutoff) {
+			continue
+		}
+
+		words := strings.Fields(post.Content)
+		for _, w := range words {
+			if strings.HasPrefix(w, "#") && len(w) > 1 {
+				cleanTag := strings.ToLower(strings.Trim(w, "#.,!?:;\"'()[]{}"))
+				if len(cleanTag) == 0 {
+					continue
+				}
+				if _, ok := topicMap[cleanTag]; !ok {
+					topicMap[cleanTag] = &topicStat{
+						tag:       cleanTag,
+						postIDs:   make(map[uuid.UUID]bool),
+						authorIDs: make(map[uuid.UUID]bool),
+					}
+				}
+				stat := topicMap[cleanTag]
+				stat.postIDs[post.ID] = true
+				stat.authorIDs[post.AuthorID] = true
+				stat.totalEngagement += post.LikesCount + post.RepostsCount*2 + post.RepliesCount*3
+			}
+		}
+	}
+
+	var topics []domain.TrendingTopic
+	for tag, stat := range topicMap {
+		recentPosts := len(stat.postIDs)
+		uniqueAuthors := len(stat.authorIDs)
+		rawVelocity := float64(uniqueAuthors)*3.0 + float64(recentPosts)*1.5 + float64(stat.totalEngagement)*0.1
+		// Anti-spam penalty if single user spams posts
+		if recentPosts > uniqueAuthors*2 {
+			rawVelocity -= float64(recentPosts-uniqueAuthors*2) * 2.0
+		}
+		if rawVelocity < 0 {
+			rawVelocity = 0
+		}
+
+		topics = append(topics, domain.TrendingTopic{
+			Category:      categorizeTopic(tag),
+			Topic:         "#" + tag,
+			PostsCount:    recentPosts,
+			VelocityScore: rawVelocity,
+		})
+	}
+
+	sort.Slice(topics, func(i, j int) bool {
+		return topics[i].VelocityScore > topics[j].VelocityScore
+	})
+
+	if len(topics) >= limit {
+		return topics[:limit], nil
+	}
+
+	// Fallback seed topics if active posts are fewer than limit
+	fallbacks := []domain.TrendingTopic{
+		{Category: "Technology · Trending", Topic: "#React19", PostsCount: 24, VelocityScore: 92.5},
+		{Category: "Software Development", Topic: "#Golang", PostsCount: 18, VelocityScore: 88.0},
+		{Category: "Artificial Intelligence", Topic: "#AI", PostsCount: 31, VelocityScore: 97.2},
+		{Category: "Databases & Infrastructure", Topic: "#PostgreSQL", PostsCount: 12, VelocityScore: 75.4},
+		{Category: "Web Standards", Topic: "#NextJS", PostsCount: 15, VelocityScore: 84.1},
+	}
+
+	existingTags := make(map[string]bool)
+	for _, t := range topics {
+		existingTags[strings.ToLower(t.Topic)] = true
+	}
+
+	for _, fb := range fallbacks {
+		if len(topics) >= limit {
+			break
+		}
+		if !existingTags[strings.ToLower(fb.Topic)] {
+			existingTags[strings.ToLower(fb.Topic)] = true
+			topics = append(topics, fb)
+		}
+	}
+
+	if topics == nil {
+		topics = []domain.TrendingTopic{}
+	}
+	return topics, nil
+}
+
+func (r *MemoryRepository) GetNewPosts(ctx context.Context, feedType string, viewerID *uuid.UUID, sinceCursor string, limit int) ([]domain.Post, int, string, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+
+	cursorObj, err := recommendation.DecodeCursor(sinceCursor)
+	if err != nil || cursorObj == nil {
+		return []domain.Post{}, 0, "", nil
+	}
+
+	var candidates []domain.Post
+
+	for _, post := range r.posts {
+		if post.DeletedAt != nil {
+			continue
+		}
+
+		// Keyset condition: must be strictly newer than cursor
+		isNewer := post.CreatedAt.After(cursorObj.CreatedAt) || (post.CreatedAt.Equal(cursorObj.CreatedAt) && post.ID.String() > cursorObj.PostID.String())
+		if !isNewer {
+			continue
+		}
+
+		if viewerID != nil {
+			// Exclude blocked authors
+			if _, blocked := r.blocks[fmt.Sprintf("%s:%s", *viewerID, post.AuthorID)]; blocked {
+				continue
+			}
+			if _, blocked := r.blocks[fmt.Sprintf("%s:%s", post.AuthorID, *viewerID)]; blocked {
+				continue
+			}
+			// Exclude muted authors
+			if _, muted := r.mutes[fmt.Sprintf("%s:%s", *viewerID, post.AuthorID)]; muted {
+				continue
+			}
+		}
+
+		if feedType == "following" {
+			if viewerID == nil {
+				continue
+			}
+			// Must follow author
+			if _, follows := r.follows[fmt.Sprintf("%s:%s", *viewerID, post.AuthorID)]; !follows {
+				continue
+			}
+		}
+
+		postCopy := *post
+		if author, ok := r.users[post.AuthorID]; ok {
+			authorCopy := *author
+			postCopy.Author = &authorCopy
+		}
+		if viewerID != nil {
+			_, postCopy.IsLiked = r.likes[fmt.Sprintf("%s:%s", post.ID, *viewerID)]
+			_, postCopy.IsReposted = r.reposts[fmt.Sprintf("%s:%s", post.ID, *viewerID)]
+			_, postCopy.IsBookmarked = r.bookmarks[fmt.Sprintf("%s:%s", post.ID, *viewerID)]
+		}
+
+		candidates = append(candidates, postCopy)
+	}
+
+	// Sort descending by CreatedAt, then ID
+	sort.Slice(candidates, func(i, j int) bool {
+		if candidates[i].CreatedAt.Equal(candidates[j].CreatedAt) {
+			return candidates[i].ID.String() > candidates[j].ID.String()
+		}
+		return candidates[i].CreatedAt.After(candidates[j].CreatedAt)
+	})
+
+	totalNew := len(candidates)
+	var returnedPosts []domain.Post
+	if totalNew > 0 {
+		end := limit
+		if end > totalNew {
+			end = totalNew
+		}
+		returnedPosts = candidates[:end]
+	}
+
+	var nextCursor string
+	if len(returnedPosts) > 0 {
+		nextCursor = recommendation.EncodeCursor(returnedPosts[0].CreatedAt, returnedPosts[0].ID)
+	}
+
+	return returnedPosts, totalNew, nextCursor, nil
+}
+
+func (r *MemoryRepository) GetWhoToFollow(ctx context.Context, viewerID *uuid.UUID, limit int) ([]domain.UserRecommendation, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if limit <= 0 || limit > 30 {
+		limit = 5
+	}
+
+	var recommendations []domain.UserRecommendation
+	now := time.Now()
+
+	// Build excluded set
+	excluded := make(map[uuid.UUID]bool)
+	if viewerID != nil {
+		excluded[*viewerID] = true // self
+		for key := range r.follows {
+			parts := strings.Split(key, ":")
+			if len(parts) == 2 && parts[0] == viewerID.String() {
+				targetID, _ := uuid.Parse(parts[1])
+				excluded[targetID] = true // already followed
+			}
+		}
+		for key := range r.blocks {
+			parts := strings.Split(key, ":")
+			if len(parts) == 2 {
+				if parts[0] == viewerID.String() {
+					targetID, _ := uuid.Parse(parts[1])
+					excluded[targetID] = true
+				} else if parts[1] == viewerID.String() {
+					targetID, _ := uuid.Parse(parts[0])
+					excluded[targetID] = true
+				}
+			}
+		}
+		for key := range r.mutes {
+			parts := strings.Split(key, ":")
+			if len(parts) == 2 && parts[0] == viewerID.String() {
+				targetID, _ := uuid.Parse(parts[1])
+				excluded[targetID] = true
+			}
+		}
+		for key, until := range r.dismissedRecommendations {
+			parts := strings.Split(key, ":")
+			if len(parts) == 2 && parts[0] == viewerID.String() && until.After(now) {
+				targetID, _ := uuid.Parse(parts[1])
+				excluded[targetID] = true
+			}
+		}
+	}
+
+	// 1. Candidate evaluation with 2nd-degree friends-of-friends calculation
+	type candScore struct {
+		user        domain.User
+		mutualCount int
+		mutualNames []string
+		score       float64
+	}
+
+	var candidates []candScore
+
+	// Calculate followed accounts of viewer
+	viewerFollowed := make(map[uuid.UUID]bool)
+	if viewerID != nil {
+		for key := range r.follows {
+			parts := strings.Split(key, ":")
+			if len(parts) == 2 && parts[0] == viewerID.String() {
+				fID, _ := uuid.Parse(parts[1])
+				viewerFollowed[fID] = true
+			}
+		}
+	}
+
+	for uID, user := range r.users {
+		if excluded[uID] {
+			continue
+		}
+
+		mutualCount := 0
+		var mutualNames []string
+
+		// Check who follows uID that is in viewerFollowed
+		for fID := range viewerFollowed {
+			if _, followsTarget := r.follows[fmt.Sprintf("%s:%s", fID, uID)]; followsTarget {
+				mutualCount++
+				if mutualUser, ok := r.users[fID]; ok && len(mutualNames) < 3 {
+					mutualNames = append(mutualNames, mutualUser.Username)
+				}
+			}
+		}
+
+		score := float64(mutualCount)*3.0 + float64(user.FollowersCount)*0.01
+		candidates = append(candidates, candScore{
+			user:        *user,
+			mutualCount: mutualCount,
+			mutualNames: mutualNames,
+			score:       score,
+		})
+	}
+
+	sort.Slice(candidates, func(i, j int) bool {
+		if candidates[i].mutualCount == candidates[j].mutualCount {
+			return candidates[i].user.FollowersCount > candidates[j].user.FollowersCount
+		}
+		return candidates[i].mutualCount > candidates[j].mutualCount
+	})
+
+	for _, cand := range candidates {
+		if len(recommendations) >= limit {
+			break
+		}
+		reason := "Suggested for you"
+		if cand.mutualCount > 0 && len(cand.mutualNames) > 0 {
+			if cand.mutualCount == 1 {
+				reason = fmt.Sprintf("Followed by @%s", cand.mutualNames[0])
+			} else {
+				reason = fmt.Sprintf("Followed by @%s + %d others", cand.mutualNames[0], cand.mutualCount-1)
+			}
+		} else if cand.user.FollowersCount > 50 {
+			reason = "Popular on X"
+		}
+
+		recommendations = append(recommendations, domain.UserRecommendation{
+			User:        cand.user,
+			Reason:      reason,
+			Score:       cand.score,
+			MutualCount: cand.mutualCount,
+			MutualNames: cand.mutualNames,
+		})
+	}
+
+	if recommendations == nil {
+		recommendations = []domain.UserRecommendation{}
+	}
+	return recommendations, nil
+}
+
+func (r *MemoryRepository) DismissUserRecommendation(ctx context.Context, viewerID, targetID uuid.UUID, duration time.Duration) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if duration <= 0 {
+		duration = 7 * 24 * time.Hour
+	}
+	key := fmt.Sprintf("%s:%s", viewerID, targetID)
+	r.dismissedRecommendations[key] = time.Now().Add(duration)
+	return nil
 }
 
 // -------------------------------------------------------------
@@ -2697,6 +3119,101 @@ func (r *MemoryRepository) AdminDeletePost(ctx context.Context, postID uuid.UUID
 		CreatedAt:   time.Now(),
 	})
 	return nil
+}
+
+func (r *MemoryRepository) ReconcileCounters(ctx context.Context, dryRun bool, batchSize int) (*domain.CounterReconciliationResult, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	result := &domain.CounterReconciliationResult{
+		DryRun:  dryRun,
+		Details: []domain.CounterMismatchDetail{},
+	}
+
+	for _, p := range r.posts {
+		if p.DeletedAt != nil {
+			continue
+		}
+		result.TotalScanned++
+
+		actualLikes := 0
+		for key := range r.likes {
+			if strings.HasPrefix(key, p.ID.String()+":") {
+				actualLikes++
+			}
+		}
+
+		actualReposts := 0
+		for key := range r.reposts {
+			if strings.HasPrefix(key, p.ID.String()+":") {
+				actualReposts++
+			}
+		}
+
+		actualReplies := 0
+		for _, other := range r.posts {
+			if other.ReplyToID != nil && *other.ReplyToID == p.ID && other.DeletedAt == nil {
+				actualReplies++
+			}
+		}
+
+		actualQuotes := 0
+		for _, other := range r.posts {
+			if other.QuotePostID != nil && *other.QuotePostID == p.ID && other.DeletedAt == nil {
+				actualQuotes++
+			}
+		}
+
+		hasMismatch := false
+		if p.LikesCount != actualLikes {
+			result.MismatchesFound++
+			hasMismatch = true
+			result.Details = append(result.Details, domain.CounterMismatchDetail{
+				PostID:        p.ID,
+				Type:          "likes",
+				ReportedCount: p.LikesCount,
+				ActualCount:   actualLikes,
+				Fixed:         !dryRun,
+			})
+			if !dryRun {
+				p.LikesCount = actualLikes
+			}
+		}
+		if p.RepostsCount != actualReposts {
+			result.MismatchesFound++
+			hasMismatch = true
+			result.Details = append(result.Details, domain.CounterMismatchDetail{
+				PostID:        p.ID,
+				Type:          "reposts",
+				ReportedCount: p.RepostsCount,
+				ActualCount:   actualReposts,
+				Fixed:         !dryRun,
+			})
+			if !dryRun {
+				p.RepostsCount = actualReposts
+			}
+		}
+		if p.RepliesCount != actualReplies {
+			result.MismatchesFound++
+			hasMismatch = true
+			result.Details = append(result.Details, domain.CounterMismatchDetail{
+				PostID:        p.ID,
+				Type:          "replies",
+				ReportedCount: p.RepliesCount,
+				ActualCount:   actualReplies,
+				Fixed:         !dryRun,
+			})
+			if !dryRun {
+				p.RepliesCount = actualReplies
+			}
+		}
+
+		if hasMismatch && !dryRun {
+			result.MismatchesFixed++
+		}
+	}
+
+	return result, nil
 }
 
 

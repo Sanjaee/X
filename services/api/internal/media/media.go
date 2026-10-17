@@ -94,15 +94,16 @@ func (s *MediaService) ProcessAndUpload(ctx context.Context, uploaderID uuid.UUI
 	)
 
 	allowedExts := map[string]bool{
-		".jpg": true, ".jpeg": true, ".png": true, ".webp": true, ".gif": true,
-		".mp4": true, ".mov": true, ".webm": true,
+		".pjp": true, ".jfif": true, ".jpe": true, ".pjpeg": true,
+		".jpeg": true, ".jpg": true, ".png": true, ".webp": true, ".gif": true,
+		".m4v": true, ".mp4": true, ".mov": true, ".webm": true,
 	}
 	if !allowedExts[ext] {
 		return nil, fmt.Errorf("unsupported media extension %s: only images and videos are permitted", ext)
 	}
 
 	switch ext {
-	case ".jpg", ".jpeg":
+	case ".jpg", ".jpeg", ".pjp", ".jfif", ".jpe", ".pjpeg":
 		mediaType = "image"
 		mimeType = "image/jpeg"
 		processedBytes, width, height, err = s.compressJPEG(rawBytes)
@@ -135,7 +136,7 @@ func (s *MediaService) ProcessAndUpload(ctx context.Context, uploaderID uuid.UUI
 			width = &w
 			height = &h
 		}
-	case ".mp4", ".mov":
+	case ".mp4", ".mov", ".m4v":
 		mediaType = "video"
 		mimeType = "video/mp4"
 		processedBytes = rawBytes
