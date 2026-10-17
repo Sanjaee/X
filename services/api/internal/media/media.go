@@ -93,6 +93,14 @@ func (s *MediaService) ProcessAndUpload(ctx context.Context, uploaderID uuid.UUI
 		mediaType      string
 	)
 
+	allowedExts := map[string]bool{
+		".jpg": true, ".jpeg": true, ".png": true, ".webp": true, ".gif": true,
+		".mp4": true, ".mov": true, ".webm": true,
+	}
+	if !allowedExts[ext] {
+		return nil, fmt.Errorf("unsupported media extension %s: only images and videos are permitted", ext)
+	}
+
 	switch ext {
 	case ".jpg", ".jpeg":
 		mediaType = "image"
@@ -113,6 +121,10 @@ func (s *MediaService) ProcessAndUpload(ctx context.Context, uploaderID uuid.UUI
 			key = fmt.Sprintf("media/%s.jpg", mediaID.String())
 			mimeType = "image/jpeg"
 		}
+	case ".webp":
+		mediaType = "image"
+		mimeType = "image/webp"
+		processedBytes = rawBytes
 	case ".gif":
 		mediaType = "gif"
 		mimeType = "image/gif"
@@ -127,10 +139,12 @@ func (s *MediaService) ProcessAndUpload(ctx context.Context, uploaderID uuid.UUI
 		mediaType = "video"
 		mimeType = "video/mp4"
 		processedBytes = rawBytes
-	default:
-		mediaType = "image"
-		mimeType = "application/octet-stream"
+	case ".webm":
+		mediaType = "video"
+		mimeType = "video/webm"
 		processedBytes = rawBytes
+	default:
+		return nil, fmt.Errorf("unsupported media format %s", ext)
 	}
 
 	finalSize := int64(len(processedBytes))

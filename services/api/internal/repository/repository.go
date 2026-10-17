@@ -144,5 +144,54 @@ type Repository interface {
 
 	// Health
 	Ping(ctx context.Context) error
+
+	// Post Editing & Advanced Deletion
+	UpdatePost(ctx context.Context, postID, authorID uuid.UUID, content string) error
+	DeletePostWithPermission(ctx context.Context, postID, requesterID uuid.UUID, canDeleteAny bool) error
+
+	// RBAC Roles & Permissions
+	GetUserRoles(ctx context.Context, userID uuid.UUID) ([]domain.Role, error)
+	GetUserPermissions(ctx context.Context, userID uuid.UUID) ([]string, error)
+	HasPermission(ctx context.Context, userID uuid.UUID, permissionKey string) (bool, error)
+	AssignRoleToUser(ctx context.Context, userID, roleID uuid.UUID, assignedBy *uuid.UUID, reason string) error
+	RemoveRoleFromUser(ctx context.Context, userID, roleID uuid.UUID) error
+	GetAllRoles(ctx context.Context) ([]domain.Role, error)
+	GetRoleByID(ctx context.Context, roleID uuid.UUID) (*domain.Role, error)
+	CreateRole(ctx context.Context, role *domain.Role) error
+	UpdateRole(ctx context.Context, role *domain.Role) error
+	DeleteRole(ctx context.Context, roleID uuid.UUID) error
+	GetRolePermissions(ctx context.Context, roleID uuid.UUID) ([]domain.Permission, error)
+	SetRolePermissions(ctx context.Context, roleID uuid.UUID, permissionIDs []uuid.UUID) error
+	GetAllPermissions(ctx context.Context) ([]domain.Permission, error)
+
+	// Membership Plans & Entitlements
+	GetAllMembershipPlans(ctx context.Context) ([]domain.MembershipPlan, error)
+	GetMembershipPlanByID(ctx context.Context, planID string) (*domain.MembershipPlan, error)
+	UpdateMembershipPlan(ctx context.Context, plan *domain.MembershipPlan) error
+	GetPlanEntitlements(ctx context.Context, planID string) ([]domain.MembershipEntitlement, error)
+	SetPlanEntitlements(ctx context.Context, planID string, entitlements []domain.MembershipEntitlement) error
+	GetUserMembership(ctx context.Context, userID uuid.UUID) (*domain.UserMembership, error)
+	AssignUserMembership(ctx context.Context, userMem *domain.UserMembership) error
+	RevokeUserMembership(ctx context.Context, userID uuid.UUID, planID string) error
+	GetResolvedEntitlements(ctx context.Context, userID uuid.UUID) (map[string]int64, error)
+
+	// Atomic Quota & Usage Counters
+	CheckAndIncrementPostQuota(ctx context.Context, userID uuid.UUID, maxPosts int) (bool, int, error)
+
+	// Audit Logs
+	CreateAuditLog(ctx context.Context, log *domain.AuditLog) error
+	GetAuditLogs(ctx context.Context, limit, offset int) ([]domain.AuditLog, error)
+	GetSecurityAuditLogs(ctx context.Context, limit, offset int) ([]domain.AuditLog, error)
+
+	// User Administration & Owner Bootstrap
+	GetAllUsersAdmin(ctx context.Context, limit, offset int, search string) ([]domain.User, int, error)
+	UpdateUserStatus(ctx context.Context, userID uuid.UUID, status string) error
+	BootstrapOwner(ctx context.Context, email string) (*domain.User, error)
+
+	// Admin Overview & Posts Management
+	GetAdminOverview(ctx context.Context) (*domain.AdminOverview, error)
+	GetAdminPosts(ctx context.Context, filter domain.AdminPostFilter) ([]domain.Post, int64, error)
+	UpdatePostModeration(ctx context.Context, postID uuid.UUID, status string, moderatorID uuid.UUID, reason string) error
+	AdminDeletePost(ctx context.Context, postID uuid.UUID, moderatorID uuid.UUID, reason string) error
 }
 

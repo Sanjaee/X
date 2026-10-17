@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -12,24 +12,42 @@ import {
   Share,
   CheckCircle2,
   MoreHorizontal,
+  Pencil,
+  Trash2,
+  Loader2,
 } from "lucide-react";
-import { Post } from "@/types";
+import { Post, User } from "@/types";
 import { formatRelativeTime, formatNumber, cn } from "@/lib/utils";
 import { VerifiedBadge } from "@/components/common/VerifiedBadge";
 import { useMediaViewer } from "@/components/media/MediaViewerContext";
 import { VideoPlayer } from "@/components/media/VideoPlayer";
+import { apiRequest } from "@/lib/api";
 
 interface PostCardProps {
   post: Post;
+  currentUser?: User | null;
   onLike?: (postId: string) => void;
   onRepost?: (postId: string) => void;
   onBookmark?: (postId: string) => void;
   onFeedback?: (postId: string, feedbackType: 'not_interested' | 'hide') => void;
+  onPostUpdated?: (updatedPost: Post) => void;
+  onPostDeleted?: (postId: string) => void;
 }
 
-export function PostCard({ post, onLike, onRepost, onBookmark, onFeedback }: PostCardProps) {
+export function PostCard({
+  post,
+  currentUser: propUser,
+  onLike,
+  onRepost,
+  onBookmark,
+  onFeedback,
+  onPostUpdated,
+  onPostDeleted,
+}: PostCardProps) {
   const router = useRouter();
   const { openMedia } = useMediaViewer();
+  const [currentUser, setCurrentUser] = useState<User | null>(propUser || null);
+  const [displayContent, setDisplayContent] = useState(post.content);
   const [isLiked, setIsLiked] = useState(post.is_liked);
   const [likesCount, setLikesCount] = useState(post.likes_count);
   const [isReposted, setIsReposted] = useState(post.is_reposted);
@@ -37,10 +55,42 @@ export function PostCard({ post, onLike, onRepost, onBookmark, onFeedback }: Pos
   const [isBookmarked, setIsBookmarked] = useState(post.is_bookmarked);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Edit & Delete State
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(post.content);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleted, setIsDeleted] = useState(false);
+
+  useEffect(() => {
+    if (propUser) {
+      setCurrentUser(propUser);
+      return;
+    }
+    const token = typeof window !== "undefined" ? localStorage.getItem("x_session_token") : null;
+    if (token) {
+      apiRequest<User>("/me")
+        .then((u) => setCurrentUser(u))
+        .catch(() => setCurrentUser(null));
+    }
+  }, [propUser]);
+
+  const isAuthor =
+    currentUser != null &&
+    (currentUser.id === post.author_id || currentUser.id === post.author?.id);
+
+  const canDelete =
+    isAuthor ||
+    currentUser?.is_owner ||
+    currentUser?.role === "owner" ||
+    currentUser?.role === "god" ||
+    currentUser?.permissions?.includes("post.delete.any");
+
   const handleCardClick = (e: React.MouseEvent) => {
-    // Avoid triggering card navigation if interactive child clicked
+    if (isEditing) return;
     const target = e.target as HTMLElement;
-    if (target.closest("button") || target.closest("a")) return;
+    if (target.closest("button") || target.closest("a") || target.closest("textarea")) return;
     router.push(`/${post.author?.username || "user"}/status/${post.id}`);
   };
 
@@ -63,6 +113,47 @@ export function PostCard({ post, onLike, onRepost, onBookmark, onFeedback }: Pos
     setIsBookmarked(!isBookmarked);
     if (onBookmark) onBookmark(post.id);
   };
+
+  const handleSaveEdit = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!editContent.trim()) return;
+    setIsSavingEdit(true);
+    setEditError(null);
+    try {
+      const updated = await apiRequest<Post>(`/posts/${post.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ content: editContent.trim() }),
+      });
+      setDisplayContent(updated.content || editContent.trim());
+      setIsEditing(false);
+      if (onPostUpdated) onPostUpdated(updated);
+    } catch (err: any) {
+      setEditError(err.message || "Failed to update post");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleDeletePost = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this post?")) return;
+    setIsDeleting(true);
+    try {
+      await apiRequest(`/posts/${post.id}`, {
+        method: "DELETE",
+      });
+      setIsDeleted(true);
+      if (onPostDeleted) onPostDeleted(post.id);
+    } catch (err: any) {
+      alert(err.message || "Failed to delete post");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  if (isDeleted) {
+    return null;
+  }
 
   return (
     <article
@@ -125,6 +216,35 @@ export function PostCard({ post, onLike, onRepost, onBookmark, onFeedback }: Pos
                   }}
                 />
                 <div className="absolute right-0 top-7 w-52 bg-background border border-border shadow-xl rounded-xl py-1.5 z-40 text-[14px]">
+                  {isAuthor && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuOpen(false);
+                        setIsEditing(true);
+                      }}
+                      className="w-full text-left px-3.5 py-2.5 hover:bg-subtle flex items-center gap-2.5 text-foreground transition-colors"
+                    >
+                      <Pencil className="w-4 h-4 text-brand" />
+                      <span>Edit post</span>
+                    </button>
+                  )}
+
+                  {canDelete && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuOpen(false);
+                        handleDeletePost(e);
+                      }}
+                      disabled={isDeleting}
+                      className="w-full text-left px-3.5 py-2.5 hover:bg-subtle flex items-center gap-2.5 text-destructive transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Delete post</span>
+                    </button>
+                  )}
+
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -151,10 +271,47 @@ export function PostCard({ post, onLike, onRepost, onBookmark, onFeedback }: Pos
           </div>
         </div>
 
-        {/* Post Text */}
-        <p className="text-[15px] leading-5 text-foreground mt-1 whitespace-pre-wrap break-words">
-          {post.content}
-        </p>
+        {/* Post Text or Inline Edit Form */}
+        {isEditing ? (
+          <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+            <textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              className="w-full bg-subtle border border-border rounded-xl p-3 text-[15px] text-foreground focus:outline-none focus:border-brand resize-none"
+              rows={3}
+              maxLength={1000}
+              autoFocus
+            />
+            {editError && <p className="text-destructive text-xs mt-1">{editError}</p>}
+            <div className="flex items-center justify-end gap-2 mt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditing(false);
+                  setEditContent(displayContent);
+                  setEditError(null);
+                }}
+                disabled={isSavingEdit}
+                className="px-3 py-1.5 rounded-full text-xs font-semibold text-muted hover:bg-subtle hover:text-foreground transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                disabled={isSavingEdit || !editContent.trim()}
+                className="px-4 py-1.5 rounded-full text-xs font-bold bg-brand text-white hover:bg-brand/90 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {isSavingEdit && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Save
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-[15px] leading-5 text-foreground mt-1 whitespace-pre-wrap break-words">
+            {displayContent}
+          </p>
+        )}
 
         {/* Media Attachments with CLS-Protected Aspect Ratio & Photo Viewer */}
         {post.media && post.media.length > 0 && (

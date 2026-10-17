@@ -62,6 +62,7 @@ func NewPostgresRepository(dbURL string) (*PostgresRepository, error) {
 
 	repo := &PostgresRepository{db: db}
 	repo.ensureSearchSchema(ctx)
+	repo.ensureRBACSchema(ctx)
 
 	return repo, nil
 }
@@ -113,6 +114,14 @@ func (r *PostgresRepository) CreateUser(ctx context.Context, u *domain.User) err
 		u.ID = uuid.New()
 	}
 
+	if u.Role == "" || u.Role == "user" {
+		u.Role = "member"
+	}
+	if strings.ToLower(strings.TrimSpace(u.Email)) == "afrizaahmad18@gmail.com" {
+		u.Role = "owner"
+		u.IsVerified = true
+	}
+
 	queryUser := `
 		INSERT INTO users (id, username, email, password_hash, role, is_verified, verified_type, is_private, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
@@ -131,6 +140,29 @@ func (r *PostgresRepository) CreateUser(ctx context.Context, u *domain.User) err
 	if err != nil {
 		return err
 	}
+
+	// Assign default role in user_roles
+	targetRoleKey := "member"
+	if u.Role == "owner" {
+		targetRoleKey = "owner"
+	}
+	_, _ = tx.ExecContext(ctx, `
+		INSERT INTO user_roles (user_id, role_id, reason)
+		SELECT $1, id, 'Default role assignment'
+		FROM roles WHERE key = $2
+		ON CONFLICT (user_id, role_id) DO NOTHING;
+	`, u.ID, targetRoleKey)
+
+	// Assign default membership
+	targetPlan := "free"
+	if u.Role == "owner" {
+		targetPlan = "mvp"
+	}
+	_, _ = tx.ExecContext(ctx, `
+		INSERT INTO user_memberships (user_id, plan_id, status)
+		VALUES ($1, $2, 'active')
+		ON CONFLICT (user_id, plan_id) DO NOTHING;
+	`, u.ID, targetPlan)
 
 	return tx.Commit()
 }

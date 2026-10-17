@@ -80,10 +80,12 @@ type Post struct {
 	UpdatedAt    time.Time  `json:"updated_at"`
 	DeletedAt    *time.Time `json:"deleted_at,omitempty"`
 
-	Media        []MediaObject `json:"media"`
-	IsLiked      bool          `json:"is_liked"`
-	IsReposted   bool          `json:"is_reposted"`
-	IsBookmarked bool          `json:"is_bookmarked"`
+	Media            []MediaObject `json:"media"`
+	Visibility       string        `json:"visibility"`
+	ModerationStatus string        `json:"moderation_status"`
+	IsLiked          bool          `json:"is_liked"`
+	IsReposted       bool          `json:"is_reposted"`
+	IsBookmarked     bool          `json:"is_bookmarked"`
 }
 
 // Follow represents a directional social connection
@@ -447,6 +449,171 @@ type RecentSearch struct {
 	Query      string    `json:"query"`
 	SearchedAt time.Time `json:"searched_at"`
 }
+
+// Role represents an authorization role in RBAC
+type Role struct {
+	ID          uuid.UUID `json:"id"`
+	Key         string    `json:"key"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	IsSystem    bool      `json:"is_system"`
+	IsActive    bool      `json:"is_active"`
+	UserCount   int       `json:"user_count,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// Permission represents a fine-grained authorization permission
+type Permission struct {
+	ID          uuid.UUID `json:"id"`
+	Key         string    `json:"key"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+// RolePermission represents the mapping between a role and a permission
+type RolePermission struct {
+	RoleID       uuid.UUID `json:"role_id"`
+	PermissionID uuid.UUID `json:"permission_id"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+// UserRole represents an assigned role to a user
+type UserRole struct {
+	ID         uuid.UUID  `json:"id"`
+	UserID     uuid.UUID  `json:"user_id"`
+	RoleID     uuid.UUID  `json:"role_id"`
+	Role       *Role      `json:"role,omitempty"`
+	AssignedBy *uuid.UUID `json:"assigned_by,omitempty"`
+	AssignedAt time.Time  `json:"assigned_at"`
+	ExpiresAt  *time.Time `json:"expires_at,omitempty"`
+	Reason     string     `json:"reason,omitempty"`
+}
+
+// MembershipPlan represents a tiered monetization / quota plan
+type MembershipPlan struct {
+	ID               string                  `json:"id"`
+	Key              string                  `json:"key"`
+	Name             string                  `json:"name"`
+	Description      string                  `json:"description"`
+	PriceAmountCents int                     `json:"price_amount_cents"`
+	Currency         string                  `json:"currency"`
+	BillingInterval  string                  `json:"billing_interval"`
+	IsActive         bool                    `json:"is_active"`
+	Entitlements     []MembershipEntitlement `json:"entitlements,omitempty"`
+	CreatedAt        time.Time               `json:"created_at"`
+	UpdatedAt        time.Time               `json:"updated_at"`
+}
+
+// MembershipEntitlement represents a quota or limit rule for a plan
+type MembershipEntitlement struct {
+	ID             uuid.UUID `json:"id"`
+	PlanID         string    `json:"plan_id"`
+	EntitlementKey string    `json:"entitlement_key"`
+	LimitValue     int64     `json:"limit_value"`
+	Unit           string    `json:"unit"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+// UserMembership represents a user's active membership tier
+type UserMembership struct {
+	ID        uuid.UUID       `json:"id"`
+	UserID    uuid.UUID       `json:"user_id"`
+	PlanID    string          `json:"plan_id"`
+	Plan      *MembershipPlan `json:"plan,omitempty"`
+	Status    string          `json:"status"` // 'active', 'expired', 'canceled'
+	StartsAt  time.Time       `json:"starts_at"`
+	ExpiresAt *time.Time      `json:"expires_at,omitempty"`
+	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt time.Time       `json:"updated_at"`
+}
+
+// UserUsageCounter tracks period usage for posts, media, etc.
+type UserUsageCounter struct {
+	ID           uuid.UUID `json:"id"`
+	UserID       uuid.UUID `json:"user_id"`
+	PeriodKey    string    `json:"period_key"`
+	PeriodStart  time.Time `json:"period_start"`
+	PostsCreated int       `json:"posts_created"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+// AuditLog records sensitive administrative and moderation operations
+type AuditLog struct {
+	ID               uuid.UUID              `json:"id"`
+	ActorUserID      *uuid.UUID             `json:"actor_user_id,omitempty"`
+	ActorUsername    string                 `json:"actor_username,omitempty"`
+	Action           string                 `json:"action"`
+	TargetType       string                 `json:"target_type"`
+	TargetID         string                 `json:"target_id"`
+	Reason           string                 `json:"reason"`
+	MetadataRedacted map[string]interface{} `json:"metadata_redacted"`
+	CreatedAt        time.Time              `json:"created_at"`
+}
+
+// AdminOverview represents system KPIs and operational status
+type AdminOverview struct {
+	TotalUsers            int64              `json:"total_users"`
+	ActiveUsers24h        int64              `json:"active_users_24h"`
+	NewUsersToday         int64              `json:"new_users_today"`
+	TotalPosts            int64              `json:"total_posts"`
+	PostsToday            int64              `json:"posts_today"`
+	TotalMediaCount       int64              `json:"total_media_count"`
+	EstimatedStorageBytes int64              `json:"estimated_storage_bytes"`
+	FlaggedPostsCount     int64              `json:"flagged_posts_count"`
+	SystemHealth          SystemHealth       `json:"system_health"`
+	RecentAuditLogs       []AuditLog         `json:"recent_audit_logs"`
+	RecentSecurityEvents  []AuditLog         `json:"recent_security_events"`
+}
+
+type SystemHealth struct {
+	Database DatabaseHealth `json:"database"`
+	Redis    RedisHealth    `json:"redis"`
+	RabbitMQ ServiceStatus  `json:"rabbitmq"`
+	Runtime  RuntimeMetrics `json:"runtime"`
+}
+
+type DatabaseHealth struct {
+	Status           string  `json:"status"` // "healthy", "degraded", "down"
+	PingMs           float64 `json:"ping_ms"`
+	OpenConnections  int     `json:"open_connections"`
+	InUseConnections int     `json:"in_use_connections"`
+	IdleConnections  int     `json:"idle_connections"`
+}
+
+type RedisHealth struct {
+	Status          string  `json:"status"`
+	PingMs          float64 `json:"ping_ms"`
+	UsedMemoryHuman string  `json:"used_memory_human"`
+}
+
+type ServiceStatus struct {
+	Status  string `json:"status"`
+	Message string `json:"message,omitempty"`
+}
+
+type RuntimeMetrics struct {
+	Goroutines      int    `json:"goroutines"`
+	AllocBytes      uint64 `json:"alloc_bytes"`
+	TotalAllocBytes uint64 `json:"total_alloc_bytes"`
+	SysBytes        uint64 `json:"sys_bytes"`
+	NumGC           uint32 `json:"num_gc"`
+	UptimeSeconds   int64  `json:"uptime_seconds"`
+}
+
+// AdminPostFilter specifies parameters for filtering posts in the admin panel
+type AdminPostFilter struct {
+	Query            string `json:"query"`
+	AuthorID         string `json:"author_id"`
+	ModerationStatus string `json:"moderation_status"`
+	Visibility       string `json:"visibility"`
+	Limit            int    `json:"limit"`
+	Offset           int    `json:"offset"`
+}
+
 
 
 

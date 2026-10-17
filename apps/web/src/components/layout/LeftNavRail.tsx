@@ -15,12 +15,13 @@ import {
   Feather,
   LogOut,
   BadgeCheck,
+  Shield,
 } from "lucide-react";
 import { User } from "@/types";
 import { cn } from "@/lib/utils";
 import { VerifiedBadge } from "@/components/common/VerifiedBadge";
 import { useRealtime } from "@/lib/useRealtime";
-
+import { useComposer } from "@/components/composer/ComposerContext";
 
 interface LeftNavRailProps {
   currentUser: User | null;
@@ -36,6 +37,22 @@ export function LeftNavRail({
   onLogout,
 }: LeftNavRailProps) {
   const pathname = usePathname();
+  const { openComposer } = useComposer();
+
+  const handlePostClick = () => {
+    if (onOpenComposer) {
+      onOpenComposer();
+    } else {
+      openComposer();
+    }
+  };
+
+  const isAdmin =
+    currentUser?.is_owner ||
+    currentUser?.role === "owner" ||
+    currentUser?.role === "god" ||
+    currentUser?.role === "mod" ||
+    currentUser?.email === "afrizaahmad18@gmail.com";
 
   const navItems = [
     { label: "Home", href: "/", icon: Home },
@@ -45,6 +62,7 @@ export function LeftNavRail({
     { label: "Grok", href: "/grok", icon: Sparkles },
     { label: "Bookmarks", href: "/bookmarks", icon: Bookmark },
     { label: "Premium", href: "/premium", icon: BadgeCheck },
+    ...(isAdmin ? [{ label: "Admin", href: "/admin", icon: Shield }] : []),
     {
       label: "Profile",
       href: currentUser ? `/${currentUser.username}` : "/login",
@@ -52,11 +70,10 @@ export function LeftNavRail({
     },
   ];
 
-
   const { unreadNotifCount, unreadMessageCount } = useRealtime();
 
   return (
-    <header className="hidden sm:flex sticky top-0 h-screen flex-col justify-between items-end xl:items-start px-2 sm:px-4 py-3 select-none border-r border-border w-[68px] xl:w-[275px]">
+    <header className="hidden sm:flex sticky top-0 h-screen flex-col justify-between items-end xl:items-start px-2 sm:px-4 py-3 select-none border-r border-border w-[68px] xl:w-[275px] overflow-y-auto no-scrollbar">
       <div className="w-full flex flex-col items-center xl:items-start">
         {/* X Logo */}
         <Link
@@ -70,7 +87,7 @@ export function LeftNavRail({
         </Link>
 
         {/* Navigation Items */}
-        <nav className="flex flex-col gap-1 w-full">
+        <nav className="flex flex-col gap-0.5 xl:gap-1 w-full">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -86,7 +103,7 @@ export function LeftNavRail({
                 key={item.label}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-4 p-3 rounded-full hover:bg-subtle transition-colors group text-foreground",
+                  "flex items-center gap-4 p-2.5 xl:py-3 xl:px-4 rounded-full hover:bg-subtle transition-colors group text-foreground",
                   isActive && "font-bold"
                 )}
               >
@@ -105,10 +122,10 @@ export function LeftNavRail({
         </nav>
 
         {/* Post Button CTA */}
-        <div className="w-full mt-4">
+        <div className="w-full mt-2 xl:mt-4">
           {currentUser ? (
             <button
-              onClick={onOpenComposer}
+              onClick={handlePostClick}
               className="w-full bg-[#eff3f4] hover:bg-[#d7dbdc] text-[#0f1419] font-bold p-3 xl:py-3.5 xl:px-8 rounded-full shadow-md transition-all flex items-center justify-center active:scale-95"
             >
               <Feather className="w-6 h-6 xl:hidden" />

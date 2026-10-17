@@ -105,6 +105,12 @@ services:
       POSTGRES_DB: ${DB_NAME:-x_prod}
     volumes:
       - x_postgres_data:/var/lib/postgresql/data
+      - ../../services/api/migrations/000001_initial_schema.up.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+      - ../../services/api/migrations/000002_subscriptions.up.sql:/docker-entrypoint-initdb.d/02_subscriptions.sql:ro
+      - ../../services/api/migrations/000003_social_messaging_realtime.up.sql:/docker-entrypoint-initdb.d/03_social.sql:ro
+      - ../../services/api/migrations/000004_recommendation_feed_ranking.up.sql:/docker-entrypoint-initdb.d/04_recommendations.sql:ro
+      - ../../services/api/migrations/000005_search_indexing_and_history.up.sql:/docker-entrypoint-initdb.d/05_search.sql:ro
+      - ../../services/api/migrations/000006_rbac_roles_memberships_quotas.up.sql:/docker-entrypoint-initdb.d/06_rbac.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-x_prod}"]
       interval: 5s

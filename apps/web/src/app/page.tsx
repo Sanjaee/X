@@ -42,9 +42,20 @@ export default function HomePage() {
     };
     syncUser();
 
+    const handleCreated = (e: Event) => {
+      const customEvent = e as CustomEvent<Post>;
+      if (customEvent.detail) {
+        handlePostCreated(customEvent.detail);
+      }
+    };
+
     window.addEventListener("x_auth_state_change", syncUser);
-    return () => window.removeEventListener("x_auth_state_change", syncUser);
-  }, []);
+    window.addEventListener("x_post_created", handleCreated);
+    return () => {
+      window.removeEventListener("x_auth_state_change", syncUser);
+      window.removeEventListener("x_post_created", handleCreated);
+    };
+  }, [activeTab]);
 
   // TanStack Query with Bounded Cache (maxPages: 5)
   const {

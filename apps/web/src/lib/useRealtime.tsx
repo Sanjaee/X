@@ -117,7 +117,16 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     }
 
     let wsUrl = "";
-    if (process.env.NEXT_PUBLIC_API_URL) {
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname;
+      const port = window.location.port ? `:${window.location.port}` : "";
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      if (host === "localhost" && !window.location.port) {
+        wsUrl = `${protocol}//${host}/api/v1/ws?token=${encodeURIComponent(token)}`;
+      }
+    }
+
+    if (!wsUrl && process.env.NEXT_PUBLIC_API_URL) {
       try {
         const parsed = new URL(process.env.NEXT_PUBLIC_API_URL, window.location.origin);
         const protocol = parsed.protocol === "https:" ? "wss:" : "ws:";

@@ -80,6 +80,21 @@ export default function UserProfilePage() {
     }
   }, [currentUser, profileUser, username]);
 
+  // Update profile posts if current user posts
+  useEffect(() => {
+    const handleCreated = (e: Event) => {
+      const customEvent = e as CustomEvent<Post>;
+      if (customEvent.detail && currentUser && profileUser && currentUser.id === profileUser.id) {
+        setPosts((prev) => [customEvent.detail, ...prev]);
+        setProfileUser((prev) =>
+          prev ? { ...prev, posts_count: (prev.posts_count || 0) + 1 } : null
+        );
+      }
+    };
+    window.addEventListener("x_post_created", handleCreated);
+    return () => window.removeEventListener("x_post_created", handleCreated);
+  }, [currentUser, profileUser]);
+
   const handleFollowAction = async () => {
     if (!currentUser) {
       setAuthModalOpen(true);
@@ -225,12 +240,6 @@ export default function UserProfilePage() {
 
                   {isSelf ? (
                     <div className="flex items-center gap-2 mb-2">
-                      <Link
-                        href="/notifications"
-                        className="border border-border hover:bg-subtle font-bold text-[15px] px-4 py-1.5 rounded-full transition-colors"
-                      >
-                        Follow Requests
-                      </Link>
                       <button className="border border-border hover:bg-subtle font-bold text-[15px] px-4 py-1.5 rounded-full transition-colors">
                         Edit profile
                       </button>
@@ -337,19 +346,25 @@ export default function UserProfilePage() {
                       <span>{profileUser.location}</span>
                     </div>
                   )}
-                  {profileUser.website && (
-                    <div className="flex items-center gap-1">
-                      <LinkIcon className="w-4 h-4 shrink-0" />
-                      <a
-                        href={profileUser.website}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-brand hover:underline"
-                      >
-                        {profileUser.website.replace(/^https?:\/\//, "")}
-                      </a>
-                    </div>
-                  )}
+                  {profileUser.website && (() => {
+                    const raw = profileUser.website.trim();
+                    const isSafe = /^https?:\/\//i.test(raw);
+                    const safeHref = isSafe ? raw : (raw.startsWith("//") ? `https:${raw}` : `https://${raw}`);
+                    if (!/^https?:\/\//i.test(safeHref)) return null;
+                    return (
+                      <div className="flex items-center gap-1">
+                        <LinkIcon className="w-4 h-4 shrink-0" />
+                        <a
+                          href={safeHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-brand hover:underline"
+                        >
+                          {safeHref.replace(/^https?:\/\//i, "")}
+                        </a>
+                      </div>
+                    );
+                  })()}
                   <div className="flex items-center gap-1">
                     <Calendar className="w-4 h-4 shrink-0" />
                     <span>

@@ -1,4 +1,10 @@
 export function getApiBase(): string {
+  if (typeof window !== "undefined") {
+    const origin = window.location.origin;
+    if (origin.includes("localhost") && !origin.includes(":3000")) {
+      return `${origin}/api/v1`;
+    }
+  }
   let base = process.env.NEXT_PUBLIC_API_URL;
   if (!base) {
     if (typeof window !== "undefined") {
@@ -27,8 +33,10 @@ export function setStoredToken(token: string | null) {
   if (typeof window !== "undefined") {
     if (token) {
       localStorage.setItem("x_session_token", token);
+      document.cookie = `x_session_token=${token}; path=/; max-age=2592000; SameSite=Lax`;
     } else {
       localStorage.removeItem("x_session_token");
+      document.cookie = `x_session_token=; path=/; max-age=0; SameSite=Lax`;
     }
   }
 }

@@ -8,7 +8,13 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "dummy_google_client_secret",
     }),
   ],
-  secret: process.env.NEXTAUTH_SECRET || "D8D3DA7A75F61ACD5A4CD579EDBBC",
+  secret: (() => {
+    const s = process.env.NEXTAUTH_SECRET;
+    if (!s) {
+      return "build_placeholder_secret_never_used_at_runtime";
+    }
+    return s;
+  })(),
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === "google" && user?.email) {

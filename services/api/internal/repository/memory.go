@@ -57,6 +57,17 @@ type MemoryRepository struct {
 	userTopicPreferences map[string]*domain.UserTopicPreference
 	activeWeights        domain.RankingWeights
 	recentSearches       map[uuid.UUID][]domain.RecentSearch
+
+	// Dynamic Roles, Memberships, Quotas, Audit
+	rbacRoles       map[uuid.UUID]*domain.Role
+	rbacPermissions map[uuid.UUID]*domain.Permission
+	rbacRolePerms   map[uuid.UUID][]uuid.UUID // roleID -> []permissionID
+	rbacUserRoles   map[uuid.UUID][]uuid.UUID // userID -> []roleID
+	memPlans        map[string]*domain.MembershipPlan
+	memEntitlements map[string]map[string]int64 // planID -> (key -> val)
+	userMemberships map[uuid.UUID]*domain.UserMembership
+	usageCounters   map[string]int // "userID:periodKey" -> count
+	auditLogs       []domain.AuditLog
 }
 
 func NewMemoryRepository() *MemoryRepository {
@@ -90,6 +101,16 @@ func NewMemoryRepository() *MemoryRepository {
 		userTopicPreferences: make(map[string]*domain.UserTopicPreference),
 		activeWeights:        domain.DefaultRankingWeights(),
 		recentSearches:       make(map[uuid.UUID][]domain.RecentSearch),
+
+		rbacRoles:       make(map[uuid.UUID]*domain.Role),
+		rbacPermissions: make(map[uuid.UUID]*domain.Permission),
+		rbacRolePerms:   make(map[uuid.UUID][]uuid.UUID),
+		rbacUserRoles:   make(map[uuid.UUID][]uuid.UUID),
+		memPlans:        make(map[string]*domain.MembershipPlan),
+		memEntitlements: make(map[string]map[string]int64),
+		userMemberships: make(map[uuid.UUID]*domain.UserMembership),
+		usageCounters:   make(map[string]int),
+		auditLogs:       make([]domain.AuditLog, 0),
 	}
 	repo.seedInitialData()
 	return repo
@@ -121,6 +142,60 @@ func (r *MemoryRepository) seedInitialData() {
 		MonthlyPriceCents: 1600, AnnualPriceCents: 16800, Currency: "USD", MaxPostLength: 10000,
 		CanGetVerifiedBadge: true, CanEditPosts: true, CanUndoPosts: true, MaxVideoMinutes: 180, MaxMediaCount: 4, ReducedAds: true, IsActive: true,
 	}
+
+	// Seed RBAC Roles
+	rRoles := []domain.Role{
+		{ID: uuid.MustParse("00000000-0000-0000-0000-000000000001"), Key: "member", Name: "Member", Description: "Default standard role", IsSystem: true, IsActive: true},
+		{ID: uuid.MustParse("00000000-0000-0000-0000-000000000002"), Key: "vip", Name: "VIP", Description: "VIP membership role", IsSystem: true, IsActive: true},
+		{ID: uuid.MustParse("00000000-0000-0000-0000-000000000003"), Key: "mvp", Name: "MVP", Description: "MVP membership role", IsSystem: true, IsActive: true},
+		{ID: uuid.MustParse("00000000-0000-0000-0000-000000000004"), Key: "mod", Name: "Moderator", Description: "Moderation role", IsSystem: true, IsActive: true},
+		{ID: uuid.MustParse("00000000-0000-0000-0000-000000000005"), Key: "god", Name: "God Admin", Description: "Administrative role", IsSystem: true, IsActive: true},
+		{ID: uuid.MustParse("00000000-0000-0000-0000-000000000006"), Key: "owner", Name: "Owner", Description: "Platform Owner", IsSystem: true, IsActive: true},
+	}
+	for _, role := range rRoles {
+		copied := role
+		r.rbacRoles[role.ID] = &copied
+	}
+
+	// Seed Permissions
+	permKeys := []string{
+		"post.create", "post.read", "post.update.own", "post.delete.own", "post.update.any", "post.delete.any", "post.pin.own", "post.pin.any",
+		"media.upload.image", "media.upload.video", "media.delete.own", "media.delete.any",
+		"profile.update.own", "profile.update.any", "profile.manage.colors", "profile.view.analytics",
+		"moderation.post.hide", "moderation.post.restore", "moderation.user.warn", "moderation.user.suspend", "moderation.report.manage",
+		"membership.view", "membership.manage.own", "membership.assign", "membership.revoke", "membership.plan.manage",
+		"role.read", "role.create", "role.update", "role.delete", "permission.manage", "user.read", "user.update", "user.suspend", "audit.read", "system.settings.manage",
+	}
+	permMap := make(map[string]uuid.UUID)
+	for i, k := range permKeys {
+		pID := uuid.NewMD5(uuid.NameSpaceDNS, []byte(k))
+		permMap[k] = pID
+		r.rbacPermissions[pID] = &domain.Permission{
+			ID:          pID,
+			Key:         k,
+			Name:        k,
+			Description: fmt.Sprintf("Permission %s (%d)", k, i),
+		}
+	}
+
+	// Map role permissions
+	memberPerms := []string{"post.create", "post.read", "post.update.own", "post.delete.own", "post.pin.own", "media.upload.image", "media.delete.own", "profile.update.own", "membership.view", "membership.manage.own"}
+	for _, k := range memberPerms {
+		r.rbacRolePerms[rRoles[0].ID] = append(r.rbacRolePerms[rRoles[0].ID], permMap[k])
+	}
+	for _, k := range permKeys {
+		// Owner has all permissions
+		r.rbacRolePerms[rRoles[5].ID] = append(r.rbacRolePerms[rRoles[5].ID], permMap[k])
+	}
+
+	// Seed Membership Plans & Entitlements
+	r.memPlans["free"] = &domain.MembershipPlan{ID: "free", Key: "free", Name: "Member", PriceAmountCents: 0, IsActive: true}
+	r.memPlans["vip"] = &domain.MembershipPlan{ID: "vip", Key: "vip", Name: "VIP Member", PriceAmountCents: 100, IsActive: true}
+	r.memPlans["mvp"] = &domain.MembershipPlan{ID: "mvp", Key: "mvp", Name: "MVP", PriceAmountCents: 100, IsActive: true}
+
+	r.memEntitlements["free"] = map[string]int64{"posts_per_day": 2, "max_images_per_post": 2, "max_videos_per_post": 0, "max_post_length": 280, "max_file_size_mb": 5}
+	r.memEntitlements["vip"] = map[string]int64{"posts_per_day": 10, "max_images_per_post": 4, "max_videos_per_post": 1, "max_post_length": 4000, "max_file_size_mb": 50, "can_view_analytics": 1}
+	r.memEntitlements["mvp"] = map[string]int64{"posts_per_day": 30, "max_images_per_post": 4, "max_videos_per_post": 1, "max_post_length": 10000, "max_file_size_mb": 200, "can_view_analytics": 1}
 
 	// Create sample official NASA account
 	nasaID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
@@ -198,9 +273,37 @@ func (r *MemoryRepository) CreateUser(ctx context.Context, u *domain.User) error
 	u.CreatedAt = now
 	u.UpdatedAt = now
 
+	if u.Role == "" || u.Role == "user" {
+		u.Role = "member"
+	}
+	if lowerE == "afrizaahmad18@gmail.com" {
+		u.Role = "owner"
+		u.IsVerified = true
+	}
+
 	r.users[u.ID] = u
 	r.userByUname[lowerU] = u.ID
 	r.userByEmail[lowerE] = u.ID
+
+	// Assign role
+	memberRoleID := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	if u.Role == "owner" {
+		memberRoleID = uuid.MustParse("00000000-0000-0000-0000-000000000006")
+	}
+	r.rbacUserRoles[u.ID] = []uuid.UUID{memberRoleID}
+
+	// Assign membership
+	planID := "free"
+	if u.Role == "owner" {
+		planID = "mvp"
+	}
+	r.userMemberships[u.ID] = &domain.UserMembership{
+		UserID:   u.ID,
+		PlanID:   planID,
+		Status:   "active",
+		StartsAt: now,
+	}
+
 	return nil
 }
 
@@ -1928,5 +2031,673 @@ func (r *MemoryRepository) GetTrendingTopics(ctx context.Context, limit int) ([]
 	}
 	return defaults, nil
 }
+
+// -------------------------------------------------------------
+// POST CRUD OWNERSHIP & MODERATION (In-Memory)
+// -------------------------------------------------------------
+
+func (r *MemoryRepository) UpdatePost(ctx context.Context, postID, authorID uuid.UUID, content string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	post, exists := r.posts[postID]
+	if !exists || post.DeletedAt != nil {
+		return ErrNotFound
+	}
+	if post.AuthorID != authorID {
+		return ErrUnauthorized
+	}
+	post.Content = content
+	post.UpdatedAt = time.Now()
+	return nil
+}
+
+func (r *MemoryRepository) DeletePostWithPermission(ctx context.Context, postID, requesterID uuid.UUID, canDeleteAny bool) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	post, exists := r.posts[postID]
+	if !exists || post.DeletedAt != nil {
+		return ErrNotFound
+	}
+	if !canDeleteAny && post.AuthorID != requesterID {
+		return ErrUnauthorized
+	}
+	now := time.Now()
+	post.DeletedAt = &now
+	return nil
+}
+
+// -------------------------------------------------------------
+// RBAC ROLES & PERMISSIONS (In-Memory)
+// -------------------------------------------------------------
+
+func (r *MemoryRepository) getUserRolesInternal(userID uuid.UUID) []domain.Role {
+	roleIDs := r.rbacUserRoles[userID]
+	var res []domain.Role
+	for _, id := range roleIDs {
+		if role, exists := r.rbacRoles[id]; exists && role.IsActive {
+			res = append(res, *role)
+		}
+	}
+	if len(res) == 0 {
+		// Default to member
+		for _, role := range r.rbacRoles {
+			if role.Key == "member" {
+				res = append(res, *role)
+				break
+			}
+		}
+	}
+	return res
+}
+
+func (r *MemoryRepository) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]domain.Role, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.getUserRolesInternal(userID), nil
+}
+
+func (r *MemoryRepository) GetUserPermissions(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	roles := r.getUserRolesInternal(userID)
+	permSet := make(map[string]bool)
+	for _, role := range roles {
+		for _, pID := range r.rbacRolePerms[role.ID] {
+			if perm, exists := r.rbacPermissions[pID]; exists {
+				permSet[perm.Key] = true
+			}
+		}
+	}
+	var res []string
+	for k := range permSet {
+		res = append(res, k)
+	}
+	return res, nil
+}
+
+func (r *MemoryRepository) HasPermission(ctx context.Context, userID uuid.UUID, permissionKey string) (bool, error) {
+	perms, err := r.GetUserPermissions(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+	for _, p := range perms {
+		if p == permissionKey {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (r *MemoryRepository) AssignRoleToUser(ctx context.Context, userID, roleID uuid.UUID, assignedBy *uuid.UUID, reason string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, id := range r.rbacUserRoles[userID] {
+		if id == roleID {
+			return nil
+		}
+	}
+	r.rbacUserRoles[userID] = append(r.rbacUserRoles[userID], roleID)
+	return nil
+}
+
+func (r *MemoryRepository) RemoveRoleFromUser(ctx context.Context, userID, roleID uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var updated []uuid.UUID
+	for _, id := range r.rbacUserRoles[userID] {
+		if id != roleID {
+			updated = append(updated, id)
+		}
+	}
+	r.rbacUserRoles[userID] = updated
+	return nil
+}
+
+func (r *MemoryRepository) GetAllRoles(ctx context.Context) ([]domain.Role, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var res []domain.Role
+	for _, role := range r.rbacRoles {
+		copied := *role
+		copied.UserCount = 0
+		for _, uRoles := range r.rbacUserRoles {
+			for _, rID := range uRoles {
+				if rID == role.ID {
+					copied.UserCount++
+					break
+				}
+			}
+		}
+		res = append(res, copied)
+	}
+	return res, nil
+}
+
+func (r *MemoryRepository) GetRoleByID(ctx context.Context, roleID uuid.UUID) (*domain.Role, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	role, exists := r.rbacRoles[roleID]
+	if !exists {
+		return nil, ErrNotFound
+	}
+	copied := *role
+	return &copied, nil
+}
+
+func (r *MemoryRepository) CreateRole(ctx context.Context, role *domain.Role) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	role.ID = uuid.New()
+	role.CreatedAt = time.Now()
+	role.UpdatedAt = time.Now()
+	r.rbacRoles[role.ID] = role
+	return nil
+}
+
+func (r *MemoryRepository) UpdateRole(ctx context.Context, role *domain.Role) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	existing, exists := r.rbacRoles[role.ID]
+	if !exists {
+		return ErrNotFound
+	}
+	existing.Name = role.Name
+	existing.Description = role.Description
+	existing.IsActive = role.IsActive
+	existing.UpdatedAt = time.Now()
+	return nil
+}
+
+func (r *MemoryRepository) DeleteRole(ctx context.Context, roleID uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	role, exists := r.rbacRoles[roleID]
+	if !exists {
+		return ErrNotFound
+	}
+	if role.IsSystem || role.Key == "owner" || role.Key == "member" {
+		return ErrRoleProtected
+	}
+	delete(r.rbacRoles, roleID)
+	delete(r.rbacRolePerms, roleID)
+	return nil
+}
+
+func (r *MemoryRepository) GetRolePermissions(ctx context.Context, roleID uuid.UUID) ([]domain.Permission, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var perms []domain.Permission
+	for _, pid := range r.rbacRolePerms[roleID] {
+		if p, exists := r.rbacPermissions[pid]; exists {
+			perms = append(perms, *p)
+		}
+	}
+	return perms, nil
+}
+
+func (r *MemoryRepository) SetRolePermissions(ctx context.Context, roleID uuid.UUID, permissionIDs []uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.rbacRolePerms[roleID] = permissionIDs
+	return nil
+}
+
+func (r *MemoryRepository) GetAllPermissions(ctx context.Context) ([]domain.Permission, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var perms []domain.Permission
+	for _, p := range r.rbacPermissions {
+		perms = append(perms, *p)
+	}
+	return perms, nil
+}
+
+// -------------------------------------------------------------
+// MEMBERSHIP PLANS & ENTITLEMENTS (In-Memory)
+// -------------------------------------------------------------
+
+func (r *MemoryRepository) GetAllMembershipPlans(ctx context.Context) ([]domain.MembershipPlan, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var res []domain.MembershipPlan
+	for _, p := range r.memPlans {
+		plan := *p
+		plan.Entitlements, _ = r.GetPlanEntitlements(ctx, plan.ID)
+		res = append(res, plan)
+	}
+	return res, nil
+}
+
+func (r *MemoryRepository) GetMembershipPlanByID(ctx context.Context, planID string) (*domain.MembershipPlan, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	p, exists := r.memPlans[planID]
+	if !exists {
+		return nil, ErrNotFound
+	}
+	copied := *p
+	copied.Entitlements, _ = r.GetPlanEntitlements(ctx, planID)
+	return &copied, nil
+}
+
+func (r *MemoryRepository) UpdateMembershipPlan(ctx context.Context, plan *domain.MembershipPlan) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	existing, exists := r.memPlans[plan.ID]
+	if !exists {
+		return ErrNotFound
+	}
+	existing.Name = plan.Name
+	existing.Description = plan.Description
+	existing.PriceAmountCents = plan.PriceAmountCents
+	existing.IsActive = plan.IsActive
+	existing.UpdatedAt = time.Now()
+	return nil
+}
+
+func (r *MemoryRepository) GetPlanEntitlements(ctx context.Context, planID string) ([]domain.MembershipEntitlement, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var res []domain.MembershipEntitlement
+	for k, v := range r.memEntitlements[planID] {
+		res = append(res, domain.MembershipEntitlement{
+			PlanID:         planID,
+			EntitlementKey: k,
+			LimitValue:     v,
+			Unit:           "count",
+			UpdatedAt:      time.Now(),
+		})
+	}
+	return res, nil
+}
+
+func (r *MemoryRepository) SetPlanEntitlements(ctx context.Context, planID string, entitlements []domain.MembershipEntitlement) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.memEntitlements[planID] == nil {
+		r.memEntitlements[planID] = make(map[string]int64)
+	}
+	for _, e := range entitlements {
+		r.memEntitlements[planID][e.EntitlementKey] = e.LimitValue
+	}
+	return nil
+}
+
+func (r *MemoryRepository) GetUserMembership(ctx context.Context, userID uuid.UUID) (*domain.UserMembership, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	um, exists := r.userMemberships[userID]
+	if exists && um.Status == "active" {
+		return um, nil
+	}
+	return &domain.UserMembership{
+		UserID:   userID,
+		PlanID:   "free",
+		Status:   "active",
+		StartsAt: time.Now(),
+	}, nil
+}
+
+func (r *MemoryRepository) AssignUserMembership(ctx context.Context, userMem *domain.UserMembership) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	userMem.UpdatedAt = time.Now()
+	r.userMemberships[userMem.UserID] = userMem
+	return nil
+}
+
+func (r *MemoryRepository) RevokeUserMembership(ctx context.Context, userID uuid.UUID, planID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if um, exists := r.userMemberships[userID]; exists && um.PlanID == planID {
+		um.Status = "canceled"
+		um.UpdatedAt = time.Now()
+	}
+	return nil
+}
+
+func (r *MemoryRepository) GetResolvedEntitlements(ctx context.Context, userID uuid.UUID) (map[string]int64, error) {
+	um, _ := r.GetUserMembership(ctx, userID)
+	sub, _ := r.GetActiveSubscription(ctx, userID)
+
+	planID := "free"
+	if um != nil && um.PlanID != "" {
+		planID = um.PlanID
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	res := make(map[string]int64)
+	for k, v := range r.memEntitlements[planID] {
+		res[k] = v
+	}
+	if _, ok := res["posts_per_day"]; !ok {
+		res["posts_per_day"] = 2
+	}
+	if _, ok := res["max_images_per_post"]; !ok {
+		res["max_images_per_post"] = 2
+	}
+	if _, ok := res["max_videos_per_post"]; !ok {
+		res["max_videos_per_post"] = 0
+	}
+	if _, ok := res["max_post_length"]; !ok {
+		res["max_post_length"] = 280
+	}
+
+	// Check legacy active subscription for backward compatibility
+	if planID == "free" && sub != nil && sub.Plan != nil {
+		if sub.Plan.MaxPostLength > 0 {
+			res["max_post_length"] = int64(sub.Plan.MaxPostLength)
+		}
+		if sub.Plan.MaxMediaCount > 0 {
+			res["max_images_per_post"] = int64(sub.Plan.MaxMediaCount)
+		}
+		res["posts_per_day"] = 30
+		if sub.Plan.MaxVideoMinutes > 0 {
+			res["max_videos_per_post"] = 1
+			res["max_video_minutes"] = int64(sub.Plan.MaxVideoMinutes)
+		}
+	}
+
+	return res, nil
+}
+
+// -------------------------------------------------------------
+// ATOMIC QUOTA ENGINE (In-Memory)
+// -------------------------------------------------------------
+
+func (r *MemoryRepository) CheckAndIncrementPostQuota(ctx context.Context, userID uuid.UUID, maxPosts int) (bool, int, error) {
+	if maxPosts <= 0 {
+		return true, 0, nil
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	periodKey := fmt.Sprintf("%s:post_daily:%s", userID, time.Now().UTC().Format("2006-01-02"))
+	current := r.usageCounters[periodKey]
+	if current >= maxPosts {
+		return false, current, nil
+	}
+	r.usageCounters[periodKey] = current + 1
+	return true, current + 1, nil
+}
+
+// -------------------------------------------------------------
+// AUDIT LOGS (In-Memory)
+// -------------------------------------------------------------
+
+func (r *MemoryRepository) CreateAuditLog(ctx context.Context, log *domain.AuditLog) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	log.ID = uuid.New()
+	log.CreatedAt = time.Now()
+	r.auditLogs = append(r.auditLogs, *log)
+	return nil
+}
+
+func (r *MemoryRepository) GetAuditLogs(ctx context.Context, limit, offset int) ([]domain.AuditLog, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var res []domain.AuditLog
+	for i := len(r.auditLogs) - 1; i >= 0; i-- {
+		res = append(res, r.auditLogs[i])
+	}
+	if offset > len(res) {
+		return []domain.AuditLog{}, nil
+	}
+	res = res[offset:]
+	if limit > 0 && limit < len(res) {
+		res = res[:limit]
+	}
+	return res, nil
+}
+
+// -------------------------------------------------------------
+// USER ADMINISTRATION & OWNER BOOTSTRAP (In-Memory)
+// -------------------------------------------------------------
+
+func (r *MemoryRepository) GetAllUsersAdmin(ctx context.Context, limit, offset int, search string) ([]domain.User, int, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var filtered []domain.User
+	for _, u := range r.users {
+		if search != "" && !strings.Contains(strings.ToLower(u.Username), strings.ToLower(search)) && !strings.Contains(strings.ToLower(u.Email), strings.ToLower(search)) {
+			continue
+		}
+		filtered = append(filtered, *u)
+	}
+	total := len(filtered)
+	if offset > len(filtered) {
+		return []domain.User{}, total, nil
+	}
+	filtered = filtered[offset:]
+	if limit > 0 && limit < len(filtered) {
+		filtered = filtered[:limit]
+	}
+	return filtered, total, nil
+}
+
+func (r *MemoryRepository) UpdateUserStatus(ctx context.Context, userID uuid.UUID, status string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	u, exists := r.users[userID]
+	if !exists {
+		return ErrNotFound
+	}
+	if strings.ToLower(strings.TrimSpace(u.Email)) == "afrizaahmad18@gmail.com" {
+		return ErrRoleProtected
+	}
+	if status == "suspended" {
+		now := time.Now()
+		u.DeletedAt = &now
+	} else if status == "active" {
+		u.DeletedAt = nil
+	}
+	return nil
+}
+
+func (r *MemoryRepository) BootstrapOwner(ctx context.Context, email string) (*domain.User, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	norm := strings.ToLower(strings.TrimSpace(email))
+	uID, exists := r.userByEmail[norm]
+	if !exists {
+		return nil, nil
+	}
+	u := r.users[uID]
+	u.Role = "owner"
+	return u, nil
+}
+
+func (r *MemoryRepository) GetSecurityAuditLogs(ctx context.Context, limit, offset int) ([]domain.AuditLog, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var secLogs []domain.AuditLog
+	for i := len(r.auditLogs) - 1; i >= 0; i-- {
+		l := r.auditLogs[i]
+		action := strings.ToLower(l.Action)
+		if strings.Contains(action, "login") || strings.Contains(action, "auth") || strings.Contains(action, "security") ||
+			strings.Contains(action, "owner") || strings.Contains(action, "suspend") || strings.Contains(action, "role") ||
+			strings.Contains(action, "permission") || strings.Contains(action, "unauthorized") {
+			secLogs = append(secLogs, l)
+		}
+	}
+
+	if offset >= len(secLogs) {
+		return []domain.AuditLog{}, nil
+	}
+	end := offset + limit
+	if end > len(secLogs) {
+		end = len(secLogs)
+	}
+	return secLogs[offset:end], nil
+}
+
+func (r *MemoryRepository) GetAdminOverview(ctx context.Context) (*domain.AdminOverview, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	totalUsers := int64(len(r.users))
+	var totalPosts int64
+	var flaggedPosts int64
+	for _, p := range r.posts {
+		if p.DeletedAt == nil {
+			totalPosts++
+			if p.ModerationStatus == "flagged" || p.ModerationStatus == "hidden" {
+				flaggedPosts++
+			}
+		}
+	}
+
+	overview := &domain.AdminOverview{
+		TotalUsers:        totalUsers,
+		ActiveUsers24h:    totalUsers,
+		NewUsersToday:     totalUsers,
+		TotalPosts:        totalPosts,
+		PostsToday:        totalPosts,
+		TotalMediaCount:   0,
+		FlaggedPostsCount: flaggedPosts,
+		SystemHealth: domain.SystemHealth{
+			Database: domain.DatabaseHealth{
+				Status:           "healthy",
+				PingMs:           0.5,
+				OpenConnections:  5,
+				InUseConnections: 1,
+				IdleConnections:  4,
+			},
+			Redis: domain.RedisHealth{
+				Status:          "healthy",
+				PingMs:          0.3,
+				UsedMemoryHuman: "2.5M",
+			},
+			RabbitMQ: domain.ServiceStatus{
+				Status: "healthy",
+			},
+			Runtime: domain.RuntimeMetrics{
+				Goroutines:    10,
+				UptimeSeconds: 120,
+			},
+		},
+	}
+
+	for i := len(r.auditLogs) - 1; i >= 0 && len(overview.RecentAuditLogs) < 8; i-- {
+		overview.RecentAuditLogs = append(overview.RecentAuditLogs, r.auditLogs[i])
+	}
+	overview.RecentSecurityEvents = overview.RecentAuditLogs
+	return overview, nil
+}
+
+func (r *MemoryRepository) GetAdminPosts(ctx context.Context, filter domain.AdminPostFilter) ([]domain.Post, int64, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var matched []domain.Post
+	for _, p := range r.posts {
+		if filter.Query != "" && !strings.Contains(strings.ToLower(p.Content), strings.ToLower(filter.Query)) {
+			continue
+		}
+		if filter.AuthorID != "" && p.AuthorID.String() != filter.AuthorID {
+			continue
+		}
+		if filter.ModerationStatus != "" && filter.ModerationStatus != "all" && p.ModerationStatus != filter.ModerationStatus {
+			continue
+		}
+		if filter.Visibility != "" && filter.Visibility != "all" && p.Visibility != filter.Visibility {
+			continue
+		}
+
+		pCopy := *p
+		if u, ok := r.users[p.AuthorID]; ok {
+			pCopy.Author = u
+		}
+		matched = append(matched, pCopy)
+	}
+
+	total := int64(len(matched))
+	if filter.Offset >= len(matched) {
+		return []domain.Post{}, total, nil
+	}
+	end := filter.Offset + filter.Limit
+	if end > len(matched) {
+		end = len(matched)
+	}
+	return matched[filter.Offset:end], total, nil
+}
+
+func (r *MemoryRepository) UpdatePostModeration(ctx context.Context, postID uuid.UUID, status string, moderatorID uuid.UUID, reason string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	p, exists := r.posts[postID]
+	if !exists {
+		return ErrNotFound
+	}
+	p.ModerationStatus = status
+	p.UpdatedAt = time.Now()
+
+	r.auditLogs = append(r.auditLogs, domain.AuditLog{
+		ID:          uuid.New(),
+		ActorUserID: &moderatorID,
+		Action:      "post.moderate",
+		TargetType:  "post",
+		TargetID:    postID.String(),
+		Reason:      reason,
+		CreatedAt:   time.Now(),
+	})
+	return nil
+}
+
+func (r *MemoryRepository) AdminDeletePost(ctx context.Context, postID uuid.UUID, moderatorID uuid.UUID, reason string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	p, exists := r.posts[postID]
+	if !exists {
+		return ErrNotFound
+	}
+	now := time.Now()
+	p.DeletedAt = &now
+	p.ModerationStatus = "removed"
+
+	r.auditLogs = append(r.auditLogs, domain.AuditLog{
+		ID:          uuid.New(),
+		ActorUserID: &moderatorID,
+		Action:      "post.delete.admin",
+		TargetType:  "post",
+		TargetID:    postID.String(),
+		Reason:      reason,
+		CreatedAt:   time.Now(),
+	})
+	return nil
+}
+
 
 

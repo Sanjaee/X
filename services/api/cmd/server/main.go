@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -106,23 +108,58 @@ func main() {
 		MaxAge:           300,
 	}))
 
-	// Static uploads file server
-	fileServer := http.FileServer(http.Dir(cfg.StorageDir))
-	r.Handle("/uploads/*", http.StripPrefix("/uploads", fileServer))
+	// LM-SEC-003 Remediation: Safe static uploads file server (directory listing strictly disabled)
+	uploadFS := http.Dir(cfg.StorageDir)
+	r.Get("/uploads/*", func(w http.ResponseWriter, r *http.Request) {
+		subpath := strings.TrimPrefix(r.URL.Path, "/uploads")
+		if subpath == "" || strings.HasSuffix(subpath, "/") {
+			http.NotFound(w, r)
+			return
+		}
+		f, err := uploadFS.Open(subpath)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		defer f.Close()
+		stat, err := f.Stat()
+		if err != nil || stat.IsDir() {
+			http.NotFound(w, r)
+			return
+		}
+		http.StripPrefix("/uploads", http.FileServer(uploadFS)).ServeHTTP(w, r)
+	})
 
 	// Health check & observability endpoints
 	r.Get("/health/live", h.HealthLive)
 	r.Get("/health/ready", h.HealthReady)
-	r.Get("/health/metrics", h.HealthMetrics)
+
+	// LM-SEC-009 Remediation: Restrict runtime metrics endpoint to localhost or internal queries
+	r.Get("/health/metrics", func(w http.ResponseWriter, r *http.Request) {
+		host, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			host = r.RemoteAddr
+		}
+		// Allow loopback (127.0.0.1, ::1) or authenticated header
+		if host != "127.0.0.1" && host != "::1" && host != "localhost" && r.Header.Get("X-Internal-Token") != cfg.SessionSecret {
+			http.Error(w, `{"error":"forbidden: internal metrics only"}`, http.StatusForbidden)
+			return
+		}
+		h.HealthMetrics(w, r)
+	})
 
 	// API Routes (mounted on both /api/v1 and /api for seamless frontend compatibility)
 	registerAPIRoutes := func(v1 chi.Router) {
 		// WebSocket Realtime Gateway (Section 4G & 10)
 		v1.Get("/ws", h.ServeWebSocket)
 
-		// Public Auth routes
-		v1.Post("/auth/register", h.Register)
-		v1.Post("/auth/login", h.Login)
+		// LM-SEC-013 Remediation: Dedicated strict rate limiting for public authentication routes (10 req/min)
+		authLimiter := middleware.RateLimiter(rdb, 10)
+		v1.Group(func(authPub chi.Router) {
+			authPub.Use(authLimiter)
+			authPub.Post("/auth/register", h.Register)
+			authPub.Post("/auth/login", h.Login)
+		})
 		v1.Post("/auth/google", h.GoogleAuth)
 
 		// Public Webhook for Plisio Cryptocurrency Gateway (Section 6F)
@@ -142,6 +179,7 @@ func main() {
 			pub.Get("/search/users", h.SearchUsers)
 			pub.Get("/search/suggestions", h.GetSearchSuggestions)
 			pub.Get("/subscription-plans", h.GetSubscriptionPlans)
+			pub.Get("/membership/plans", h.GetMembershipPlansCatalog)
 			pub.Get("/subscriptions/cryptos", h.GetCryptoCurrencies)
 
 			// Social Graph public reads
@@ -163,7 +201,11 @@ func main() {
 
 			// Posts
 			auth.Post("/posts", h.CreatePost)
+			auth.Patch("/posts/{postId}", h.PatchPost)
 			auth.Delete("/posts/{postId}", h.DeletePost)
+
+			// Membership
+			auth.Get("/membership/me", h.GetMyMembershipStatus)
 
 			// Interactions
 			auth.Post("/posts/{postId}/likes", h.LikePost)
@@ -229,6 +271,48 @@ func main() {
 			auth.Get("/search/recent", h.GetRecentSearches)
 			auth.Delete("/search/recent", h.ClearRecentSearches)
 			auth.Delete("/search/recent/{searchId}", h.DeleteRecentSearch)
+
+			// Admin & Governance Endpoints (RBAC, Memberships, Quotas, Audit Logs, Posts, Monitoring)
+			adminPerms := middleware.RequireAnyPermission(repo, "role.read", "role.create", "role.update", "permission.manage", "user.read", "audit.read", "membership.plan.manage", "posts.moderate", "posts.delete.any", "monitoring.read")
+			auth.Group(func(admin chi.Router) {
+				admin.Use(adminPerms)
+
+				// Overview & Monitoring
+				admin.Get("/admin/overview", h.AdminGetOverview)
+				admin.Get("/admin/monitoring/overview", h.AdminGetMonitoringOverview)
+				admin.Get("/admin/security/events", h.AdminGetSecurityEvents)
+
+				// Roles & Permissions
+				admin.Get("/admin/roles", h.AdminGetRoles)
+				admin.Post("/admin/roles", h.AdminCreateRole)
+				admin.Get("/admin/roles/{id}", h.AdminGetRoleByID)
+				admin.Patch("/admin/roles/{id}", h.AdminUpdateRole)
+				admin.Delete("/admin/roles/{id}", h.AdminDeleteRole)
+				admin.Get("/admin/permissions", h.AdminGetPermissions)
+				admin.Get("/admin/roles/{id}/permissions", h.AdminGetRolePermissions)
+				admin.Put("/admin/roles/{id}/permissions", h.AdminSetRolePermissions)
+
+				// Membership Plans & Entitlements
+				admin.Get("/admin/memberships", h.AdminGetMembershipPlans)
+				admin.Patch("/admin/memberships/{id}", h.AdminUpdateMembershipPlan)
+				admin.Put("/admin/plans/{id}/entitlements", h.AdminSetPlanEntitlements)
+				admin.Post("/admin/users/{id}/membership", h.AdminAssignUserMembership)
+				admin.Delete("/admin/users/{id}/membership/{planId}", h.AdminRevokeUserMembership)
+
+				// User Administration
+				admin.Get("/admin/users", h.AdminGetUsers)
+				admin.Get("/admin/users/{id}", h.AdminGetUserByID)
+				admin.Patch("/admin/users/{id}/roles", h.AdminUpdateUserRoles)
+				admin.Patch("/admin/users/{id}/status", h.AdminUpdateUserStatus)
+
+				// Post Moderation & Management
+				admin.Get("/admin/posts", h.AdminGetPosts)
+				admin.Patch("/admin/posts/{id}/moderation", h.AdminUpdatePostModeration)
+				admin.Delete("/admin/posts/{id}", h.AdminDeletePost)
+
+				// Audit Logs
+				admin.Get("/admin/audit-logs", h.AdminGetAuditLogs)
+			})
 		})
 	}
 

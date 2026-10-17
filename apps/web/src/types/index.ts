@@ -12,9 +12,14 @@ export interface User {
   verified_type: 'none' | 'blue' | 'business' | 'government';
   followers_count: number;
   following_count: number;
-  posts_count: number;
+  posts_count?: number;
+  role?: string;
+  roles?: Role[];
+  permissions?: string[];
+  is_owner?: boolean;
   is_following?: boolean;
   is_followed_by?: boolean;
+  deleted_at?: string | null;
   created_at: string;
 }
 
@@ -41,10 +46,14 @@ export interface Post {
   likes_count: number;
   views_count: number;
   media?: MediaObject[];
+  moderation_status?: 'normal' | 'flagged' | 'hidden' | 'removed';
+  visibility?: string;
   is_liked: boolean;
   is_reposted: boolean;
   is_bookmarked: boolean;
   created_at: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export interface Notification {
@@ -162,4 +171,114 @@ export interface VerificationBadge {
   color_token: string;
   status: string;
 }
+
+export interface Role {
+  id: string;
+  key: string;
+  name: string;
+  description: string;
+  is_system: boolean;
+  is_active: boolean;
+  user_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Permission {
+  id: string;
+  key: string;
+  name: string;
+  description: string;
+  created_at: string;
+}
+
+export interface MembershipPlan {
+  id: string;
+  key: string;
+  name: string;
+  description: string;
+  price_amount_cents: number;
+  currency: string;
+  billing_interval: string;
+  is_active: boolean;
+  entitlements?: MembershipEntitlement[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MembershipEntitlement {
+  id: string;
+  plan_id: string;
+  entitlement_key: string;
+  limit_value: number;
+  unit: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserMembership {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  plan?: MembershipPlan;
+  status: string;
+  starts_at: string;
+  expires_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AuditLog {
+  id: string;
+  actor_user_id?: string;
+  actor_username?: string;
+  action: string;
+  target_type: string;
+  target_id: string;
+  reason: string;
+  metadata_redacted: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface SystemHealth {
+  database: {
+    status: string;
+    ping_ms: number;
+    open_connections: number;
+    in_use_connections: number;
+    idle_connections: number;
+  };
+  redis: {
+    status: string;
+    ping_ms: number;
+    used_memory_human: string;
+  };
+  rabbitmq: {
+    status: string;
+    message?: string;
+  };
+  runtime: {
+    goroutines: number;
+    alloc_bytes: number;
+    total_alloc_bytes: number;
+    sys_bytes: number;
+    num_gc: number;
+    uptime_seconds: number;
+  };
+}
+
+export interface AdminOverview {
+  total_users: number;
+  active_users_24h: number;
+  new_users_today: number;
+  total_posts: number;
+  posts_today: number;
+  total_media_count: number;
+  estimated_storage_bytes: number;
+  flagged_posts_count: number;
+  system_health: SystemHealth;
+  recent_audit_logs: AuditLog[];
+  recent_security_events: AuditLog[];
+}
+
 

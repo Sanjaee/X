@@ -207,6 +207,12 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Secure, idempotent Owner bootstrap for afrizaahmad18@gmail.com
+	if strings.ToLower(strings.TrimSpace(user.Email)) == "afrizaahmad18@gmail.com" {
+		_, _ = h.repo.BootstrapOwner(r.Context(), user.Email)
+		user.Role = "owner"
+	}
+
 	token, err := h.createSessionForUser(r, user.ID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to generate session")
@@ -247,6 +253,12 @@ func (h *Handler) GoogleAuth(w http.ResponseWriter, r *http.Request) {
 		if req.AvatarURL != "" && (existingUser.AvatarURL == "" || strings.Contains(existingUser.AvatarURL, "default_profile")) {
 			existingUser.AvatarURL = req.AvatarURL
 			_ = h.repo.UpdateProfile(r.Context(), existingUser)
+		}
+
+		// Secure, idempotent Owner bootstrap for afrizaahmad18@gmail.com
+		if email == "afrizaahmad18@gmail.com" {
+			_, _ = h.repo.BootstrapOwner(r.Context(), email)
+			existingUser.Role = "owner"
 		}
 
 		token, err := h.createSessionForUser(r, existingUser.ID)
@@ -316,6 +328,12 @@ func (h *Handler) GoogleAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Secure, idempotent Owner bootstrap for afrizaahmad18@gmail.com
+	if email == "afrizaahmad18@gmail.com" {
+		_, _ = h.repo.BootstrapOwner(r.Context(), email)
+		newUser.Role = "owner"
+	}
+
 	token, err := h.createSessionForUser(r, newUser.ID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to generate session")
@@ -350,7 +368,45 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	writeJSON(w, http.StatusOK, user)
+
+	// Idempotent owner bootstrap check for afrizaahmad18@gmail.com
+	if strings.ToLower(strings.TrimSpace(user.Email)) == "afrizaahmad18@gmail.com" {
+		_, _ = h.repo.BootstrapOwner(r.Context(), user.Email)
+		user.Role = "owner"
+	}
+
+	roles, _ := h.repo.GetUserRoles(r.Context(), user.ID)
+	perms, _ := h.repo.GetUserPermissions(r.Context(), user.ID)
+	membership, _ := h.repo.GetUserMembership(r.Context(), user.ID)
+	entitlements, _ := h.repo.GetResolvedEntitlements(r.Context(), user.ID)
+
+	response := map[string]interface{}{
+		"id":              user.ID,
+		"username":        user.Username,
+		"email":           user.Email,
+		"role":            user.Role,
+		"is_verified":     user.IsVerified,
+		"verified_type":   user.VerifiedType,
+		"is_private":      user.IsPrivate,
+		"created_at":      user.CreatedAt,
+		"updated_at":      user.UpdatedAt,
+		"display_name":    user.DisplayName,
+		"bio":             user.Bio,
+		"avatar_url":      user.AvatarURL,
+		"banner_url":      user.BannerURL,
+		"location":        user.Location,
+		"website":         user.Website,
+		"followers_count": user.FollowersCount,
+		"following_count": user.FollowingCount,
+		"posts_count":     user.PostsCount,
+		"roles":           roles,
+		"permissions":     perms,
+		"membership":      membership,
+		"entitlements":    entitlements,
+		"is_owner":        middleware.IsOwnerAccount(user),
+	}
+
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
@@ -384,7 +440,17 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		user.BannerURL = req.BannerURL
 	}
 	user.Location = req.Location
-	user.Website = req.Website
+
+	cleanWebsite := strings.TrimSpace(req.Website)
+	if cleanWebsite != "" {
+		lower := strings.ToLower(cleanWebsite)
+		if strings.HasPrefix(lower, "javascript:") || strings.HasPrefix(lower, "data:") || strings.HasPrefix(lower, "vbscript:") {
+			cleanWebsite = ""
+		} else if !strings.HasPrefix(lower, "http://") && !strings.HasPrefix(lower, "https://") {
+			cleanWebsite = "https://" + cleanWebsite
+		}
+	}
+	user.Website = cleanWebsite
 
 	if err := h.repo.UpdateProfile(r.Context(), user); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to update profile")
@@ -433,6 +499,7 @@ func (h *Handler) setSessionCookie(w http.ResponseWriter, token string) {
 		Path:     "/",
 		MaxAge:   int((30 * 24 * time.Hour).Seconds()),
 		HttpOnly: true,
+		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	})
 }
@@ -455,6 +522,13 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 1. Verify post.create permission
+	hasCreatePerm, _ := h.repo.HasPermission(r.Context(), user.ID, "post.create")
+	if !hasCreatePerm && !middleware.IsOwnerAccount(user) {
+		writeError(w, http.StatusForbidden, "permission denied: post.create required")
+		return
+	}
+
 	var req CreatePostRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request")
@@ -467,27 +541,59 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Server-side entitlement check (Section 6A.B)
-	entitlements, err := h.repo.GetUserEntitlements(r.Context(), user.ID)
+	// 2. Resolve entitlements & limits from database
+	entitlements, _ := h.repo.GetResolvedEntitlements(r.Context(), user.ID)
+	maxPosts := 2
+	maxImages := 2
+	maxVideos := 0
 	maxLen := 280
-	if err == nil && entitlements != nil && entitlements.MaxPostLength > 0 {
-		maxLen = entitlements.MaxPostLength
+
+	if v, ok := entitlements["posts_per_day"]; ok {
+		maxPosts = int(v)
 	}
+	if v, ok := entitlements["max_images_per_post"]; ok {
+		maxImages = int(v)
+	}
+	if v, ok := entitlements["max_videos_per_post"]; ok {
+		maxVideos = int(v)
+	}
+	if v, ok := entitlements["max_post_length"]; ok && v > 0 {
+		maxLen = int(v)
+	}
+
+	// Platform Owner has unlimited posting quota
+	if middleware.IsOwnerAccount(user) {
+		maxPosts = 0
+		maxImages = 10
+		maxVideos = 5
+		maxLen = 10000
+	}
+
 	if len([]rune(req.Content)) > maxLen {
-		writeError(w, http.StatusForbidden, fmt.Sprintf("content exceeds maximum limit of %d characters for your plan. Upgrade to Premium for longer posts.", maxLen))
+		writeError(w, http.StatusForbidden, fmt.Sprintf("content exceeds maximum limit of %d characters for your plan. Upgrade your membership for longer posts.", maxLen))
 		return
 	}
 
 	post := &domain.Post{
-		AuthorID:    user.ID,
-		Author:      user,
-		Content:     req.Content,
-		ReplyToID:   req.ReplyToID,
-		QuotePostID: req.QuotePostID,
+		AuthorID:         user.ID,
+		Author:           user,
+		Content:          req.Content,
+		Visibility:       "public",
+		ModerationStatus: "active",
+		ReplyToID:        req.ReplyToID,
+		QuotePostID:      req.QuotePostID,
 	}
+
+	imageCount := 0
+	videoCount := 0
 
 	for _, mID := range req.MediaIDs {
 		if media, err := h.repo.GetMediaObjectByID(r.Context(), mID); err == nil {
+			if media.MediaType == "video" {
+				videoCount++
+			} else {
+				imageCount++
+			}
 			post.Media = append(post.Media, *media)
 		}
 	}
@@ -516,11 +622,39 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		if m.CreatedAt.IsZero() {
 			m.CreatedAt = time.Now()
 		}
+		if m.MediaType == "video" {
+			videoCount++
+		} else {
+			imageCount++
+		}
 		if err := h.repo.CreateMediaObject(r.Context(), &m); err != nil {
 			slog.Error("failed to create inline media object", "error", err)
 			continue
 		}
 		post.Media = append(post.Media, m)
+	}
+
+	// 3. Validate media count limits against database tier entitlements
+	if imageCount > maxImages {
+		writeError(w, http.StatusForbidden, fmt.Sprintf("Image limit exceeded (%d images attached, maximum allowed is %d for your membership tier).", imageCount, maxImages))
+		return
+	}
+	if videoCount > maxVideos {
+		writeError(w, http.StatusForbidden, fmt.Sprintf("Video upload limit exceeded (%d videos attached, maximum allowed is %d for your membership tier). Upgrade to VIP or MVP for video capability.", videoCount, maxVideos))
+		return
+	}
+
+	// 4. Atomic Quota Engine: Concurrency-safe limit enforcement
+	if maxPosts > 0 {
+		allowed, currentCount, err := h.repo.CheckAndIncrementPostQuota(r.Context(), user.ID, maxPosts)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to verify posting quota")
+			return
+		}
+		if !allowed {
+			writeError(w, http.StatusTooManyRequests, fmt.Sprintf("Daily posting limit reached (%d/%d posts today). Upgrade your membership tier for more posts.", currentCount, maxPosts))
+			return
+		}
 	}
 
 	if err := h.repo.CreatePost(r.Context(), post); err != nil {
@@ -539,6 +673,87 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, post)
+}
+
+type UpdatePostRequest struct {
+	Content string `json:"content"`
+}
+
+func (h *Handler) PatchPost(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	postID, err := uuid.Parse(chi.URLParam(r, "postId"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid post id")
+		return
+	}
+
+	var req UpdatePostRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request payload")
+		return
+	}
+
+	req.Content = strings.TrimSpace(req.Content)
+	if req.Content == "" {
+		writeError(w, http.StatusBadRequest, "content cannot be empty")
+		return
+	}
+
+	existingPost, err := h.repo.GetPostByID(r.Context(), postID, nil)
+	if err != nil || existingPost == nil {
+		writeError(w, http.StatusNotFound, "post not found")
+		return
+	}
+
+	canUpdateAny, _ := h.repo.HasPermission(r.Context(), user.ID, "post.update.any")
+	isOwner := middleware.IsOwnerAccount(user)
+
+	// Ownership check: users can only edit their own posts unless administrative override
+	if existingPost.AuthorID != user.ID && !canUpdateAny && !isOwner {
+		writeError(w, http.StatusForbidden, "cannot edit another user's post")
+		return
+	}
+
+	entitlements, _ := h.repo.GetResolvedEntitlements(r.Context(), user.ID)
+	maxLen := 280
+	if v, ok := entitlements["max_post_length"]; ok && v > 0 {
+		maxLen = int(v)
+	}
+	if isOwner {
+		maxLen = 10000
+	}
+	if len([]rune(req.Content)) > maxLen {
+		writeError(w, http.StatusForbidden, fmt.Sprintf("content exceeds maximum limit of %d characters for your plan", maxLen))
+		return
+	}
+
+	// Update content without consuming posting quota
+	if err := h.repo.UpdatePost(r.Context(), postID, existingPost.AuthorID, req.Content); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to update post")
+		return
+	}
+
+	if existingPost.AuthorID != user.ID {
+		_ = h.repo.CreateAuditLog(r.Context(), &domain.AuditLog{
+			ActorUserID: &user.ID,
+			Action:      "post.update.admin",
+			TargetType:  "post",
+			TargetID:    postID.String(),
+			Reason:      "Administrative post edit",
+			MetadataRedacted: map[string]interface{}{
+				"author_id": existingPost.AuthorID.String(),
+			},
+		})
+	}
+
+	existingPost.Content = req.Content
+	existingPost.UpdatedAt = time.Now()
+	writeJSON(w, http.StatusOK, existingPost)
 }
 
 func (h *Handler) GetPostByID(w http.ResponseWriter, r *http.Request) {
@@ -572,9 +787,37 @@ func (h *Handler) DeletePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.repo.DeletePost(r.Context(), postID, user.ID); err != nil {
+	existingPost, err := h.repo.GetPostByID(r.Context(), postID, nil)
+	if err != nil || existingPost == nil {
+		writeError(w, http.StatusNotFound, "post not found")
+		return
+	}
+
+	canDeleteAny, _ := h.repo.HasPermission(r.Context(), user.ID, "post.delete.any")
+	isOwner := middleware.IsOwnerAccount(user)
+
+	// Ownership check: regular users can only delete their own posts
+	if existingPost.AuthorID != user.ID && !canDeleteAny && !isOwner {
+		writeError(w, http.StatusForbidden, "cannot delete another user's post")
+		return
+	}
+
+	if err := h.repo.DeletePostWithPermission(r.Context(), postID, user.ID, canDeleteAny || isOwner); err != nil {
 		writeError(w, http.StatusForbidden, "cannot delete post")
 		return
+	}
+
+	if existingPost.AuthorID != user.ID {
+		_ = h.repo.CreateAuditLog(r.Context(), &domain.AuditLog{
+			ActorUserID: &user.ID,
+			Action:      "post.delete.moderation",
+			TargetType:  "post",
+			TargetID:    postID.String(),
+			Reason:      "Moderation or administrative post deletion",
+			MetadataRedacted: map[string]interface{}{
+				"author_id": existingPost.AuthorID.String(),
+			},
+		})
 	}
 
 	w.WriteHeader(http.StatusNoContent)
@@ -1605,6 +1848,12 @@ type SimulatePaymentRequest struct {
 
 // SimulatePayment activates a subscription instantly for test/dev environments (Section 6K.12)
 func (h *Handler) SimulatePayment(w http.ResponseWriter, r *http.Request) {
+	// LM-SEC-001 Remediation: Strictly disable simulation in production unless explicitly permitted
+	if os.Getenv("NODE_ENV") == "production" && os.Getenv("ALLOW_PAYMENT_SIMULATION") != "true" {
+		writeError(w, http.StatusForbidden, "payment simulation is disabled in production")
+		return
+	}
+
 	user := middleware.GetUserFromContext(r.Context())
 	if user == nil {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
@@ -1626,6 +1875,12 @@ func (h *Handler) SimulatePayment(w http.ResponseWriter, r *http.Request) {
 	order, err := h.repo.GetPaymentOrderByID(r.Context(), orderID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "order not found")
+		return
+	}
+
+	// LM-SEC-001 Ownership validation
+	if order.UserID != user.ID {
+		writeError(w, http.StatusForbidden, "forbidden: cannot simulate payment for another user's order")
 		return
 	}
 
@@ -1818,8 +2073,13 @@ func (h *Handler) HandlePlisioWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate cryptographic signature with PLISIO_API_KEY
-	if h.plisioSvc != nil && payload.VerifyHash != "" {
+	// LM-SEC-002 Remediation: Validate cryptographic signature with PLISIO_API_KEY
+	if h.plisioSvc != nil {
+		if payload.VerifyHash == "" {
+			slog.Warn("Plisio webhook rejected: verify_hash is missing")
+			writeError(w, http.StatusUnauthorized, "verify_hash signature is required")
+			return
+		}
 		if !h.plisioSvc.VerifyWebhook(data, payload.VerifyHash, bodyBytes) {
 			slog.Warn("Plisio webhook signature verification failed", "received_hash", payload.VerifyHash)
 			writeError(w, http.StatusUnprocessableEntity, "signature verification failed")
