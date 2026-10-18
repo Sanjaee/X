@@ -156,6 +156,10 @@ export function PostComposer({
     }
   };
 
+  if (!currentUser) {
+    return null;
+  }
+
   return (
     <div className="flex gap-3 px-4 py-3 border-b border-border bg-background select-none">
       {/* Avatar */}

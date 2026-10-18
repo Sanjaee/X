@@ -11,6 +11,7 @@ import (
 	"image/png"
 	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -81,6 +82,11 @@ func (s *MediaService) ProcessAndUpload(ctx context.Context, uploaderID uuid.UUI
 		return nil, fmt.Errorf("failed to read media stream: %w", err)
 	}
 
+	// VPS 4GB Hard Cap: 50MB for video, 15MB for images
+	if len(rawBytes) > 50<<20 {
+		return nil, fmt.Errorf("media file exceeds maximum allowed limit of 50MB")
+	}
+
 	ext := strings.ToLower(filepath.Ext(filename))
 	mediaID := uuid.New()
 	key := fmt.Sprintf("media/%s%s", mediaID.String(), ext)
@@ -100,6 +106,16 @@ func (s *MediaService) ProcessAndUpload(ctx context.Context, uploaderID uuid.UUI
 	}
 	if !allowedExts[ext] {
 		return nil, fmt.Errorf("unsupported media extension %s: only images and videos are permitted", ext)
+	}
+
+	// Magic-byte sniff validation (LM-SEC-004 Remediation)
+	sniffLen := len(rawBytes)
+	if sniffLen > 512 {
+		sniffLen = 512
+	}
+	detectedMIME := http.DetectContentType(rawBytes[:sniffLen])
+	if strings.HasPrefix(detectedMIME, "text/") || strings.Contains(detectedMIME, "html") || strings.Contains(detectedMIME, "javascript") || strings.Contains(detectedMIME, "executable") {
+		return nil, fmt.Errorf("dangerous or invalid file payload detected: %s", detectedMIME)
 	}
 
 	switch ext {

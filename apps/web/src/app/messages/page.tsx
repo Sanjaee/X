@@ -26,9 +26,10 @@ import { Conversation, Message, User } from "@/types";
 import { apiRequest } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useRealtime } from "@/lib/useRealtime";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 export default function MessagesPage() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { currentUser, updateUser: setCurrentUser, logout } = useCurrentUser();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -59,23 +60,6 @@ export default function MessagesPage() {
     refreshCounts,
     setUnreadMessageCount,
   } = useRealtime();
-
-  // Load current user
-  const loadCurrentUser = useCallback(() => {
-    apiRequest<User>("/me")
-      .then((u) => setCurrentUser(u))
-      .catch(() => setCurrentUser(null));
-  }, []);
-
-  useEffect(() => {
-    loadCurrentUser();
-
-    const handleAuthChange = () => {
-      loadCurrentUser();
-    };
-    window.addEventListener("x_auth_state_change", handleAuthChange);
-    return () => window.removeEventListener("x_auth_state_change", handleAuthChange);
-  }, [loadCurrentUser]);
 
   // Load conversations
   const loadConversations = useCallback(async () => {
@@ -329,19 +313,13 @@ export default function MessagesPage() {
   });
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex justify-center">
-      <div className="w-full max-w-[1280px] flex">
-        <LeftNavRail
-          currentUser={currentUser}
-          onOpenAuth={() => setAuthModalOpen(true)}
-        />
-
-        {/* 2-Column Messages Container */}
-        <div className="flex-1 flex border-r border-border min-h-screen">
+    <>
+      {/* 2-Column Messages Container */}
+        <div className="flex-1 flex border-r border-border h-screen overflow-hidden">
           {/* Conversation List Column (Visible on desktop; on mobile hidden if a conversation is open) */}
           <div
             className={cn(
-              "w-full sm:w-[380px] border-r border-border flex flex-col pb-16 sm:pb-0",
+              "w-full sm:w-[380px] border-r border-border flex flex-col h-full overflow-hidden pb-16 sm:pb-0",
               activeConvId ? "hidden sm:flex" : "flex"
             )}
           >
@@ -426,7 +404,7 @@ export default function MessagesPage() {
             )}
 
             {/* Conversation List / Empty Inbox State */}
-            <div className="flex-1 flex flex-col overflow-y-auto divide-y divide-border">
+            <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar divide-y divide-border">
               {loadingConvs ? (
                 <div className="flex justify-center p-8 text-brand">
                   <Loader2 className="w-6 h-6 animate-spin" />
@@ -525,7 +503,7 @@ export default function MessagesPage() {
           {/* Active Chat Column (Hidden on mobile if no conversation is open) */}
           <div
             className={cn(
-              "flex-1 flex flex-col justify-between h-screen",
+              "flex-1 flex flex-col justify-between h-full overflow-hidden",
               !activeConvId ? "hidden sm:flex" : "flex"
             )}
           >
@@ -582,7 +560,7 @@ export default function MessagesPage() {
                 )}
 
                 {/* Chat Messages Body */}
-                <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3">
+                <div className="flex-1 p-4 overflow-y-auto no-scrollbar flex flex-col gap-3">
                   {loadingMessages ? (
                     <div className="flex justify-center p-8 text-brand">
                       <Loader2 className="w-6 h-6 animate-spin" />
@@ -779,7 +757,7 @@ export default function MessagesPage() {
           currentUser={currentUser}
           onOpenAuth={() => setAuthModalOpen(true)}
           onLogout={() => {
-            setCurrentUser(null);
+            logout();
             setConversations([]);
             setActiveConvId(null);
           }}
@@ -794,11 +772,6 @@ export default function MessagesPage() {
           onOpenAuth={() => setAuthModalOpen(true)}
         />
 
-        {/* Mobile Fixed Bottom Nav (shown on message list view) */}
-        {!activeConvId && (
-          <MobileBottomNav onOpenComposer={() => setComposerModalOpen(true)} />
-        )}
-
         <AuthModal
           isOpen={authModalOpen}
           onClose={() => setAuthModalOpen(false)}
@@ -807,7 +780,6 @@ export default function MessagesPage() {
             loadConversations();
           }}
         />
-      </div>
-    </div>
+    </>
   );
 }

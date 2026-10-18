@@ -24,9 +24,10 @@ import { Notification, User, FollowRequest } from "@/types";
 import { apiRequest } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useRealtime } from "@/lib/useRealtime";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 export default function NotificationsPage() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { currentUser, updateUser: setCurrentUser } = useCurrentUser();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [followRequests, setFollowRequests] = useState<FollowRequest[]>([]);
   const [requestStates, setRequestStates] = useState<Record<string, "accepted" | "rejected">>({});
@@ -54,19 +55,12 @@ export default function NotificationsPage() {
   }, []);
 
   useEffect(() => {
-    apiRequest<User>("/me")
-      .then((u) => {
-        setCurrentUser(u);
-        return Promise.all([fetchNotifs(), fetchFollowRequests()]);
-      })
-      .then(() => {
-        // Automatically mark as read on visit
-        apiRequest("/notifications/read", { method: "PATCH" })
-          .then(() => setUnreadNotifCount(0))
-          .catch(() => {});
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    Promise.all([fetchNotifs(), fetchFollowRequests()]).finally(() => setLoading(false));
+
+    // Automatically mark as read on visit
+    apiRequest("/notifications/read", { method: "PATCH" })
+      .then(() => setUnreadNotifCount(0))
+      .catch(() => {});
 
     // Listen for live incoming notifications
     const handleNewNotif = () => {
@@ -137,6 +131,9 @@ export default function NotificationsPage() {
   };
 
   const filteredNotifications = notifications.filter((n) => {
+    // Direct messages are dedicated to the Messages tab and badge
+    if (n.type === "dm") return false;
+
     if (activeTab === "verified") {
       return n.actor?.is_verified;
     }
@@ -147,14 +144,8 @@ export default function NotificationsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex justify-center">
-      <div className="w-full max-w-[1280px] flex">
-        <LeftNavRail
-          currentUser={currentUser}
-          onOpenAuth={() => setAuthModalOpen(true)}
-        />
-
-        <main className="w-full sm:w-[600px] border-r border-border min-h-screen flex flex-col pb-16 sm:pb-0">
+    <>
+      <main className="w-full sm:w-[600px] border-r border-border min-h-screen flex flex-col pb-16 sm:pb-0">
           {/* Header */}
           <header className="sticky top-0 bg-background/80 backdrop-blur-md border-b border-border z-20 flex flex-col">
             <div className="flex items-center justify-between px-4 h-[53px]">
@@ -409,15 +400,11 @@ export default function NotificationsPage() {
           onOpenAuth={() => setAuthModalOpen(true)}
         />
 
-        {/* Mobile Fixed Bottom Nav */}
-        <MobileBottomNav onOpenComposer={() => setComposerModalOpen(true)} />
-
         <AuthModal
           isOpen={authModalOpen}
           onClose={() => setAuthModalOpen(false)}
           onSuccess={(u) => setCurrentUser(u)}
         />
-      </div>
-    </div>
+    </>
   );
 }

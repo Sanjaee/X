@@ -201,8 +201,10 @@ type OutboxEvent struct {
 	AggregateType string                 `json:"aggregate_type"`
 	AggregateID   uuid.UUID              `json:"aggregate_id"`
 	Payload       map[string]interface{} `json:"payload"`
-	Status        string                 `json:"status"` // 'pending', 'published', 'failed'
+	Status        string                 `json:"status"` // 'pending', 'retrying', 'published', 'failed'
 	RetryCount    int                    `json:"retry_count"`
+	LastError     *string                `json:"last_error,omitempty"`
+	NextRetryAt   *time.Time             `json:"next_retry_at,omitempty"`
 	CreatedAt     time.Time              `json:"created_at"`
 	PublishedAt   *time.Time             `json:"published_at,omitempty"`
 }

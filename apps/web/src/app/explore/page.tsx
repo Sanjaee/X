@@ -8,9 +8,10 @@ import { PostCard } from "@/components/feed/PostCard";
 import { Post, User } from "@/types";
 import { apiRequest } from "@/lib/api";
 import { formatNumber, cn } from "@/lib/utils";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 export default function ExplorePage() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { currentUser } = useCurrentUser();
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"for_you" | "trending" | "news" | "sports">("for_you");
   const [searchResults, setSearchResults] = useState<Post[]>([]);
@@ -18,15 +19,9 @@ export default function ExplorePage() {
   const [trendingTopics, setTrendingTopics] = useState<Array<{ category: string; topic: string; posts_count: number }>>([]);
 
   React.useEffect(() => {
-    apiRequest<User>("/me")
-      .then((u) => setCurrentUser(u))
-      .catch(() => setCurrentUser(null));
-
     apiRequest<{ trending: Array<{ category: string; topic: string; posts_count: number }> }>("/explore/trending")
       .then((res) => {
-        if (res.trending && res.trending.length > 0) {
-          setTrendingTopics(res.trending);
-        }
+        setTrendingTopics(res.trending || []);
       })
       .catch((e) => console.error("Failed to load trending topics", e));
   }, []);
@@ -47,11 +42,13 @@ export default function ExplorePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex justify-center">
-      <div className="w-full max-w-[1280px] flex">
-        <LeftNavRail currentUser={currentUser} />
-
-        <main className="w-full sm:w-[600px] border-r border-border min-h-screen flex flex-col">
+    <>
+      <main
+        className={cn(
+          "w-full sm:w-[600px] border-r border-border min-h-screen flex flex-col",
+          !currentUser && "border-l"
+        )}
+      >
           {/* Top Search Header */}
           <header className="sticky top-0 bg-background/80 backdrop-blur-md border-b border-border z-20 flex flex-col">
             <div className="flex items-center gap-3 px-4 h-[53px]">
@@ -129,7 +126,6 @@ export default function ExplorePage() {
         </main>
 
         <RightSidebar currentUser={currentUser} />
-      </div>
-    </div>
+    </>
   );
 }

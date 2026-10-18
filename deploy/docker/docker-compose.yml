@@ -23,7 +23,7 @@ services:
       dockerfile: deploy/docker/Dockerfile.api
     container_name: x-api
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       PORT: 8080
       GOMEMLIMIT: 300MiB
@@ -69,7 +69,7 @@ services:
       dockerfile: deploy/docker/Dockerfile.web
     container_name: x-web
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       NODE_OPTIONS: "--max-old-space-size=384"
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api/v1}
@@ -109,7 +109,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-supersecretpassword30charslong123}
       POSTGRES_DB: ${DB_NAME:-media_prod}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ../../services/api/migrations/000001_initial_schema.up.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
@@ -120,6 +120,7 @@ services:
       - ../../services/api/migrations/000006_rbac_roles_memberships_quotas.up.sql:/docker-entrypoint-initdb.d/06_rbac.sql:ro
       - ../../services/api/migrations/000007_trending_and_user_recommendations.up.sql:/docker-entrypoint-initdb.d/07_trending.sql:ro
       - ../../services/api/migrations/000008_post_interactions_and_reposts.up.sql:/docker-entrypoint-initdb.d/08_interactions.sql:ro
+      - ../../services/api/migrations/000009_outbox_resilience_and_dlq.up.sql:/docker-entrypoint-initdb.d/09_outbox_resilience.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d media_prod"]
       interval: 5s
@@ -138,7 +139,7 @@ services:
     container_name: x-redis
     command: redis-server --requirepass supersecretredispass --maxmemory 128mb --maxmemory-policy allkeys-lru
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "supersecretredispass", "ping"]
       interval: 5s
@@ -158,7 +159,7 @@ services:
     volumes:
       - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     ports:
-      - "5672:5672"
+      - "127.0.0.1:5672:5672"
     healthcheck:
       test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
       interval: 10s

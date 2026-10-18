@@ -1721,9 +1721,10 @@ func (r *MemoryRepository) GetPendingOutboxEvents(ctx context.Context, batchSize
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
+	now := time.Now()
 	var events []domain.OutboxEvent
 	for _, e := range r.outboxEvents {
-		if e.Status == "pending" {
+		if (e.Status == "pending" || e.Status == "retrying") && (e.NextRetryAt == nil || e.NextRetryAt.Before(now) || e.NextRetryAt.Equal(now)) {
 			events = append(events, *e)
 			if len(events) >= batchSize {
 				break
@@ -1741,8 +1742,46 @@ func (r *MemoryRepository) MarkOutboxEventPublished(ctx context.Context, id uuid
 		e.Status = "published"
 		now := time.Now()
 		e.PublishedAt = &now
+		e.LastError = nil
 	}
 	return nil
+}
+
+func (r *MemoryRepository) MarkOutboxEventFailed(ctx context.Context, id uuid.UUID, errMsg string, nextRetryAt *time.Time, isDLQ bool) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if e, ok := r.outboxEvents[id]; ok {
+		if isDLQ {
+			e.Status = "failed"
+		} else {
+			e.Status = "retrying"
+		}
+		e.RetryCount++
+		e.LastError = &errMsg
+		if nextRetryAt != nil {
+			e.NextRetryAt = nextRetryAt
+		} else {
+			t := time.Now().Add(10 * time.Second)
+			e.NextRetryAt = &t
+		}
+	}
+	return nil
+}
+
+func (r *MemoryRepository) CleanupOldOutboxEvents(ctx context.Context, olderThan time.Duration) (int64, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	cutoff := time.Now().Add(-olderThan)
+	var count int64
+	for id, e := range r.outboxEvents {
+		if e.Status == "published" && e.PublishedAt != nil && e.PublishedAt.Before(cutoff) {
+			delete(r.outboxEvents, id)
+			count++
+		}
+	}
+	return count, nil
 }
 
 // ==============================================================================
@@ -2184,30 +2223,6 @@ func (r *MemoryRepository) GetTrendingTopics(ctx context.Context, limit int) ([]
 
 	if len(topics) >= limit {
 		return topics[:limit], nil
-	}
-
-	// Fallback seed topics if active posts are fewer than limit
-	fallbacks := []domain.TrendingTopic{
-		{Category: "Technology · Trending", Topic: "#React19", PostsCount: 24, VelocityScore: 92.5},
-		{Category: "Software Development", Topic: "#Golang", PostsCount: 18, VelocityScore: 88.0},
-		{Category: "Artificial Intelligence", Topic: "#AI", PostsCount: 31, VelocityScore: 97.2},
-		{Category: "Databases & Infrastructure", Topic: "#PostgreSQL", PostsCount: 12, VelocityScore: 75.4},
-		{Category: "Web Standards", Topic: "#NextJS", PostsCount: 15, VelocityScore: 84.1},
-	}
-
-	existingTags := make(map[string]bool)
-	for _, t := range topics {
-		existingTags[strings.ToLower(t.Topic)] = true
-	}
-
-	for _, fb := range fallbacks {
-		if len(topics) >= limit {
-			break
-		}
-		if !existingTags[strings.ToLower(fb.Topic)] {
-			existingTags[strings.ToLower(fb.Topic)] = true
-			topics = append(topics, fb)
-		}
 	}
 
 	if topics == nil {

@@ -5,7 +5,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -13,6 +15,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"github.com/x-reconstruction/api/internal/domain"
 	"github.com/x-reconstruction/api/internal/repository"
 )
@@ -23,8 +26,13 @@ const (
 	UserContextKey contextKey = "user_context"
 )
 
-// AuthMiddleware inspects session_token from cookie or Authorization header
+// AuthMiddleware inspects session_token with optional Redis caching
 func AuthMiddleware(repo repository.Repository, optional bool) func(http.Handler) http.Handler {
+	return AuthMiddlewareWithCache(repo, nil, optional)
+}
+
+// AuthMiddlewareWithCache uses Redis cache-aside to eliminate DB roundtrips on authenticated requests
+func AuthMiddlewareWithCache(repo repository.Repository, rdb *redis.Client, optional bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token := ""
@@ -55,6 +63,20 @@ func AuthMiddleware(repo repository.Repository, optional bool) func(http.Handler
 			h := sha256.Sum256([]byte(token))
 			tokenHash := hex.EncodeToString(h[:])
 
+			// 3. Fast-path: Check Redis session cache
+			cacheKey := fmt.Sprintf("session:token:%s", tokenHash)
+			if rdb != nil {
+				if cachedUserJSON, err := rdb.Get(r.Context(), cacheKey).Result(); err == nil && cachedUserJSON != "" {
+					var user domain.User
+					if err := json.Unmarshal([]byte(cachedUserJSON), &user); err == nil {
+						ctx := context.WithValue(r.Context(), UserContextKey, &user)
+						next.ServeHTTP(w, r.WithContext(ctx))
+						return
+					}
+				}
+			}
+
+			// 4. Slow-path: Query database
 			session, err := repo.GetSessionByTokenHash(r.Context(), tokenHash)
 			if err != nil {
 				if optional {
@@ -73,6 +95,17 @@ func AuthMiddleware(repo repository.Repository, optional bool) func(http.Handler
 				}
 				http.Error(w, `{"error":"user not found"}`, http.StatusUnauthorized)
 				return
+			}
+
+			// Populate Redis session cache with TTL
+			if rdb != nil {
+				ttl := 15 * time.Minute
+				if rem := time.Until(session.ExpiresAt); rem > 0 && rem < ttl {
+					ttl = rem
+				}
+				if userBytes, err := json.Marshal(user); err == nil {
+					_ = rdb.Set(r.Context(), cacheKey, userBytes, ttl).Err()
+				}
 			}
 
 			// Inject user into context

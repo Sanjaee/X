@@ -63,6 +63,7 @@ func NewPostgresRepository(dbURL string) (*PostgresRepository, error) {
 	repo := &PostgresRepository{db: db}
 	repo.ensureSearchSchema(ctx)
 	repo.ensureRBACSchema(ctx)
+	repo.ensureOutboxSchema(ctx)
 
 	return repo, nil
 }
@@ -2673,15 +2674,27 @@ func (r *PostgresRepository) CreateOutboxEvent(ctx context.Context, event *domai
 	return r.db.QueryRowContext(ctx, q, event.ID, event.EventType, event.AggregateType, event.AggregateID, payloadJSON).Scan(&event.CreatedAt)
 }
 
+func (r *PostgresRepository) ensureOutboxSchema(ctx context.Context) {
+	stmts := []string{
+		`ALTER TABLE outbox_events ADD COLUMN IF NOT EXISTS last_error TEXT NULL;`,
+		`ALTER TABLE outbox_events ADD COLUMN IF NOT EXISTS next_retry_at TIMESTAMPTZ NOT NULL DEFAULT NOW();`,
+		`CREATE INDEX IF NOT EXISTS idx_outbox_poll_ready ON outbox_events(next_retry_at ASC) WHERE status IN ('pending', 'retrying');`,
+		`CREATE INDEX IF NOT EXISTS idx_outbox_retention_cleanup ON outbox_events(published_at) WHERE status = 'published';`,
+	}
+	for _, stmt := range stmts {
+		_, _ = r.db.ExecContext(ctx, stmt)
+	}
+}
+
 func (r *PostgresRepository) GetPendingOutboxEvents(ctx context.Context, batchSize int) ([]domain.OutboxEvent, error) {
 	if batchSize <= 0 || batchSize > 100 {
 		batchSize = 25
 	}
 	q := `
-		SELECT id, event_type, aggregate_type, aggregate_id, payload, status, retry_count, created_at
+		SELECT id, event_type, aggregate_type, aggregate_id, payload, status, retry_count, created_at, last_error, next_retry_at
 		FROM outbox_events
-		WHERE status = 'pending'
-		ORDER BY created_at ASC
+		WHERE status IN ('pending', 'retrying') AND next_retry_at <= NOW()
+		ORDER BY next_retry_at ASC
 		LIMIT $1;
 	`
 	rows, err := r.db.QueryContext(ctx, q, batchSize)
@@ -2694,8 +2707,19 @@ func (r *PostgresRepository) GetPendingOutboxEvents(ctx context.Context, batchSi
 	for rows.Next() {
 		var e domain.OutboxEvent
 		var payloadBytes []byte
-		if err := rows.Scan(&e.ID, &e.EventType, &e.AggregateType, &e.AggregateID, &payloadBytes, &e.Status, &e.RetryCount, &e.CreatedAt); err != nil {
+		var lastError sql.NullString
+		var nextRetryAt sql.NullTime
+		if err := rows.Scan(
+			&e.ID, &e.EventType, &e.AggregateType, &e.AggregateID, &payloadBytes,
+			&e.Status, &e.RetryCount, &e.CreatedAt, &lastError, &nextRetryAt,
+		); err != nil {
 			return nil, err
+		}
+		if lastError.Valid {
+			e.LastError = &lastError.String
+		}
+		if nextRetryAt.Valid {
+			e.NextRetryAt = &nextRetryAt.Time
 		}
 		_ = json.Unmarshal(payloadBytes, &e.Payload)
 		events = append(events, e)
@@ -2704,8 +2728,37 @@ func (r *PostgresRepository) GetPendingOutboxEvents(ctx context.Context, batchSi
 }
 
 func (r *PostgresRepository) MarkOutboxEventPublished(ctx context.Context, id uuid.UUID) error {
-	_, err := r.db.ExecContext(ctx, `UPDATE outbox_events SET status = 'published', published_at = NOW() WHERE id = $1;`, id)
+	_, err := r.db.ExecContext(ctx, `UPDATE outbox_events SET status = 'published', published_at = NOW(), last_error = NULL WHERE id = $1;`, id)
 	return err
+}
+
+func (r *PostgresRepository) MarkOutboxEventFailed(ctx context.Context, id uuid.UUID, errMsg string, nextRetryAt *time.Time, isDLQ bool) error {
+	status := "retrying"
+	if isDLQ {
+		status = "failed"
+	}
+	nextTime := time.Now().Add(10 * time.Second)
+	if nextRetryAt != nil {
+		nextTime = *nextRetryAt
+	}
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE outbox_events 
+		SET status = $1, retry_count = retry_count + 1, last_error = $2, next_retry_at = $3 
+		WHERE id = $4;
+	`, status, errMsg, nextTime, id)
+	return err
+}
+
+func (r *PostgresRepository) CleanupOldOutboxEvents(ctx context.Context, olderThan time.Duration) (int64, error) {
+	cutoff := time.Now().Add(-olderThan)
+	res, err := r.db.ExecContext(ctx, `
+		DELETE FROM outbox_events 
+		WHERE status = 'published' AND published_at < $1;
+	`, cutoff)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }
 
 // ==============================================================================

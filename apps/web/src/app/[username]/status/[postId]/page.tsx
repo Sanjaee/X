@@ -40,6 +40,7 @@ import {
   X_ALLOWED_MEDIA_ACCEPT,
   filterValidMediaFiles,
 } from "@/lib/mediaValidation";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 interface StagedFile {
   id: string;
@@ -56,7 +57,7 @@ export default function PostDetailPage() {
 
   const [post, setPost] = useState<Post | null>(null);
   const [replies, setReplies] = useState<Post[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { currentUser, updateUser: setCurrentUser } = useCurrentUser();
   const [loading, setLoading] = useState(true);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [replyModalOpen, setReplyModalOpen] = useState(false);
@@ -105,11 +106,6 @@ export default function PostDetailPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [replyContent, stagedFiles.length]);
 
-  useEffect(() => {
-    apiRequest<User>("/me")
-      .then((user) => setCurrentUser(user))
-      .catch(() => setCurrentUser(null));
-  }, []);
 
   useEffect(() => {
     if (!postId) return;
@@ -337,14 +333,13 @@ export default function PostDetailPage() {
   const isComposerActive = composerFocused || replyContent.trim().length > 0 || stagedFiles.length > 0;
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex justify-center">
-      <div className="w-full max-w-[1280px] flex">
-        <LeftNavRail
-          currentUser={currentUser}
-          onOpenAuth={() => setAuthModalOpen(true)}
-        />
-
-        <main className="w-full sm:w-[600px] border-r border-border min-h-screen flex flex-col">
+    <>
+      <main
+        className={cn(
+          "w-full sm:w-[600px] border-r border-border min-h-screen flex flex-col",
+          !currentUser && "border-l"
+        )}
+      >
           {/* Header */}
           <header className="sticky top-0 bg-background/80 backdrop-blur-md border-b border-border z-20 flex items-center gap-6 px-4 h-[53px]">
             <button
@@ -988,7 +983,6 @@ export default function PostDetailPage() {
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </>
   );
 }

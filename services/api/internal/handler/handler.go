@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	mathrand "math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -348,10 +349,25 @@ func (h *Handler) GoogleAuth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	token := ""
 	if cookie, err := r.Cookie("session_token"); err == nil && cookie.Value != "" {
-		hash := sha256.Sum256([]byte(cookie.Value))
-		_ = h.repo.DeleteSession(r.Context(), hex.EncodeToString(hash[:]))
+		token = cookie.Value
 	}
+	if token == "" {
+		authHeader := r.Header.Get("Authorization")
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			token = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+	}
+	if token != "" {
+		hash := sha256.Sum256([]byte(token))
+		tokenHash := hex.EncodeToString(hash[:])
+		_ = h.repo.DeleteSession(r.Context(), tokenHash)
+		if h.rdb != nil {
+			_ = h.rdb.Del(r.Context(), fmt.Sprintf("session:token:%s", tokenHash)).Err()
+		}
+	}
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_token",
 		Value:    "",
@@ -456,18 +472,43 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to update profile")
 		return
 	}
+
+	// Invalidate public profile cache in Redis
+	if h.rdb != nil {
+		_ = h.rdb.Del(r.Context(), fmt.Sprintf("profile:user:%s", strings.ToLower(user.Username))).Err()
+	}
+
 	writeJSON(w, http.StatusOK, user)
 }
 
 func (h *Handler) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
-	username := chi.URLParam(r, "username")
+	username := strings.ToLower(strings.TrimSpace(chi.URLParam(r, "username")))
 	viewerID := middleware.GetViewerID(r.Context())
+
+	// Cache-Aside: public profile read for unauthenticated viewers
+	cacheKey := fmt.Sprintf("profile:user:%s", username)
+	if h.rdb != nil && viewerID == nil {
+		if val, err := h.rdb.Get(r.Context(), cacheKey).Result(); err == nil && val != "" {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("X-Cache", "HIT")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(val))
+			return
+		}
+	}
 
 	user, err := h.repo.GetUserByUsername(r.Context(), username, viewerID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "user not found")
 		return
 	}
+
+	if h.rdb != nil && viewerID == nil {
+		if userBytes, err := json.Marshal(user); err == nil {
+			_ = h.rdb.Set(r.Context(), cacheKey, userBytes, 5*time.Minute).Err()
+		}
+	}
+
 	writeJSON(w, http.StatusOK, user)
 }
 
@@ -2471,10 +2512,25 @@ func (h *Handler) StartOutboxWorker(ctx context.Context) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
+	cleanupTicker := time.NewTicker(1 * time.Hour)
+	defer cleanupTicker.Stop()
+
+	// Initial cleanup on boot for safe disk recovery
+	go func() {
+		_, _ = h.repo.CleanupOldOutboxEvents(context.Background(), 7*24*time.Hour)
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
+
+		case <-cleanupTicker.C:
+			// Purge published outbox events older than 7 days to conserve disk on 4GB VPS
+			cleanCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			_, _ = h.repo.CleanupOldOutboxEvents(cleanCtx, 7*24*time.Hour)
+			cancel()
+
 		case <-ticker.C:
 			events, err := h.repo.GetPendingOutboxEvents(ctx, 20)
 			if err != nil || len(events) == 0 {
@@ -2482,20 +2538,31 @@ func (h *Handler) StartOutboxWorker(ctx context.Context) {
 			}
 
 			for _, e := range events {
+				var procErr error
+
 				if h.hub != nil {
 					switch e.EventType {
 					case "notification.created":
 						if recipientStr, ok := e.Payload["recipient_id"].(string); ok {
 							if recID, err := uuid.Parse(recipientStr); err == nil {
 								h.hub.BroadcastToUser(recID, "notification.created", e.Payload)
-								count, _ := h.repo.GetUnreadNotificationsCount(ctx, recID)
-								h.hub.BroadcastToUser(recID, "notification.count.updated", map[string]int{"unread_count": count})
+								count, errCount := h.repo.GetUnreadNotificationsCount(ctx, recID)
+								if errCount == nil {
+									h.hub.BroadcastToUser(recID, "notification.count.updated", map[string]int{"unread_count": count})
+								}
+							} else {
+								procErr = fmt.Errorf("invalid recipient_id format: %w", err)
 							}
+						} else {
+							procErr = errors.New("missing recipient_id in notification payload")
 						}
+
 					case "message.created":
 						if convStr, ok := e.Payload["conversation_id"].(string); ok {
 							if convID, err := uuid.Parse(convStr); err == nil {
 								h.hub.BroadcastToConversation(convID, nil, "message.created", e.Payload)
+							} else {
+								procErr = fmt.Errorf("invalid conversation_id format: %w", err)
 							}
 						}
 						if recStr, ok := e.Payload["recipient_id"].(string); ok {
@@ -2505,7 +2572,29 @@ func (h *Handler) StartOutboxWorker(ctx context.Context) {
 						}
 					}
 				}
-				_ = h.repo.MarkOutboxEventPublished(ctx, e.ID)
+
+				if procErr != nil {
+					// Exponential backoff with jitter and DLQ cutoff at 5 retries
+					isDLQ := e.RetryCount >= 5
+					shift := e.RetryCount
+					if shift > 6 {
+						shift = 6
+					}
+					backoffSec := (1 << shift) * 2
+					jitterMs := mathrand.Intn(1000)
+					nextRetry := time.Now().Add(time.Duration(backoffSec)*time.Second + time.Duration(jitterMs)*time.Millisecond)
+
+					slog.Warn("outbox_event_processing_failed",
+						slog.String("event_id", e.ID.String()),
+						slog.String("event_type", e.EventType),
+						slog.Int("retry_count", e.RetryCount),
+						slog.Bool("dlq", isDLQ),
+						slog.String("error", procErr.Error()),
+					)
+					_ = h.repo.MarkOutboxEventFailed(ctx, e.ID, procErr.Error(), &nextRetry, isDLQ)
+				} else {
+					_ = h.repo.MarkOutboxEventPublished(ctx, e.ID)
+				}
 			}
 		}
 	}
@@ -3047,17 +3136,6 @@ func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
 			recipientID = &conv.OtherMember.ID
 		}
 		h.hub.BroadcastMessage(convID, recipientID, &user.ID, msg)
-	}
-
-	if conv.OtherMember != nil {
-		h.notifyUser(r.Context(), conv.OtherMember.ID, user.ID, "dm", "conversation", &convID, nil, map[string]interface{}{
-			"conversation_id": convID.String(),
-			"message_id":      msg.ID.String(),
-			"sender_username": user.Username,
-			"sender_name":     user.DisplayName,
-			"sender_avatar":   user.AvatarURL,
-			"content":         msg.Content,
-		})
 	}
 
 	outboxPayload := map[string]interface{}{

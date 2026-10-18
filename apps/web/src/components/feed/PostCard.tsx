@@ -24,6 +24,9 @@ import { VideoPlayer } from "@/components/media/VideoPlayer";
 import { apiRequest } from "@/lib/api";
 
 import { PostModal } from "@/components/composer/PostModal";
+import { ConfirmModal } from "@/components/common/ConfirmModal";
+
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 interface PostCardProps {
   post: Post;
@@ -50,7 +53,8 @@ export function PostCard({
 }: PostCardProps) {
   const router = useRouter();
   const { openMedia } = useMediaViewer();
-  const [currentUser, setCurrentUser] = useState<User | null>(propUser || null);
+  const { currentUser: authUser } = useCurrentUser();
+  const currentUser = propUser !== undefined ? propUser : authUser;
   const [displayContent, setDisplayContent] = useState(post.content);
   const [isLiked, setIsLiked] = useState(post.is_liked);
   const [likesCount, setLikesCount] = useState(post.likes_count);
@@ -69,19 +73,8 @@ export function PostCard({
   const [editError, setEditError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
-  useEffect(() => {
-    if (propUser) {
-      setCurrentUser(propUser);
-      return;
-    }
-    const token = typeof window !== "undefined" ? localStorage.getItem("x_session_token") : null;
-    if (token) {
-      apiRequest<User>("/me")
-        .then((u) => setCurrentUser(u))
-        .catch(() => setCurrentUser(null));
-    }
-  }, [propUser]);
 
   const isAuthor =
     currentUser != null &&
@@ -198,9 +191,7 @@ export function PostCard({
     }
   };
 
-  const handleDeletePost = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!window.confirm("Are you sure you want to delete this post?")) return;
+  const handleConfirmDelete = async () => {
     setIsDeleting(true);
     try {
       await apiRequest(`/posts/${post.id}`, {
@@ -208,6 +199,7 @@ export function PostCard({
       });
       setIsDeleted(true);
       if (onPostDeleted) onPostDeleted(post.id);
+      setDeleteConfirmOpen(false);
     } catch (err: any) {
       alert(err.message || "Failed to delete post");
     } finally {
@@ -317,7 +309,7 @@ export function PostCard({
                       onClick={(e) => {
                         e.stopPropagation();
                         setMenuOpen(false);
-                        handleDeletePost(e);
+                        setDeleteConfirmOpen(true);
                       }}
                       disabled={isDeleting}
                       className="w-full text-left px-3.5 py-2.5 hover:bg-subtle flex items-center gap-2.5 text-destructive transition-colors"
@@ -669,6 +661,19 @@ export function PostCard({
         }}
       />
     )}
+
+    {/* Delete Confirmation Modal (X style) */}
+    <ConfirmModal
+      isOpen={deleteConfirmOpen}
+      onClose={() => setDeleteConfirmOpen(false)}
+      onConfirm={handleConfirmDelete}
+      title="Delete post?"
+      description="This can’t be undone and it will be removed from your profile, the timeline of any accounts that follow you, and from search results."
+      confirmText="Delete"
+      cancelText="Cancel"
+      variant="destructive"
+      isLoading={isDeleting}
+    />
   </>
   );
 }

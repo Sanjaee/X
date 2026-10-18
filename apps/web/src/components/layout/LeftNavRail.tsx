@@ -22,22 +22,26 @@ import { cn } from "@/lib/utils";
 import { VerifiedBadge } from "@/components/common/VerifiedBadge";
 import { useRealtime } from "@/lib/useRealtime";
 import { useComposer } from "@/components/composer/ComposerContext";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 interface LeftNavRailProps {
-  currentUser: User | null;
+  currentUser?: User | null;
   onOpenComposer?: () => void;
   onOpenAuth?: () => void;
   onLogout?: () => void;
 }
 
 export function LeftNavRail({
-  currentUser,
+  currentUser: propUser,
   onOpenComposer,
   onOpenAuth,
-  onLogout,
+  onLogout: propLogout,
 }: LeftNavRailProps) {
   const pathname = usePathname();
   const { openComposer } = useComposer();
+  const { currentUser: authUser, logout: authLogout } = useCurrentUser();
+  const currentUser = propUser !== undefined ? propUser : authUser;
+  const onLogout = propLogout || authLogout;
 
   const handlePostClick = () => {
     if (onOpenComposer) {
@@ -71,6 +75,10 @@ export function LeftNavRail({
   ];
 
   const { unreadNotifCount, unreadMessageCount } = useRealtime();
+
+  if (!currentUser) {
+    return null;
+  }
 
   return (
     <header className="hidden sm:flex sticky top-0 h-screen flex-col justify-between items-end xl:items-start px-2 sm:px-4 py-3 select-none border-r border-border w-[68px] xl:w-[275px] overflow-y-auto no-scrollbar">

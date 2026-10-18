@@ -89,6 +89,8 @@ type Repository interface {
 	CreateOutboxEvent(ctx context.Context, event *domain.OutboxEvent) error
 	GetPendingOutboxEvents(ctx context.Context, batchSize int) ([]domain.OutboxEvent, error)
 	MarkOutboxEventPublished(ctx context.Context, id uuid.UUID) error
+	MarkOutboxEventFailed(ctx context.Context, id uuid.UUID, errMsg string, nextRetryAt *time.Time, isDLQ bool) error
+	CleanupOldOutboxEvents(ctx context.Context, olderThan time.Duration) (int64, error)
 
 	// Media
 	CreateMediaObject(ctx context.Context, media *domain.MediaObject) error

@@ -20,14 +20,16 @@ import {
 import { LeftNavRail } from '@/components/layout/LeftNavRail';
 import { RightSidebar } from '@/components/layout/RightSidebar';
 import { AuthModal } from '@/components/auth/AuthModal';
+import { ConfirmModal } from '@/components/common/ConfirmModal';
 import { VerifiedBadge } from '@/components/common/VerifiedBadge';
 import { User, Subscription, Entitlements } from '@/types';
 import { apiRequest } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { useCurrentUser } from '@/lib/useCurrentUser';
 
 export default function PremiumPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { currentUser, updateUser: setCurrentUser } = useCurrentUser();
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
@@ -39,17 +41,15 @@ export default function PremiumPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'subscribe' | 'history'>('subscribe');
   const [billingOrders, setBillingOrders] = useState<any[]>([]);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
 
   useEffect(() => {
     loadUserData();
-  }, []);
+  }, [currentUser]);
 
   const loadUserData = () => {
-    apiRequest<User>('/me')
-      .then((user) => {
-        setCurrentUser(user);
-        return apiRequest<{ subscription: Subscription | null; entitlements: Entitlements }>('/subscriptions/me');
-      })
+    apiRequest<{ subscription: Subscription | null; entitlements: Entitlements }>('/subscriptions/me')
       .then((res) => {
         setSubscription(res.subscription);
         setEntitlements(res.entitlements);
@@ -94,16 +94,22 @@ export default function PremiumPage() {
     }
   };
 
-  const handleCancel = async () => {
+  const handleCancel = () => {
     if (!subscription) return;
-    if (!confirm('Are you sure you want to cancel your subscription renewal?')) return;
+    setCancelModalOpen(true);
+  };
 
+  const handleConfirmCancel = async () => {
+    if (!subscription) return;
+    setIsCanceling(true);
     try {
       await apiRequest(`/subscriptions/${subscription.id}/cancel`, { method: 'POST' });
-      alert('Subscription will be canceled at the end of the billing period.');
+      setCancelModalOpen(false);
       loadUserData();
     } catch (err: any) {
       alert(err.message || 'Failed to cancel subscription');
+    } finally {
+      setIsCanceling(false);
     }
   };
 
@@ -123,17 +129,7 @@ export default function PremiumPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground justify-center">
-      <LeftNavRail
-        currentUser={currentUser}
-        onOpenAuth={() => setAuthModalOpen(true)}
-        onLogout={() => {
-          localStorage.removeItem('x_session_token');
-          setCurrentUser(null);
-          setSubscription(null);
-        }}
-      />
-
+    <>
       <main className="w-full max-w-[600px] border-r border-border min-h-screen pb-16">
         {/* Top Header */}
         <div className="sticky top-0 z-20 backdrop-blur-md bg-background/80 border-b border-border px-4 py-3 flex items-center justify-between">
@@ -561,6 +557,18 @@ export default function PremiumPage() {
           loadUserData();
         }}
       />
-    </div>
+
+      <ConfirmModal
+        isOpen={cancelModalOpen}
+        onClose={() => setCancelModalOpen(false)}
+        onConfirm={handleConfirmCancel}
+        title="Cancel subscription?"
+        description="Your subscription renewal will be canceled and verification benefits will end at the end of the current billing period."
+        confirmText="Cancel subscription"
+        cancelText="Keep subscription"
+        variant="destructive"
+        isLoading={isCanceling}
+      />
+    </>
   );
 }

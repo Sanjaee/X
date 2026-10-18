@@ -29,6 +29,8 @@ import { User, Post } from "@/types";
 import { apiRequest } from "@/lib/api";
 import { searchKeys } from "@/lib/query-keys";
 import { cn, formatNumber } from "@/lib/utils";
+import { useCurrentUser } from "@/lib/useCurrentUser";
+import { ExploreSkeleton } from "@/components/skeletons/OtherSkeletons";
 
 type SearchTab = "top" | "latest" | "people" | "media";
 type ExploreCategory = "explore" | "trending" | "news" | "sports" | "entertainment";
@@ -57,7 +59,7 @@ function SearchPageContent() {
   const rawQuery = searchParams.get("q") || "";
   const activeTab = (searchParams.get("tab") as SearchTab) || "top";
 
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { currentUser, updateUser: setCurrentUser } = useCurrentUser();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -244,21 +246,13 @@ function SearchPageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex justify-center">
-      <div className="w-full max-w-[1280px] flex">
-        {/* Left Navigation Rail */}
-        <LeftNavRail
-          currentUser={currentUser}
-          onOpenComposer={() => router.push("/")}
-          onOpenAuth={() => setAuthModalOpen(true)}
-          onLogout={() => {
-            queryClient.clear();
-            setCurrentUser(null);
-          }}
-        />
-
-        {/* Center Search Container (600px) */}
-        <main className="w-full sm:w-[600px] border-r border-border min-h-screen flex flex-col pb-16 sm:pb-0">
+    <>
+      <main
+        className={cn(
+          "w-full sm:w-[600px] border-r border-border min-h-screen flex flex-col pb-16 sm:pb-0",
+          !currentUser && "border-l"
+        )}
+      >
           {/* Sticky Header */}
           <header className="sticky top-0 bg-background/80 backdrop-blur-md border-b border-border z-20 flex flex-col">
             {!rawQuery.trim() ? (
@@ -650,9 +644,6 @@ function SearchPageContent() {
           onOpenAuth={() => setAuthModalOpen(true)}
         />
 
-        {/* Mobile Fixed Bottom Nav */}
-        <MobileBottomNav onOpenComposer={() => setComposerModalOpen(true)} />
-
         {/* Auth Modal */}
         <AuthModal
           isOpen={authModalOpen}
@@ -663,20 +654,13 @@ function SearchPageContent() {
             if (isPeopleTab) usersRefetch();
           }}
         />
-      </div>
-    </div>
+    </>
   );
 }
 
 export default function SearchPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-background flex justify-center items-center">
-          <Loader2 className="w-8 h-8 animate-spin text-brand" />
-        </div>
-      }
-    >
+    <Suspense fallback={<ExploreSkeleton />}>
       <SearchPageContent />
     </Suspense>
   );

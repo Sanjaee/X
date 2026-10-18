@@ -1,10 +1,13 @@
 package middleware
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync/atomic"
+	"time"
 )
 
 var (
@@ -57,10 +60,16 @@ func GetActiveRequests() int64 {
 	return atomic.LoadInt64(&ActiveRequests)
 }
 
-// RequestTimeoutMiddleware injects context cancellation timeout for per-route safety
+// RequestTimeoutMiddleware injects real context cancellation timeout for per-route safety
 func RequestTimeoutMiddleware(defaultTimeoutSec int) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Never cancel persistent WebSocket connections or streaming endpoints
+			if strings.HasSuffix(r.URL.Path, "/ws") || r.Header.Get("Upgrade") == "websocket" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			timeoutSec := defaultTimeoutSec
 			if timeoutSec <= 0 {
 				timeoutSec = 15
@@ -71,8 +80,11 @@ func RequestTimeoutMiddleware(defaultTimeoutSec int) func(http.Handler) http.Han
 				timeoutSec = 5
 			}
 
+			ctx, cancel := context.WithTimeout(r.Context(), time.Duration(timeoutSec)*time.Second)
+			defer cancel()
+
 			w.Header().Set("X-Request-Timeout-Sec", strconv.Itoa(timeoutSec))
-			next.ServeHTTP(w, r)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }

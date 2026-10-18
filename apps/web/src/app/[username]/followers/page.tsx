@@ -11,6 +11,7 @@ import { VerifiedBadge } from "@/components/common/VerifiedBadge";
 import { User } from "@/types";
 import { apiRequest } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 export default function FollowersPage() {
   const params = useParams();
@@ -18,18 +19,11 @@ export default function FollowersPage() {
   const username = params.username as string;
 
   const [targetUser, setTargetUser] = useState<User | null>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { currentUser, updateUser: setCurrentUser } = useCurrentUser();
   const [followers, setFollowers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [hoveredUserId, setHoveredUserId] = useState<string | null>(null);
-
-  // Load current authenticated user
-  useEffect(() => {
-    apiRequest<User>("/me")
-      .then((u) => setCurrentUser(u))
-      .catch(() => setCurrentUser(null));
-  }, []);
 
   // Load target user profile and followers list
   useEffect(() => {
@@ -85,15 +79,9 @@ export default function FollowersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex justify-center">
-      <div className="w-full max-w-[1280px] flex">
-        <LeftNavRail
-          currentUser={currentUser}
-          onOpenAuth={() => setAuthModalOpen(true)}
-        />
-
-        {/* Main Feed Column */}
-        <main className="flex-1 max-w-[600px] border-r border-border min-h-screen pb-20">
+    <>
+      {/* Main Feed Column */}
+      <main className="flex-1 max-w-[600px] border-r border-border min-h-screen pb-20">
           {/* Top Sticky Header */}
           <header className="sticky top-0 bg-background/80 backdrop-blur-md border-b border-border z-20 flex items-center gap-6 px-4 h-[53px]">
             <button
@@ -228,7 +216,6 @@ export default function FollowersPage() {
           onClose={() => setAuthModalOpen(false)}
           onSuccess={(u) => setCurrentUser(u)}
         />
-      </div>
-    </div>
+    </>
   );
 }

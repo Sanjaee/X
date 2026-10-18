@@ -22,11 +22,33 @@ export function getApiBase(): string {
   return base;
 }
 
-function getStoredToken(): string | null {
+export function getStoredToken(): string | null {
   if (typeof window !== "undefined") {
     return localStorage.getItem("x_session_token");
   }
   return null;
+}
+
+export function getStoredUser(): any | null {
+  if (typeof window !== "undefined") {
+    try {
+      const data = localStorage.getItem("x_session_user");
+      return data ? JSON.parse(data) : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+export function setStoredUser(user: any | null) {
+  if (typeof window !== "undefined") {
+    if (user) {
+      localStorage.setItem("x_session_user", JSON.stringify(user));
+    } else {
+      localStorage.removeItem("x_session_user");
+    }
+  }
 }
 
 export function setStoredToken(token: string | null) {
@@ -36,6 +58,7 @@ export function setStoredToken(token: string | null) {
       document.cookie = `x_session_token=${token}; path=/; max-age=2592000; SameSite=Lax`;
     } else {
       localStorage.removeItem("x_session_token");
+      localStorage.removeItem("x_session_user");
       document.cookie = `x_session_token=; path=/; max-age=0; SameSite=Lax`;
     }
   }

@@ -17,6 +17,7 @@ import { MobileComposerModal } from "@/components/composer/MobileComposerModal";
 import { PostModal } from "@/components/composer/PostModal";
 import { Plus, Radio, ArrowUp } from "lucide-react";
 import Link from "next/link";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 interface FeedResponse {
   posts: Post[];
@@ -36,7 +37,7 @@ function encodeFeedCursor(createdAt: string, id: string): string {
 
 export default function HomePage() {
   const queryClient = useQueryClient();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { currentUser, logout: handleLogout, updateUser: setCurrentUser } = useCurrentUser();
   const [activeTab, setActiveTab] = useState<"for_you" | "following">("for_you");
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -62,13 +63,6 @@ export default function HomePage() {
         }
       }
     }
-
-    const syncUser = () => {
-      apiRequest<User>("/me")
-        .then((user) => setCurrentUser(user))
-        .catch(() => setCurrentUser(null));
-    };
-    syncUser();
 
     const handleCreated = (e: Event) => {
       const customEvent = e as CustomEvent<Post>;
@@ -98,11 +92,9 @@ export default function HomePage() {
       setUnseenCount((prev) => prev + 1);
     };
 
-    window.addEventListener("x_auth_state_change", syncUser);
     window.addEventListener("x_post_created", handleCreated);
     window.addEventListener("x_feed_post_created", handleRemoteFeedPost);
     return () => {
-      window.removeEventListener("x_auth_state_change", syncUser);
       window.removeEventListener("x_post_created", handleCreated);
       window.removeEventListener("x_feed_post_created", handleRemoteFeedPost);
     };
@@ -344,18 +336,6 @@ export default function HomePage() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await apiRequest("/auth/logout", { method: "POST" });
-    } catch {}
-    try {
-      const { signOut } = await import("next-auth/react");
-      await signOut({ redirect: false });
-    } catch {}
-    setStoredToken(null);
-    setCurrentUser(null);
-    queryClient.clear();
-  };
 
   const handleLike = async (postId: string) => {
     if (!currentUser) {
@@ -394,18 +374,14 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex justify-center">
-      <div className="w-full max-w-[1280px] flex">
-        {/* Left Navigation Rail (88px / 275px) */}
-        <LeftNavRail
-          currentUser={currentUser}
-          onOpenComposer={() => setDesktopPostModalOpen(true)}
-          onOpenAuth={() => setAuthModalOpen(true)}
-          onLogout={handleLogout}
-        />
-
-        {/* Center Feed Timeline (600px max) */}
-        <main className="w-full sm:w-[600px] border-r border-border min-h-screen flex flex-col pb-16 sm:pb-0 relative">
+    <>
+      {/* Center Feed Timeline (600px max) */}
+      <main
+          className={cn(
+            "w-full sm:w-[600px] border-r border-border min-h-screen flex flex-col pb-16 sm:pb-0 relative",
+            !currentUser && "border-l"
+          )}
+        >
           {/* Sticky Header with Mobile Top Bar and Feed Tabs */}
           <header className="sticky top-0 bg-background/80 backdrop-blur-md border-b border-border z-20 flex flex-col">
             {/* Mobile Top Bar: Avatar, X logo, Subscribe */}
@@ -525,14 +501,16 @@ export default function HomePage() {
             </button>
           )}
 
-          {/* Desktop Post Composer (Hidden on mobile) */}
-          <div className="hidden sm:block">
-            <PostComposer
-              currentUser={currentUser}
-              onPostSuccess={handlePostCreated}
-              onOpenAuth={() => setAuthModalOpen(true)}
-            />
-          </div>
+          {/* Desktop Post Composer (Hidden on mobile and unauthenticated) */}
+          {currentUser && (
+            <div className="hidden sm:block">
+              <PostComposer
+                currentUser={currentUser}
+                onPostSuccess={handlePostCreated}
+                onOpenAuth={() => setAuthModalOpen(true)}
+              />
+            </div>
+          )}
 
           {/* Virtualized Infinite Feed with Bounded Cache */}
           <div className="flex-1 flex flex-col">
@@ -603,9 +581,6 @@ export default function HomePage() {
           onOpenAuth={() => setAuthModalOpen(true)}
         />
 
-        {/* Mobile Fixed Bottom Nav */}
-        <MobileBottomNav onOpenComposer={() => setComposerModalOpen(true)} />
-
         {/* Auth Modal */}
         <AuthModal
           isOpen={authModalOpen}
@@ -615,7 +590,6 @@ export default function HomePage() {
             refetch();
           }}
         />
-      </div>
-    </div>
+    </>
   );
 }

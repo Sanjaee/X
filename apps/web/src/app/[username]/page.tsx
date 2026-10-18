@@ -19,10 +19,12 @@ import { LeftNavRail } from "@/components/layout/LeftNavRail";
 import { RightSidebar } from "@/components/layout/RightSidebar";
 import { PostCard } from "@/components/feed/PostCard";
 import { AuthModal } from "@/components/auth/AuthModal";
+import { EditProfileModal } from "@/components/profile/EditProfileModal";
 import { VerifiedBadge } from "@/components/common/VerifiedBadge";
 import { User, Post, SocialRelationship } from "@/types";
 import { apiRequest } from "@/lib/api";
 import { formatNumber, cn } from "@/lib/utils";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 import { useSearchParams } from "next/navigation";
 
@@ -37,7 +39,7 @@ export default function UserProfilePage() {
     urlTab === "replies" || urlTab === "reposts" || urlTab === "media" ? urlTab : "posts";
 
   const [profileUser, setProfileUser] = useState<User | null>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { currentUser, updateUser: setCurrentUser } = useCurrentUser();
   const [relationship, setRelationship] = useState<SocialRelationship | null>(null);
   const [mutuals, setMutuals] = useState<User[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -46,14 +48,9 @@ export default function UserProfilePage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [editProfileModalOpen, setEditProfileModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
-
-  useEffect(() => {
-    apiRequest<User>("/me")
-      .then((user) => setCurrentUser(user))
-      .catch(() => setCurrentUser(null));
-  }, []);
 
   const handleTabChange = (newTab: "posts" | "replies" | "reposts" | "media") => {
     if (newTab === activeTab) return;
@@ -240,14 +237,13 @@ export default function UserProfilePage() {
   const isSelf = currentUser && profileUser && currentUser.id === profileUser.id;
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex justify-center">
-      <div className="w-full max-w-[1280px] flex">
-        <LeftNavRail
-          currentUser={currentUser}
-          onOpenAuth={() => setAuthModalOpen(true)}
-        />
-
-        <main className="w-full sm:w-[600px] border-r border-border min-h-screen flex flex-col">
+    <>
+      <main
+        className={cn(
+          "w-full sm:w-[600px] border-r border-border min-h-screen flex flex-col",
+          !currentUser && "border-l"
+        )}
+      >
           {/* Header */}
           <header className="sticky top-0 bg-background/80 backdrop-blur-md border-b border-border z-20 flex items-center px-4 h-[53px] gap-6">
             <button
@@ -308,7 +304,10 @@ export default function UserProfilePage() {
 
                   {isSelf ? (
                     <div className="flex items-center gap-2 mb-2">
-                      <button className="border border-border hover:bg-subtle font-bold text-[15px] px-4 py-1.5 rounded-full transition-colors">
+                      <button
+                        onClick={() => setEditProfileModalOpen(true)}
+                        className="border border-border hover:bg-subtle font-bold text-[15px] px-4 py-1.5 rounded-full transition-colors"
+                      >
                         Edit profile
                       </button>
                     </div>
@@ -578,7 +577,18 @@ export default function UserProfilePage() {
           onClose={() => setAuthModalOpen(false)}
           onSuccess={(user) => setCurrentUser(user)}
         />
-      </div>
-    </div>
+
+        {currentUser && (
+          <EditProfileModal
+            isOpen={editProfileModalOpen}
+            onClose={() => setEditProfileModalOpen(false)}
+            currentUser={currentUser}
+            onSuccess={(updated) => {
+              setCurrentUser(updated);
+              setProfileUser((prev) => (prev ? { ...prev, ...updated } : updated));
+            }}
+          />
+        )}
+    </>
   );
 }

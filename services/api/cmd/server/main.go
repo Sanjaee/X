@@ -167,7 +167,7 @@ func main() {
 
 		// Publicly readable endpoints (with optional viewer identity context)
 		v1.Group(func(pub chi.Router) {
-			pub.Use(middleware.AuthMiddleware(repo, true)) // optional auth
+			pub.Use(middleware.AuthMiddlewareWithCache(repo, rdb, true)) // optional auth with Redis session cache
 			pub.Get("/feed", h.GetFeed)
 			pub.Get("/feed/new-posts", h.GetNewPosts)
 			pub.Get("/users/{username}", h.GetUserByUsername)
@@ -196,7 +196,7 @@ func main() {
 
 		// Authenticated protected routes
 		v1.Group(func(auth chi.Router) {
-			auth.Use(middleware.AuthMiddleware(repo, false)) // strictly required auth
+			auth.Use(middleware.AuthMiddlewareWithCache(repo, rdb, false)) // strictly required auth with Redis session cache
 
 			auth.Post("/auth/logout", h.Logout)
 			auth.Get("/me", h.GetMe)

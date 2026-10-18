@@ -101,7 +101,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const retryCountRef = useRef<number>(0);
-  const MAX_RETRIES = 3;
+  const MAX_RETRIES = 50;
 
   const connect = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -113,7 +113,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (retryCountRef.current >= MAX_RETRIES) {
-      return;
+      retryCountRef.current = 0; // Reset after a cooldown to never permanently drop live updates
     }
 
     let wsUrl = "";
@@ -121,9 +121,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       const host = window.location.hostname;
       const port = window.location.port ? `:${window.location.port}` : "";
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      if (host === "localhost" && !window.location.port) {
-        wsUrl = `${protocol}//${host}/api/v1/ws?token=${encodeURIComponent(token)}`;
-      }
+      wsUrl = `${protocol}//${host}${port}/api/v1/ws?token=${encodeURIComponent(token)}`;
     }
 
     if (!wsUrl && process.env.NEXT_PUBLIC_API_URL) {
@@ -135,13 +133,6 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       } catch {
         // Fallback
       }
-    }
-
-    if (!wsUrl) {
-      const host = window.location.hostname;
-      const port = window.location.port ? `:${window.location.port}` : "";
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      wsUrl = `${protocol}//${host}${port}/api/v1/ws?token=${encodeURIComponent(token)}`;
     }
 
     try {
@@ -174,10 +165,15 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
             const msg = payload as Message;
             setLastMessage(msg);
 
-            // Deduplicate count increment
+            // Always dispatch window event for active message views
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("x_new_message", { detail: msg }));
+            }
+
+            // Deduplicate toast and badge count increment
             if (msg.id && !seenMessageIdsRef.current.has(msg.id)) {
               seenMessageIdsRef.current.add(msg.id);
-              // Only increment if message is from another user
+              // Only increment badge & show toast if message is from another user
               if (!currentUserIdRef.current || msg.sender_id !== currentUserIdRef.current) {
                 setUnreadMessageCount((prev) => prev + 1);
                 addToast({
@@ -187,9 +183,6 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
                   avatar: msg.sender?.avatar_url,
                   link: msg.conversation_id ? `/messages/${msg.conversation_id}` : "/messages",
                 });
-                if (typeof window !== "undefined") {
-                  window.dispatchEvent(new CustomEvent("x_new_message", { detail: msg }));
-                }
               }
             }
           } else if (type === "typing.updated") {
@@ -242,6 +235,11 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
               toastType = "reply";
               toastTitle = "New Reply";
               toastMsg = payload.content ? `"${payload.content}"` : "Someone replied to your post";
+              toastLink = "/notifications";
+            } else if (notifType === "quote") {
+              toastType = "repost";
+              toastTitle = "New Quote";
+              toastMsg = payload.content ? `"${payload.content}"` : "Someone quoted your post";
               toastLink = "/notifications";
             }
 

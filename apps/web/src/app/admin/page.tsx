@@ -56,6 +56,7 @@ import {
 } from '@/types';
 import { apiRequest } from '@/lib/api';
 import { cn, formatNumber } from '@/lib/utils';
+import { ConfirmModal } from '@/components/common/ConfirmModal';
 
 type AdminTab =
   | 'overview'
@@ -74,6 +75,22 @@ export default function AdminDashboardPage() {
   const [authStatus, setAuthStatus] = useState<'checking' | 'authorized' | 'denied'>('checking');
   const [denialReason, setDenialReason] = useState<string>('');
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
+
+  // Confirmation Modal state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmText?: string;
+    variant?: 'destructive' | 'primary';
+    isLoading?: boolean;
+    onConfirm: () => Promise<void> | void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {},
+  });
 
   // Overview & Monitoring state
   const [overview, setOverview] = useState<AdminOverview | null>(null);
@@ -291,21 +308,31 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleDeletePostAdmin = async (post: Post) => {
-    if (!window.confirm('Are you sure you want to delete this post administratively?')) return;
-    try {
-      await apiRequest(`/admin/posts/${post.id}`, {
-        method: 'DELETE',
-        body: JSON.stringify({
-          reason: 'Severe platform terms violation',
-        }),
-      });
-      showStatus('success', 'Post successfully removed by administrator');
-      fetchPosts();
-      fetchOverview();
-    } catch (err: any) {
-      showStatus('error', err.message || 'Failed to delete post');
-    }
+  const handleDeletePostAdmin = (post: Post) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete post?',
+      description: 'Are you sure you want to delete this post administratively? This action cannot be undone.',
+      confirmText: 'Delete',
+      variant: 'destructive',
+      onConfirm: async () => {
+        try {
+          await apiRequest(`/admin/posts/${post.id}`, {
+            method: 'DELETE',
+            body: JSON.stringify({
+              reason: 'Severe platform terms violation',
+            }),
+          });
+          showStatus('success', 'Post successfully removed by administrator');
+          fetchPosts();
+          fetchOverview();
+        } catch (err: any) {
+          showStatus('error', err.message || 'Failed to delete post');
+        } finally {
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        }
+      },
+    });
   };
 
   // Handlers for User Roles & Status
@@ -340,26 +367,33 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleToggleUserStatus = async (user: User) => {
+  const handleToggleUserStatus = (user: User) => {
     const isSuspended = !!user.deleted_at;
     const newStatus = isSuspended ? 'active' : 'suspended';
-    const confirmMsg = isSuspended
-      ? `Reactivate account @${user.username}?`
-      : `Suspend account @${user.username}? User will be blocked from logging in.`;
-
-    if (!window.confirm(confirmMsg)) return;
-
-    try {
-      await apiRequest(`/admin/users/${user.id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status: newStatus }),
-      });
-      showStatus('success', `Account @${user.username} is now ${newStatus}`);
-      fetchUsers();
-      fetchOverview();
-    } catch (err: any) {
-      showStatus('error', err.message || 'Failed to update user status');
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: isSuspended ? `Reactivate @${user.username}?` : `Suspend @${user.username}?`,
+      description: isSuspended
+        ? `This account will be reactivated and permitted to log in and interact on X.`
+        : `This account will be suspended and blocked from logging in or interacting on X.`,
+      confirmText: isSuspended ? 'Reactivate' : 'Suspend',
+      variant: isSuspended ? 'primary' : 'destructive',
+      onConfirm: async () => {
+        try {
+          await apiRequest(`/admin/users/${user.id}/status`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: newStatus }),
+          });
+          showStatus('success', `Account @${user.username} is now ${newStatus}`);
+          fetchUsers();
+          fetchOverview();
+        } catch (err: any) {
+          showStatus('error', err.message || 'Failed to update user status');
+        } finally {
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        }
+      },
+    });
   };
 
   // Handlers for Roles & Permissions
@@ -1201,16 +1235,25 @@ export default function AdminDashboardPage() {
 
                         {!isProtected && (
                           <button
-                            onClick={async () => {
-                              if (window.confirm(`Delete role ${r.name}?`)) {
-                                try {
-                                  await apiRequest(`/admin/roles/${r.id}`, { method: 'DELETE' });
-                                  showStatus('success', 'Role deleted');
-                                  fetchRoles();
-                                } catch (e: any) {
-                                  showStatus('error', e.message);
-                                }
-                              }
+                            onClick={() => {
+                              setConfirmDialog({
+                                isOpen: true,
+                                title: `Delete role ${r.name}?`,
+                                description: 'Are you sure you want to delete this custom role? Members with this role will lose its permissions.',
+                                confirmText: 'Delete',
+                                variant: 'destructive',
+                                onConfirm: async () => {
+                                  try {
+                                    await apiRequest(`/admin/roles/${r.id}`, { method: 'DELETE' });
+                                    showStatus('success', 'Role deleted');
+                                    fetchRoles();
+                                  } catch (e: any) {
+                                    showStatus('error', e.message);
+                                  } finally {
+                                    setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+                                  }
+                                },
+                              });
                             }}
                             className="p-1.5 rounded-lg border border-border hover:bg-subtle text-rose-400"
                             title="Delete custom role"
@@ -1840,6 +1883,18 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        variant={confirmDialog.variant}
+        isLoading={confirmDialog.isLoading}
+      />
     </div>
   );
 }

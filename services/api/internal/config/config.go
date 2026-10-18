@@ -46,15 +46,15 @@ func Load() *Config {
 	maxConcurrent := getEnvInt("MAX_CONCURRENT_REQUESTS", 300)
 	rateLimitMin := getEnvInt("RATE_LIMIT_PER_MIN", 120)
 
-	plisioApiKey := getEnv("PLISIO_API_KEY", "tbEVDxfM_VqDZGWmcFKR0T58DqZuzlK9kVGmooxk6_1AbOCA700j5PUqooaM3JjN")
+	plisioApiKey := getEnv("PLISIO_API_KEY", "")
 	appURL := getEnv("APP_URL", "http://localhost")
 
-	r2AccountID := getEnv("R2_ACCOUNT_ID", "67d6fca5c89225b4419917b667b88d12")
-	r2AccessKeyID := getEnv("R2_ACCESS_KEY_ID", "1d7914ff76ada1571d9d9c4637a96413")
-	r2SecretAccessKey := getEnv("R2_SECRET_ACCESS_KEY", "0f7680df7008059031de9433e4612e70a9eb43ad0a1d4d47bee7e406d3e93651")
+	r2AccountID := getEnv("R2_ACCOUNT_ID", "")
+	r2AccessKeyID := getEnv("R2_ACCESS_KEY_ID", "")
+	r2SecretAccessKey := getEnv("R2_SECRET_ACCESS_KEY", "")
 	r2Bucket := getEnv("R2_BUCKET", "lostmedia")
-	r2Endpoint := getEnv("R2_ENDPOINT", "https://67d6fca5c89225b4419917b667b88d12.r2.cloudflarestorage.com")
-	r2PublicDomain := getEnv("R2_PUBLIC_DOMAIN", "https://pub-a638ff524f744502b575203fb48d39ae.r2.dev")
+	r2Endpoint := getEnv("R2_ENDPOINT", "")
+	r2PublicDomain := getEnv("R2_PUBLIC_DOMAIN", "")
 
 	return &Config{
 		Port:                  port,

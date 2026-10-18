@@ -3,17 +3,18 @@
 import React, { useState } from "react";
 import { X, Loader2 } from "lucide-react";
 import { signIn } from "next-auth/react";
-import { apiRequest, setStoredToken } from "@/lib/api";
+import { apiRequest, setStoredToken, setStoredUser } from "@/lib/api";
 import { User, AuthResponse } from "@/types";
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (user: User) => void;
+  initialMode?: "login" | "register";
 }
 
-export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
-  const [mode, setMode] = useState<"login" | "register">("login");
+export function AuthModal({ isOpen, onClose, onSuccess, initialMode = "login" }: AuthModalProps) {
+  const [mode, setMode] = useState<"login" | "register">(initialMode);
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -22,6 +23,13 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+      setError(null);
+    }
+  }, [isOpen, initialMode]);
 
   if (!isOpen) return null;
 
@@ -48,6 +56,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           body: JSON.stringify({ identifier, password }),
         });
         setStoredToken(res.session_token);
+        setStoredUser(res.user);
         onSuccess(res.user);
         onClose();
       } else {
@@ -61,6 +70,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           }),
         });
         setStoredToken(res.session_token);
+        setStoredUser(res.user);
         onSuccess(res.user);
         onClose();
       }
