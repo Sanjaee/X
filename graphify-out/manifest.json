@@ -70,9 +70,9 @@
     "semantic_hash": "cdb486e65d92177b0a59127727403c54"
   },
   "apps/web/src/app/premium/invoice/page.tsx": {
-    "mtime": 1791994062.575128,
-    "ast_hash": "318bf454a78d4abff26fe6575c3424eb",
-    "semantic_hash": "318bf454a78d4abff26fe6575c3424eb"
+    "mtime": 1792341959.9983962,
+    "ast_hash": "45c428e8a9d5363e5b95a7cee64ceadd",
+    "semantic_hash": "45c428e8a9d5363e5b95a7cee64ceadd"
   },
   "apps/web/src/app/premium/page.tsx": {
     "mtime": 1792337260.1854124,
@@ -105,14 +105,14 @@
     "semantic_hash": "c19258d87b50c7512ae4de823c656425"
   },
   "apps/web/src/components/layout/LeftNavRail.tsx": {
-    "mtime": 1792336575.8599753,
-    "ast_hash": "fbee4641827bba2d3b7d3d23594d3345",
-    "semantic_hash": "fbee4641827bba2d3b7d3d23594d3345"
+    "mtime": 1792341934.8984377,
+    "ast_hash": "8d6191ecebf526b662df64fcf21c9f40",
+    "semantic_hash": "8d6191ecebf526b662df64fcf21c9f40"
   },
   "apps/web/src/components/layout/RightSidebar.tsx": {
-    "mtime": 1792337723.5985923,
-    "ast_hash": "7e375f0adaa2dc256a22adeb115aeea2",
-    "semantic_hash": "7e375f0adaa2dc256a22adeb115aeea2"
+    "mtime": 1792342053.6660912,
+    "ast_hash": "7063050c87259afb0ce5a4025b62d26a",
+    "semantic_hash": "7063050c87259afb0ce5a4025b62d26a"
   },
   "apps/web/src/components/providers/AppProviders.tsx": {
     "mtime": 1792228422.7124357,
@@ -630,14 +630,14 @@
     "semantic_hash": "f26bc33793feacc740bf701e8d28afb5"
   },
   "apps/web/src/components/layout/AppShell.tsx": {
-    "mtime": 1792338796.2878788,
-    "ast_hash": "17451ad49742bd6b0cdf02b63a566f6f",
-    "semantic_hash": "17451ad49742bd6b0cdf02b63a566f6f"
+    "mtime": 1792341948.1263237,
+    "ast_hash": "0d1c5565c21eecafa6f20d11ebe2c6e0",
+    "semantic_hash": "0d1c5565c21eecafa6f20d11ebe2c6e0"
   },
   "apps/web/src/components/layout/RouteTransition.tsx": {
-    "mtime": 1792338426.72822,
-    "ast_hash": "78bab52334c09bda8080106cc7400bd5",
-    "semantic_hash": "78bab52334c09bda8080106cc7400bd5"
+    "mtime": 1792341921.6321275,
+    "ast_hash": "154f6593495fb27042b0038c74c951e5",
+    "semantic_hash": "154f6593495fb27042b0038c74c951e5"
   },
   "apps/web/src/components/layout/TopLoadingBar.tsx": {
     "mtime": 1792337797.4263692,

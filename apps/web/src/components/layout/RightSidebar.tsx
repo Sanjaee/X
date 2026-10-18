@@ -264,7 +264,7 @@ export function RightSidebar({
     const focal = relevantUser;
 
     return (
-      <aside className="hidden lg:block w-[350px] xl:w-[420px] px-6 py-3 select-none">
+      <aside className="hidden lg:block w-[350px] xl:w-[420px] px-6 py-3 select-none shrink-0">
         <div className="sticky top-3 space-y-4 pb-12">
           {/* Top Auth Card: Sign in to X (matching image 2) */}
           {renderSignInCard()}
@@ -347,7 +347,7 @@ export function RightSidebar({
   }
 
   return (
-    <aside className="hidden lg:block w-[350px] xl:w-[420px] px-6 py-3 select-none">
+    <aside className="hidden lg:block w-[350px] xl:w-[420px] px-6 py-3 select-none shrink-0">
       {/* Search Bar with Autocomplete Dropdown */}
       {!hideSearchBar && (
         <div className="sticky top-0 bg-background/80 backdrop-blur-md pt-1 pb-3 z-20">
@@ -496,6 +496,29 @@ export function RightSidebar({
             </Link>
           </div>
         </div>
+
+        {/* Scan to get the app QR code card (matches reference image 2) */}
+        {!user && (
+          <div className="bg-transparent rounded-2xl border border-border p-4 flex flex-col items-center">
+            <p className="text-[14px] font-bold text-foreground mb-3 text-center">
+              Scan to get the app
+            </p>
+            <div className="relative p-2.5 bg-white rounded-xl flex items-center justify-center shadow-sm">
+              <img
+                src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=https%3A%2F%2Flostmedia.pro"
+                alt="Scan to get X"
+                className="w-[140px] h-[140px]"
+              />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center text-white border-2 border-white shadow-md">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" className="w-4 h-4 fill-current">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer Links */}
         <footer className="text-[13px] text-muted px-4 leading-5 flex flex-wrap gap-x-3 gap-y-1">

@@ -27,19 +27,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex justify-center">
-      <div
-        className={cn(
-          "w-full max-w-[1280px] flex",
-          !currentUser && "justify-center"
-        )}
-      >
+      <div className="w-full max-w-[1280px] flex justify-center">
         {/* Persistent Left Nav Rail - stays mounted across all page navigations */}
-        {currentUser && (
-          <LeftNavRail currentUser={currentUser} onLogout={logout} />
-        )}
+        <LeftNavRail currentUser={currentUser} onLogout={logout} />
 
         {/* Dynamic page content with subtle 150ms opacity transition */}
-        <RouteTransition>{children}</RouteTransition>
+        <RouteTransition className={cn(!currentUser && "justify-center")}>
+          {children}
+        </RouteTransition>
       </div>
 
       {/* Persistent Mobile Bottom Navigation on phone viewports */}

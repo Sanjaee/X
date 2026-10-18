@@ -4,12 +4,12 @@
 - cluster-only mode — file stats not available
 
 ## Summary
-- 1188 nodes · 3113 edges · 180 communities (44 shown, 136 thin omitted)
+- 1188 nodes · 3107 edges · 179 communities (44 shown, 135 thin omitted)
 - Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 49 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `1fa7d2ad`
+- Built from commit: `3914f08b`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -18,23 +18,23 @@
 - MemoryRepository
 - PostgresRepository
 - MockCandidateProvider
-- apiRequest
 - Context
 - models.go
 - index.ts
 - dependencies
 - PlisioService
+- apiRequest
+- PostCard.tsx
 - Hub
-- app/page.tsx
 - compilerOptions
-- utils.ts
+- search/page.tsx
+- app/page.tsx
 - Post
-- LeftNavRail.tsx
+- utils.ts
 - User
 - FeedSkeleton.tsx
 - admin.go
 - NewMemoryRepository
-- search/page.tsx
 - handler.go
 - OtherSkeletons.tsx
 - T
@@ -60,7 +60,6 @@
 - setupTestFullAdminRouter
 - middleware.ts
 - UserTopicPreference
-- VerificationBadge
 - .DismissUserRecommendation
 - test_all_apis.py
 - next.config.js
@@ -193,10 +192,10 @@
 4. `writeJSON()` - 81 edges
 5. `writeError()` - 78 edges
 6. `Post` - 45 edges
-7. `apiRequest()` - 43 edges
+7. `apiRequest()` - 40 edges
 8. `User` - 36 edges
-9. `useCurrentUser()` - 32 edges
-10. `User` - 30 edges
+9. `User` - 30 edges
+10. `useCurrentUser()` - 30 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `setupTestRouter()` --calls--> `NewHandler()`  [INFERRED]
@@ -213,7 +212,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (180 total, 136 thin omitted)
+## Communities (179 total, 135 thin omitted)
 
 ### Community 0 - "Handler"
 Cohesion: 0.09
@@ -231,73 +230,73 @@ Nodes (5): DB, PostgresRepository, Context, Time, UUID
 Cohesion: 0.05
 Nodes (42): B, DiversityReranker, FeedOptions, FeedResult, Candidate, CandidateProvider, CandidateSource, DiversityReranker (+34 more)
 
-### Community 4 - "apiRequest"
-Cohesion: 0.13
-Nodes (36): BookmarksPage(), ExplorePage(), InvoiceContent(), InvoicePage(), WhiteLabelInvoice, PremiumPage(), FollowersPage(), FollowingPage() (+28 more)
-
-### Community 5 - "Context"
+### Community 4 - "Context"
 Cohesion: 0.08
 Nodes (11): AdminOverview, AuditLog, Context, MembershipEntitlement, MembershipPlan, Permission, Post, Role (+3 more)
 
-### Community 6 - "models.go"
+### Community 5 - "models.go"
 Cohesion: 0.10
-Nodes (38): CounterMismatchDetail, CounterReconciliationResult, DatabaseHealth, FeedFeedback, FeedImpression, Follow, Hashtag, Invoice (+30 more)
+Nodes (39): CounterMismatchDetail, CounterReconciliationResult, DatabaseHealth, FeedFeedback, FeedImpression, Follow, Hashtag, Invoice (+31 more)
 
-### Community 7 - "index.ts"
-Cohesion: 0.08
-Nodes (34): AdminTab, MessagesPage(), NotificationsPage(), ConfirmModal(), ConfirmModalProps, TIER_PRESENTATION, TierBadge(), TierBadgeProps (+26 more)
+### Community 6 - "index.ts"
+Cohesion: 0.07
+Nodes (36): AdminTab, MessagesPage(), NotificationsPage(), TIER_PRESENTATION, TierBadge(), TierBadgeProps, TierKey, MobileBottomNav() (+28 more)
 
-### Community 8 - "dependencies"
+### Community 7 - "dependencies"
 Cohesion: 0.05
 Nodes (42): dependencies, clsx, lucide-react, next, next-auth, react, react-dom, tailwind-merge (+34 more)
 
-### Community 9 - "PlisioService"
+### Community 8 - "PlisioService"
 Cohesion: 0.09
 Nodes (24): Config, Image, MediaService, PlisioCryptoInfo, PlisioInvoiceResponse, PlisioOperationsResponse, PlisioService, PlisioWebhookPayload (+16 more)
 
-### Community 10 - "Hub"
+### Community 9 - "apiRequest"
+Cohesion: 0.21
+Nodes (22): BookmarksPage(), ExplorePage(), PremiumPage(), FollowersPage(), FollowingPage(), PostDetailPage(), AuthModal(), AuthModalProps (+14 more)
+
+### Community 10 - "PostCard.tsx"
+Cohesion: 0.11
+Nodes (18): ConfirmModal(), ConfirmModalProps, PostCardProps, MediaDetailSidebar(), MediaDetailSidebarProps, MediaViewerContext, MediaViewerContextType, useMediaViewer() (+10 more)
+
+### Community 11 - "Hub"
 Cohesion: 0.12
 Nodes (17): Duration, memoryLimiter, Mutex, RawMessage, Client, Hub, InboundEvent, OutboundEvent (+9 more)
-
-### Community 11 - "app/page.tsx"
-Cohesion: 0.15
-Nodes (22): encodeFeedCursor(), FeedResponse, HomePage(), StagedFile, MobileComposerModal(), MobileComposerModalProps, StagedAttachment, PostComposer() (+14 more)
 
 ### Community 12 - "compilerOptions"
 Cohesion: 0.07
 Nodes (26): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+18 more)
 
-### Community 13 - "utils.ts"
-Cohesion: 0.14
-Nodes (13): MediaDetailSidebar(), MediaDetailSidebarProps, PhotoCanvas(), PhotoCanvasProps, PhotoNavigation(), PhotoNavigationProps, StandalonePhotoView(), VideoPlayer() (+5 more)
+### Community 13 - "search/page.tsx"
+Cohesion: 0.11
+Nodes (17): WhiteLabelInvoice, ExploreCategory, SearchPageContent(), SearchPostsResponse, SearchTab, SearchUsersResponse, VerifiedBadge(), VerifiedBadgeProps (+9 more)
 
-### Community 14 - "Post"
+### Community 14 - "app/page.tsx"
+Cohesion: 0.17
+Nodes (18): encodeFeedCursor(), FeedResponse, HomePage(), StagedFile, MobileComposerModal(), MobileComposerModalProps, StagedAttachment, PostComposer() (+10 more)
+
+### Community 15 - "Post"
 Cohesion: 0.16
 Nodes (4): NewPostsCheckResponse, Post, Rows, FeedCursor
 
-### Community 15 - "LeftNavRail.tsx"
+### Community 16 - "utils.ts"
 Cohesion: 0.14
-Nodes (13): metadata, ComposerContext, ComposerContextValue, ComposerProvider(), useComposer(), AppShell(), LeftNavRail(), LeftNavRailProps (+5 more)
+Nodes (14): metadata, ComposerContext, ComposerContextValue, ComposerProvider(), useComposer(), AppShell(), LeftNavRailProps, RouteTransition() (+6 more)
 
-### Community 16 - "User"
+### Community 17 - "User"
 Cohesion: 0.12
 Nodes (4): FollowRequest, SearchSuggestionsResponse, User, UserRecommendation
 
-### Community 17 - "FeedSkeleton.tsx"
+### Community 18 - "FeedSkeleton.tsx"
 Cohesion: 0.19
 Nodes (4): FeedSkeleton(), PostCardSkeleton(), PostDetailSkeleton(), ProfileSkeleton()
 
-### Community 18 - "admin.go"
+### Community 19 - "admin.go"
 Cohesion: 0.16
 Nodes (13): AdminDeletePostRequest, AssignMembershipRequest, CreateRoleRequest, SetPermissionsRequest, SetPlanEntitlementsRequest, UpdatePlanRequest, UpdatePostModerationRequest, UpdateRoleRequest (+5 more)
 
-### Community 19 - "NewMemoryRepository"
+### Community 20 - "NewMemoryRepository"
 Cohesion: 0.34
 Nodes (11): Handler, User, registerAndLoginUser(), setupTestRBACRouter(), TestConcurrentPostingCannotBypassQuota(), TestMediaUploadLimitsByTier(), TestNewUserDefaultMemberRoleAndAdminProtection(), TestOwnerBootstrapAndNonDemotionRule() (+3 more)
-
-### Community 20 - "search/page.tsx"
-Cohesion: 0.19
-Nodes (9): ExploreCategory, SearchPageContent(), SearchPostsResponse, SearchTab, SearchUsersResponse, VirtualizedFeed(), VirtualizedFeedProps, feedKeys (+1 more)
 
 ### Community 21 - "handler.go"
 Cohesion: 0.18
@@ -358,17 +357,17 @@ Nodes (3): setupTestFullAdminRouter(), TestAdminPostModerationAndAuditLogging(),
 ## Knowledge Gaps
 - **115 isolated node(s):** `name`, `version`, `private`, `dev`, `build` (+110 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **136 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **135 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `MemoryRepository` connect `MemoryRepository` to `AuditLog`, `models.go`, `.GetAdminPosts`, `Conversation`, `PaymentOrder`, `Hub`, `UserTopicPreference`, `Post`, `VerificationBadge`, `User`, `NewMemoryRepository`, `.GetFollowingPosts`, `Role`?**
-  _High betweenness centrality (0.167) - this node is a cross-community bridge._
-- **Why does `Handler` connect `Handler` to `setupTestFullAdminRouter`, `handler.go`, `Repository`, `main`, `NewHandler`, `IsOwnerAccount`?**
-  _High betweenness centrality (0.138) - this node is a cross-community bridge._
+- **Why does `MemoryRepository` connect `MemoryRepository` to `AuditLog`, `models.go`, `.GetAdminPosts`, `Conversation`, `PaymentOrder`, `Hub`, `UserTopicPreference`, `Post`, `User`, `NewMemoryRepository`, `.GetFollowingPosts`, `Role`?**
+  _High betweenness centrality (0.152) - this node is a cross-community bridge._
 - **Why does `main()` connect `main` to `Handler`, `NewPostgresRepository`, `PlisioService`, `NewMemoryRepository`, `Repository`, `NewHandler`?**
-  _High betweenness centrality (0.129) - this node is a cross-community bridge._
+  _High betweenness centrality (0.121) - this node is a cross-community bridge._
+- **Why does `Handler` connect `Handler` to `setupTestFullAdminRouter`, `handler.go`, `Repository`, `main`, `NewHandler`, `IsOwnerAccount`?**
+  _High betweenness centrality (0.116) - this node is a cross-community bridge._
 - **What connects `name`, `version`, `private` to the rest of the system?**
   _115 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Handler` be split into smaller, more focused modules?**

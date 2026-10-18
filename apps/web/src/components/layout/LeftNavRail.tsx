@@ -77,11 +77,26 @@ export function LeftNavRail({
   const { unreadNotifCount, unreadMessageCount } = useRealtime();
 
   if (!currentUser) {
-    return null;
+    return (
+      <header className="hidden sm:flex sticky top-0 h-screen flex-col justify-start items-end xl:items-start px-2 sm:px-4 py-3 select-none w-[68px] xl:w-[275px] shrink-0">
+        <div className="w-full flex flex-col items-center xl:items-start">
+          {/* X Logo */}
+          <Link
+            href="/"
+            className="p-3 hover:bg-subtle rounded-full transition-colors flex items-center justify-center mb-1 text-foreground"
+            aria-label="X"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="w-8 h-8 fill-current">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+          </Link>
+        </div>
+      </header>
+    );
   }
 
   return (
-    <header className="hidden sm:flex sticky top-0 h-screen flex-col justify-between items-end xl:items-start px-2 sm:px-4 py-3 select-none border-r border-border w-[68px] xl:w-[275px] overflow-y-auto no-scrollbar">
+    <header className="hidden sm:flex sticky top-0 h-screen flex-col justify-between items-end xl:items-start px-2 sm:px-4 py-3 select-none border-r border-border w-[68px] xl:w-[275px] overflow-y-auto no-scrollbar shrink-0">
       <div className="w-full flex flex-col items-center xl:items-start">
         {/* X Logo */}
         <Link

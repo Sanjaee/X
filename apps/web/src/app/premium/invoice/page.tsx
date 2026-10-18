@@ -475,8 +475,7 @@ export default function InvoicePage() {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground justify-center">
-      <LeftNavRail currentUser={currentUser} />
+    <>
       <Suspense
         fallback={
           <main className="w-full max-w-[620px] border-r border-border min-h-screen flex items-center justify-center">
@@ -487,6 +486,6 @@ export default function InvoicePage() {
         <InvoiceContent />
       </Suspense>
       <RightSidebar />
-    </div>
+    </>
   );
 }
