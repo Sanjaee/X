@@ -2307,6 +2307,7 @@ func (r *PostgresRepository) GetConversations(ctx context.Context, userID uuid.U
 		LEFT JOIN conversation_members other_m ON other_m.conversation_id = c.id AND other_m.user_id != $1
 		LEFT JOIN users other_u ON other_u.id = other_m.user_id
 		LEFT JOIN user_profiles other_p ON other_p.user_id = other_u.id
+		WHERE EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
 		ORDER BY c.updated_at DESC
 		LIMIT $2;
 	`

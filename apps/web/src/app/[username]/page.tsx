@@ -343,7 +343,7 @@ export default function UserProfilePage() {
 
                       {/* Direct Message button */}
                       <Link
-                        href={`/messages`}
+                        href={`/messages?userId=${profileUser.id}&username=${encodeURIComponent(profileUser.username)}`}
                         className="p-2 border border-border hover:bg-subtle rounded-full text-foreground transition-colors"
                         title="Send Message"
                       >

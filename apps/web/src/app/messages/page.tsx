@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Mail,
   Settings,
@@ -29,8 +30,27 @@ import { useRealtime } from "@/lib/useRealtime";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 
 export default function MessagesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center items-center h-screen text-brand">
+          <Loader2 className="w-8 h-8 animate-spin" />
+        </div>
+      }
+    >
+      <MessagesContent />
+    </Suspense>
+  );
+}
+
+function MessagesContent() {
   const { currentUser, updateUser: setCurrentUser, logout } = useCurrentUser();
+  const searchParams = useSearchParams();
+  const targetUserId = searchParams.get("userId");
+  const targetUsername = searchParams.get("username") || searchParams.get("user");
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [draftConv, setDraftConv] = useState<Conversation | null>(null);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageInput, setMessageInput] = useState("");
@@ -68,15 +88,48 @@ export default function MessagesPage() {
       const res = await apiRequest<{ conversations: Conversation[] }>("/conversations");
       const list = res.conversations || [];
       setConversations(list);
-      if (!activeConvId && list.length > 0) {
-        setActiveConvId(list[0].id);
+
+      // If URL specifies a recipient
+      if (targetUserId || targetUsername) {
+        const existing = list.find(
+          (c) =>
+            (targetUserId && c.other_member?.id === targetUserId) ||
+            (targetUsername &&
+              c.other_member?.username?.toLowerCase() === targetUsername.toLowerCase())
+        );
+
+        if (existing) {
+          setActiveConvId(existing.id);
+          setDraftConv(null);
+        } else {
+          // Open direct chat pane with target without adding to list until message is sent
+          try {
+            const conv = await apiRequest<Conversation>("/conversations", {
+              method: "POST",
+              body: JSON.stringify({
+                recipient_id: targetUserId || undefined,
+                username: targetUsername || undefined,
+              }),
+            });
+            setDraftConv(conv);
+            setActiveConvId(conv.id);
+          } catch (err: any) {
+            console.error("Failed to start conversation with target user", err);
+            setErrorMessage(err.message || "Failed to start conversation");
+          }
+        }
+      } else {
+        setActiveConvId((prev) => {
+          if (prev && list.some((c) => c.id === prev)) return prev;
+          return list.length > 0 ? list[0].id : null;
+        });
       }
     } catch (e: any) {
       console.error("Failed to load conversations", e);
     } finally {
       setLoadingConvs(false);
     }
-  }, [activeConvId]);
+  }, [targetUserId, targetUsername]);
 
   useEffect(() => {
     if (currentUser) {
@@ -151,6 +204,16 @@ export default function MessagesPage() {
     setConversations((prev) => {
       const exists = prev.some((c) => c.id === lastMessage.conversation_id);
       if (!exists) {
+        if (draftConv && draftConv.id === lastMessage.conversation_id) {
+          const newConv: Conversation = {
+            ...draftConv,
+            last_message: lastMessage,
+            updated_at: lastMessage.created_at,
+            unread_count: lastMessage.conversation_id === activeConvId ? 0 : 1,
+          };
+          setDraftConv(null);
+          return [newConv, ...prev];
+        }
         loadConversations();
         return prev;
       }
@@ -172,7 +235,7 @@ export default function MessagesPage() {
           new Date(a.updated_at || a.created_at).getTime()
       );
     });
-  }, [lastMessage, activeConvId, refreshCounts, loadConversations]);
+  }, [lastMessage, activeConvId, refreshCounts, loadConversations, draftConv]);
 
   // Auto-scroll to bottom of chat
   useEffect(() => {
@@ -237,6 +300,36 @@ export default function MessagesPage() {
       setMessages((prev) =>
         prev.map((m) => (m.client_message_id === clientMsgId ? savedMsg : m))
       );
+
+      // If this conversation was a draft (not in conversations list yet), add it now
+      if (draftConv && draftConv.id === activeConvId) {
+        const newConv: Conversation = {
+          ...draftConv,
+          last_message: savedMsg,
+          updated_at: savedMsg.created_at,
+          unread_count: 0,
+        };
+        setConversations((prev) => [newConv, ...prev.filter((c) => c.id !== newConv.id)]);
+        setDraftConv(null);
+      } else {
+        // Update existing conversation in list
+        setConversations((prev) => {
+          const updated = prev.map((c) =>
+            c.id === activeConvId
+              ? {
+                  ...c,
+                  last_message: savedMsg,
+                  updated_at: savedMsg.created_at,
+                }
+              : c
+          );
+          return updated.sort(
+            (a, b) =>
+              new Date(b.updated_at || b.created_at).getTime() -
+              new Date(a.updated_at || a.created_at).getTime()
+          );
+        });
+      }
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to send message");
     } finally {
@@ -280,17 +373,16 @@ export default function MessagesPage() {
         other_member: targetUser,
       };
 
-      setConversations((prev) => {
-        const idx = prev.findIndex((c) => c.id === conv.id);
-        if (idx >= 0) {
-          const updated = [...prev];
-          updated[idx] = { ...updated[idx], other_member: targetUser };
-          return updated;
-        }
-        return [fullConv, ...prev];
-      });
+      const existingInList = conversations.find((c) => c.id === conv.id);
+      if (existingInList) {
+        setActiveConvId(conv.id);
+        setDraftConv(null);
+      } else {
+        // Do not add to conversation list until first message is sent
+        setDraftConv(fullConv);
+        setActiveConvId(conv.id);
+      }
 
-      setActiveConvId(conv.id);
       setNewChatModalOpen(false);
       setSearchQuery("");
       setSearchResults([]);
@@ -300,7 +392,9 @@ export default function MessagesPage() {
     }
   };
 
-  const activeConv = conversations.find((c) => c.id === activeConvId);
+  const activeConv =
+    conversations.find((c) => c.id === activeConvId) ||
+    (draftConv?.id === activeConvId ? draftConv : null);
 
   // Filter conversations for left rail search
   const filteredConversations = conversations.filter((c) => {

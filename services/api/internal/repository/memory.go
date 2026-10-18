@@ -1577,6 +1577,17 @@ func (r *MemoryRepository) GetConversations(ctx context.Context, userID uuid.UUI
 
 	var convs []domain.Conversation
 	for _, c := range r.conversations {
+		hasMsg := false
+		for _, m := range r.messages {
+			if m.ConversationID == c.ID {
+				hasMsg = true
+				break
+			}
+		}
+		if !hasMsg {
+			continue
+		}
+
 		members := r.convMembers[c.ID]
 		isMember := false
 		var otherID uuid.UUID

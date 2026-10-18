@@ -2988,15 +2988,35 @@ func (h *Handler) CreateConversation(w http.ResponseWriter, r *http.Request) {
 
 	var body struct {
 		RecipientID string `json:"recipient_id"`
+		Username    string `json:"username"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid body")
 		return
 	}
 
-	recipientID, err := uuid.Parse(body.RecipientID)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid recipient id")
+	var recipientID uuid.UUID
+	var err error
+	if body.RecipientID != "" {
+		recipientID, err = uuid.Parse(body.RecipientID)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid recipient id")
+			return
+		}
+	} else if body.Username != "" {
+		targetUser, err := h.repo.GetUserByUsername(r.Context(), body.Username, &user.ID)
+		if err != nil || targetUser == nil {
+			writeError(w, http.StatusNotFound, "user not found")
+			return
+		}
+		recipientID = targetUser.ID
+	} else {
+		writeError(w, http.StatusBadRequest, "recipient_id or username required")
+		return
+	}
+
+	if recipientID == user.ID {
+		writeError(w, http.StatusBadRequest, "cannot start conversation with yourself")
 		return
 	}
 
@@ -3012,7 +3032,7 @@ func (h *Handler) CreateConversation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if otherU, err := h.repo.GetUserByID(r.Context(), recipientID, nil); err == nil {
+	if otherU, err := h.repo.GetUserByID(r.Context(), recipientID, &user.ID); err == nil {
 		conv.OtherMember = otherU
 	}
 
