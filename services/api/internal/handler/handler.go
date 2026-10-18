@@ -1260,11 +1260,13 @@ func (h *Handler) LikePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Trigger notification
-	if p, err := h.repo.GetPostByID(r.Context(), postID, nil); err == nil && p.AuthorID != user.ID {
-		h.notifyUser(r.Context(), p.AuthorID, user.ID, "like", "post", &postID, &postID, map[string]interface{}{
-			"post_id": postID.String(),
-		})
+	// Trigger notification only when liked (not unliked)
+	if status {
+		if p, err := h.repo.GetPostByID(r.Context(), postID, nil); err == nil && p.AuthorID != user.ID {
+			h.notifyUser(r.Context(), p.AuthorID, user.ID, "like", "post", &postID, &postID, map[string]interface{}{
+				"post_id": postID.String(),
+			})
+		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -1326,10 +1328,13 @@ func (h *Handler) RepostPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if p, err := h.repo.GetPostByID(r.Context(), postID, nil); err == nil && p.AuthorID != user.ID {
-		h.notifyUser(r.Context(), p.AuthorID, user.ID, "repost", "post", &postID, &postID, map[string]interface{}{
-			"post_id": postID.String(),
-		})
+	// Trigger notification only when reposted (not un-reposted)
+	if status {
+		if p, err := h.repo.GetPostByID(r.Context(), postID, nil); err == nil && p.AuthorID != user.ID {
+			h.notifyUser(r.Context(), p.AuthorID, user.ID, "repost", "post", &postID, &postID, map[string]interface{}{
+				"post_id": postID.String(),
+			})
+		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -1458,7 +1463,7 @@ func (h *Handler) notifyUser(ctx context.Context, recipientID, actorID uuid.UUID
 		return
 	}
 
-	_ = h.repo.CreateNotification(ctx, &domain.Notification{
+	err := h.repo.CreateNotification(ctx, &domain.Notification{
 		RecipientID: recipientID,
 		ActorID:     actorID,
 		Type:        notifType,
@@ -1466,6 +1471,9 @@ func (h *Handler) notifyUser(ctx context.Context, recipientID, actorID uuid.UUID
 		EntityID:    entityID,
 		PostID:      postID,
 	})
+	if err != nil {
+		return
+	}
 
 	if h.hub != nil {
 		payload := map[string]interface{}{

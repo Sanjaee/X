@@ -337,39 +337,21 @@ export default function HomePage() {
   };
 
 
-  const handleLike = async (postId: string) => {
+  const handleLike = (_postId: string) => {
     if (!currentUser) {
       setAuthModalOpen(true);
-      return;
-    }
-    try {
-      await apiRequest(`/posts/${postId}/likes`, { method: "POST" });
-    } catch (e) {
-      console.error(e);
     }
   };
 
-  const handleRepost = async (postId: string) => {
+  const handleRepost = (_postId: string) => {
     if (!currentUser) {
       setAuthModalOpen(true);
-      return;
-    }
-    try {
-      await apiRequest(`/posts/${postId}/reposts`, { method: "POST" });
-    } catch (e) {
-      console.error(e);
     }
   };
 
-  const handleBookmark = async (postId: string) => {
+  const handleBookmark = (_postId: string) => {
     if (!currentUser) {
       setAuthModalOpen(true);
-      return;
-    }
-    try {
-      await apiRequest(`/posts/${postId}/bookmarks`, { method: "POST" });
-    } catch (e) {
-      console.error(e);
     }
   };
 

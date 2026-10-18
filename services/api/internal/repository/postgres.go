@@ -1475,10 +1475,27 @@ func (r *PostgresRepository) CreateNotification(ctx context.Context, n *domain.N
 	}
 	query := `
 		INSERT INTO notifications (id, recipient_id, actor_id, type, post_id, is_read, entity_type, entity_id, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW());
+		SELECT $1, $2, $3, $4, $5, $6, $7, $8, NOW()
+		WHERE NOT EXISTS (
+			SELECT 1 FROM notifications
+			WHERE recipient_id = $2
+			  AND actor_id = $3
+			  AND type = $4
+			  AND (
+				(post_id IS NULL AND $5::uuid IS NULL) OR
+				(post_id = $5::uuid)
+			  )
+			  AND created_at > NOW() - INTERVAL '30 seconds'
+		);
 	`
-	_, err := r.db.ExecContext(ctx, query, n.ID, n.RecipientID, n.ActorID, n.Type, n.PostID, n.IsRead, n.EntityType, n.EntityID)
-	return err
+	res, err := r.db.ExecContext(ctx, query, n.ID, n.RecipientID, n.ActorID, n.Type, n.PostID, n.IsRead, n.EntityType, n.EntityID)
+	if err != nil {
+		return err
+	}
+	if rows, _ := res.RowsAffected(); rows == 0 {
+		return errors.New("duplicate_notification_skipped")
+	}
+	return nil
 }
 
 func (r *PostgresRepository) GetNotifications(ctx context.Context, userID uuid.UUID, cursor string, limit int) ([]domain.Notification, string, error) {

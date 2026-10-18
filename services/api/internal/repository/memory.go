@@ -996,10 +996,22 @@ func (r *MemoryRepository) CreateNotification(ctx context.Context, n *domain.Not
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	// Deduplicate notifications created in the last 30 seconds
+	now := time.Now()
+	for _, existing := range r.notifications {
+		if existing.RecipientID == n.RecipientID &&
+			existing.ActorID == n.ActorID &&
+			existing.Type == n.Type &&
+			((existing.PostID == nil && n.PostID == nil) || (existing.PostID != nil && n.PostID != nil && *existing.PostID == *n.PostID)) &&
+			now.Sub(existing.CreatedAt) < 30*time.Second {
+			return errors.New("duplicate_notification_skipped")
+		}
+	}
+
 	if n.ID == uuid.Nil {
 		n.ID = uuid.New()
 	}
-	n.CreatedAt = time.Now()
+	n.CreatedAt = now
 	r.notifications[n.ID] = n
 	return nil
 }

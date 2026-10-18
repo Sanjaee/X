@@ -130,18 +130,30 @@ export default function NotificationsPage() {
     }
   };
 
-  const filteredNotifications = notifications.filter((n) => {
-    // Direct messages are dedicated to the Messages tab and badge
-    if (n.type === "dm") return false;
+  const filteredNotifications = React.useMemo(() => {
+    const seen = new Set<string>();
+    return notifications.filter((n) => {
+      // Direct messages are dedicated to the Messages tab and badge
+      if (n.type === "dm") return false;
 
-    if (activeTab === "verified") {
-      return n.actor?.is_verified;
-    }
-    if (activeTab === "mentions") {
-      return n.type === "mention" || n.type === "reply";
-    }
-    return true;
-  });
+      if (activeTab === "verified") {
+        if (!n.actor?.is_verified) return false;
+      }
+      if (activeTab === "mentions") {
+        if (n.type !== "mention" && n.type !== "reply") return false;
+      }
+
+      // Deduplicate notifications with identical signature (actor, type, target) within notification stream
+      const actorKey = n.actor_id || n.actor?.id || n.actor?.username || "";
+      const targetKey = n.post_id || n.entity_id || n.id;
+      const signature = `${actorKey}:${n.type}:${targetKey}`;
+      if (seen.has(signature)) {
+        return false;
+      }
+      seen.add(signature);
+      return true;
+    });
+  }, [notifications, activeTab]);
 
   return (
     <>
