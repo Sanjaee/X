@@ -552,6 +552,26 @@ func (r *MemoryRepository) GetUserPosts(ctx context.Context, username, tab strin
 			}
 		}
 
+	case "likes", "liked":
+		for key := range r.likes {
+			parts := strings.Split(key, ":")
+			if len(parts) == 2 {
+				postID, _ := uuid.Parse(parts[0])
+				likerID, _ := uuid.Parse(parts[1])
+				if likerID == uID {
+					if orig, ok := r.posts[postID]; ok && orig.DeletedAt == nil {
+						cloned := *orig
+						if viewerID != nil {
+							cloned.IsLiked = r.isLikedInternal(orig.ID, *viewerID)
+							cloned.IsReposted = r.isRepostedInternal(orig.ID, *viewerID)
+							cloned.IsBookmarked = r.isBookmarkedInternal(orig.ID, *viewerID)
+						}
+						result = append(result, cloned)
+					}
+				}
+			}
+		}
+
 	default:
 		for _, p := range r.posts {
 			if p.AuthorID == uID && p.ReplyToID == nil && p.DeletedAt == nil {
@@ -708,6 +728,43 @@ func (r *MemoryRepository) RemoveBookmark(ctx context.Context, postID, userID uu
 	key := fmt.Sprintf("%s:%s", postID, userID)
 	delete(r.bookmarks, key)
 	return false, len(r.bookmarks), nil
+}
+
+func (r *MemoryRepository) GetBookmarks(ctx context.Context, userID uuid.UUID, cursor string, limit int) ([]domain.Post, string, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+
+	var result []domain.Post
+	for key := range r.bookmarks {
+		parts := strings.Split(key, ":")
+		if len(parts) == 2 {
+			postID, _ := uuid.Parse(parts[0])
+			bookmarkerID, _ := uuid.Parse(parts[1])
+			if bookmarkerID == userID {
+				if orig, ok := r.posts[postID]; ok && orig.DeletedAt == nil {
+					cloned := *orig
+					cloned.IsLiked = r.isLikedInternal(orig.ID, userID)
+					cloned.IsReposted = r.isRepostedInternal(orig.ID, userID)
+					cloned.IsBookmarked = true
+					result = append(result, cloned)
+				}
+			}
+		}
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].CreatedAt.After(result[j].CreatedAt)
+	})
+
+	if len(result) > limit {
+		result = result[:limit]
+	}
+
+	return result, "", nil
 }
 
 func (r *MemoryRepository) FollowUser(ctx context.Context, followerID, followingID uuid.UUID) (bool, int, error) {

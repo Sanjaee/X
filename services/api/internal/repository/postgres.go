@@ -678,6 +678,31 @@ func (r *PostgresRepository) GetUserPosts(ctx context.Context, username, tab str
 		query += fmt.Sprintf(` ORDER BY p.created_at DESC, p.id DESC LIMIT $%d;`, len(args)+1)
 		args = append(args, limit)
 
+	case "likes", "liked":
+		// Tab 5: Posts liked by the target user
+		query = `
+			SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
+			       p.replies_count, p.reposts_count, p.likes_count, COALESCE(p.quotes_count, 0), p.views_count, p.created_at, p.updated_at,
+			       u.username, u.is_verified, u.verified_type,
+			       pr.display_name, pr.avatar_url,
+			       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $2), FALSE) as is_liked,
+			       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $2), FALSE) as is_reposted,
+			       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $2), FALSE) as is_bookmarked,
+			       plk.created_at as liked_at
+			FROM post_likes plk
+			JOIN posts p ON p.id = plk.post_id
+			JOIN users u ON u.id = p.author_id
+			JOIN user_profiles pr ON pr.user_id = p.author_id
+			WHERE plk.user_id = $1 AND p.deleted_at IS NULL
+		`
+		args = []interface{}{targetUser.ID, vID}
+		if cur != nil {
+			query += ` AND (plk.created_at < $3 OR (plk.created_at = $3 AND p.id < $4))`
+			args = append(args, cur.CreatedAt, cur.PostID)
+		}
+		query += fmt.Sprintf(` ORDER BY plk.created_at DESC, p.id DESC LIMIT $%d;`, len(args)+1)
+		args = append(args, limit)
+
 	default:
 		// Tab 1: Postingan (original posts and quote posts authored by user, excluding pure replies)
 		query = `
@@ -713,6 +738,7 @@ func (r *PostgresRepository) GetUserPosts(ctx context.Context, username, tab str
 		var p domain.Post
 		var author domain.User
 		var repostedAt *time.Time
+		var likedAt *time.Time
 
 		var scanErr error
 		if normTab == "reposts" || normTab == "repost" {
@@ -723,6 +749,15 @@ func (r *PostgresRepository) GetUserPosts(ctx context.Context, username, tab str
 				&author.DisplayName, &author.AvatarURL,
 				&p.IsLiked, &p.IsReposted, &p.IsBookmarked,
 				&repostedAt,
+			)
+		} else if normTab == "likes" || normTab == "liked" {
+			scanErr = rows.Scan(
+				&p.ID, &p.AuthorID, &p.Content, &p.ReplyToID, &p.QuotePostID,
+				&p.RepliesCount, &p.RepostsCount, &p.LikesCount, &p.QuotesCount, &p.ViewsCount, &p.CreatedAt, &p.UpdatedAt,
+				&author.Username, &author.IsVerified, &author.VerifiedType,
+				&author.DisplayName, &author.AvatarURL,
+				&p.IsLiked, &p.IsReposted, &p.IsBookmarked,
+				&likedAt,
 			)
 		} else {
 			scanErr = rows.Scan(
@@ -1044,6 +1079,83 @@ func (r *PostgresRepository) BookmarkPost(ctx context.Context, postID, userID uu
 func (r *PostgresRepository) RemoveBookmark(ctx context.Context, postID, userID uuid.UUID) (bool, int, error) {
 	_, err := r.db.ExecContext(ctx, `DELETE FROM post_bookmarks WHERE post_id = $1 AND user_id = $2;`, postID, userID)
 	return false, 0, err
+}
+
+func (r *PostgresRepository) GetBookmarks(ctx context.Context, userID uuid.UUID, cursor string, limit int) ([]domain.Post, string, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+
+	var cur *recommendation.FeedCursor
+	if cursor != "" {
+		cur, _ = recommendation.DecodeCursor(cursor)
+	}
+
+	query := `
+		SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
+		       p.replies_count, p.reposts_count, p.likes_count, COALESCE(p.quotes_count, 0), p.views_count, p.created_at, p.updated_at,
+		       u.username, u.is_verified, u.verified_type,
+		       pr.display_name, pr.avatar_url,
+		       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1), FALSE) as is_liked,
+		       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $1), FALSE) as is_reposted,
+		       TRUE as is_bookmarked,
+		       pb.created_at as bookmarked_at
+		FROM post_bookmarks pb
+		JOIN posts p ON p.id = pb.post_id
+		JOIN users u ON u.id = p.author_id
+		JOIN user_profiles pr ON pr.user_id = p.author_id
+		WHERE pb.user_id = $1 AND p.deleted_at IS NULL
+	`
+	args := []interface{}{userID}
+	if cur != nil {
+		query += ` AND (pb.created_at < $2 OR (pb.created_at = $2 AND p.id < $3))`
+		args = append(args, cur.CreatedAt, cur.PostID)
+	}
+	query += fmt.Sprintf(` ORDER BY pb.created_at DESC, p.id DESC LIMIT $%d;`, len(args)+1)
+	args = append(args, limit)
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return []domain.Post{}, "", err
+	}
+	defer rows.Close()
+
+	posts := make([]domain.Post, 0)
+	var lastBookmarkedAt time.Time
+	for rows.Next() {
+		var p domain.Post
+		var author domain.User
+		var bookmarkedAt time.Time
+
+		err := rows.Scan(
+			&p.ID, &p.AuthorID, &p.Content, &p.ReplyToID, &p.QuotePostID,
+			&p.RepliesCount, &p.RepostsCount, &p.LikesCount, &p.QuotesCount, &p.ViewsCount, &p.CreatedAt, &p.UpdatedAt,
+			&author.Username, &author.IsVerified, &author.VerifiedType,
+			&author.DisplayName, &author.AvatarURL,
+			&p.IsLiked, &p.IsReposted, &p.IsBookmarked,
+			&bookmarkedAt,
+		)
+		if err != nil {
+			return []domain.Post{}, "", err
+		}
+		author.ID = p.AuthorID
+		p.Author = &author
+		lastBookmarkedAt = bookmarkedAt
+		posts = append(posts, p)
+	}
+
+	if len(posts) > 0 {
+		_ = r.attachMediaToPosts(ctx, posts)
+		_ = r.attachQuotesToPosts(ctx, posts, &userID)
+		_ = r.attachParentPosts(ctx, posts)
+	}
+
+	nextCursor := ""
+	if len(posts) == limit && !lastBookmarkedAt.IsZero() {
+		nextCursor = recommendation.EncodeCursor(lastBookmarkedAt, posts[len(posts)-1].ID)
+	}
+
+	return posts, nextCursor, nil
 }
 
 func (r *PostgresRepository) FollowUser(ctx context.Context, followerID, followingID uuid.UUID) (bool, int, error) {

@@ -1457,6 +1457,33 @@ func (h *Handler) RemoveBookmark(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{"status": status, "count": count})
 }
 
+func (h *Handler) GetBookmarks(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	limit := 20
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 50 {
+			limit = parsed
+		}
+	}
+	cursor := r.URL.Query().Get("cursor")
+
+	posts, nextCursor, err := h.repo.GetBookmarks(r.Context(), user.ID, cursor, limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to fetch bookmarks")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"posts":       posts,
+		"next_cursor": nextCursor,
+	})
+}
+
 // notifyUser creates a persisted notification and broadcasts real-time events over WebSocket
 func (h *Handler) notifyUser(ctx context.Context, recipientID, actorID uuid.UUID, notifType, entityType string, entityID *uuid.UUID, postID *uuid.UUID, extra map[string]interface{}) {
 	if recipientID == actorID {

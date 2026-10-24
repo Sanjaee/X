@@ -38,6 +38,7 @@ type Repository interface {
 	UndoRepost(ctx context.Context, postID, userID uuid.UUID) (bool, int, error)
 	BookmarkPost(ctx context.Context, postID, userID uuid.UUID) (bool, int, error)
 	RemoveBookmark(ctx context.Context, postID, userID uuid.UUID) (bool, int, error)
+	GetBookmarks(ctx context.Context, userID uuid.UUID, cursor string, limit int) ([]domain.Post, string, error)
 
 	// Social Graph
 	FollowUser(ctx context.Context, followerID, followingID uuid.UUID) (bool, int, error)

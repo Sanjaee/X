@@ -17,6 +17,8 @@ import {
   X_ALLOWED_MEDIA_ACCEPT,
   filterValidMediaFiles,
 } from "@/lib/mediaValidation";
+import { VerifiedBadge } from "@/components/common/VerifiedBadge";
+import { formatRelativeTime } from "@/lib/utils";
 
 interface PostModalProps {
   isOpen: boolean;
@@ -246,7 +248,7 @@ export function PostModal({
             </div>
           )}
 
-          {/* User Reply Input Row */}
+          {/* User Input & Compose Row */}
           <div className="flex gap-3">
             <img
               src={
@@ -257,179 +259,233 @@ export function PostModal({
               className="w-10 h-10 rounded-full object-cover shrink-0 border border-border"
             />
 
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 flex flex-col">
               <textarea
                 ref={textareaRef}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder={replyToPost ? "Post your reply" : "What is happening?!"}
-                rows={replyToPost ? 3 : 4}
-                className="w-full bg-transparent text-[20px] text-foreground placeholder:text-muted outline-none resize-none leading-normal font-normal"
+                placeholder={
+                  replyToPost
+                    ? "Post your reply"
+                    : quotedPost
+                    ? "Add a comment"
+                    : "What is happening?!"
+                }
+                rows={quotedPost ? 2 : replyToPost ? 3 : 4}
+                className="w-full bg-transparent text-[19px] sm:text-[20px] text-foreground placeholder:text-muted outline-none resize-none leading-normal font-normal min-h-[56px]"
               />
 
-            {/* Staged Attachments Grid */}
-            {stagedFiles.length > 0 && (
-              <div
-                className={`grid gap-2 mb-3 ${
-                  stagedFiles.length === 1 ? "grid-cols-1" : "grid-cols-2"
-                }`}
-              >
-                {stagedFiles.map((staged, idx) => (
-                  <div
-                    key={staged.id}
-                    className="relative rounded-2xl overflow-hidden border border-border bg-black max-h-[260px] group"
-                  >
-                    {staged.type === "video" ? (
-                      <video
-                        src={staged.previewUrl}
-                        controls
-                        className="w-full h-full object-cover max-h-[260px]"
-                      />
-                    ) : (
-                      <img
-                        src={staged.previewUrl}
-                        alt="attachment"
-                        className="w-full h-full object-cover max-h-[260px]"
-                      />
-                    )}
-                    <button
-                      onClick={() => handleRemoveStaged(idx)}
-                      className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 hover:bg-black/90 text-white transition-colors"
-                      title="Remove media"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Quoted Post Card Preview */}
-            {quotedPost && (
-              <div className="mb-3 p-3 rounded-2xl border border-border bg-subtle/30 flex flex-col gap-1.5 text-[14px]">
-                <div className="flex items-center gap-1.5 font-bold text-foreground">
-                  <img
-                    src={quotedPost.author?.avatar_url || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"}
-                    alt={quotedPost.author?.display_name || "User"}
-                    className="w-5 h-5 rounded-full object-cover"
-                  />
-                  <span>{quotedPost.author?.display_name || quotedPost.author?.username || "User"}</span>
-                  <span className="font-normal text-muted">@{quotedPost.author?.username || "user"}</span>
-                </div>
-                {quotedPost.content && (
-                  <p className="text-foreground/90 line-clamp-3 whitespace-pre-wrap">{quotedPost.content}</p>
-                )}
-              </div>
-            )}
-
-            {/* Audience Pill: Everyone can reply (Screenshot) */}
-            <div className="flex items-center gap-1 text-brand font-bold text-[13px] hover:bg-brand/10 py-1 px-3 rounded-full w-fit cursor-pointer transition-colors -ml-3 mb-2">
-              <Globe className="w-4 h-4 stroke-[2.2]" />
-              <span>Everyone can reply</span>
-            </div>
-
-            {/* Bottom Toolbar & Post Action */}
-            <div className="border-t border-border pt-3 flex items-center justify-between">
-              {/* Media Action Icons */}
-              <div className="flex items-center gap-1 -ml-2 text-brand">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  multiple
-                  accept={X_ALLOWED_MEDIA_ACCEPT}
-                  className="hidden"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-2 hover:bg-brand/10 rounded-full transition-colors"
-                  title="Media"
-                >
-                  <ImageIcon className="w-5 h-5 stroke-[2]" />
-                </button>
-
-                <button
-                  type="button"
-                  className="p-2 hover:bg-brand/10 rounded-full transition-colors flex items-center justify-center"
-                  title="GIF"
-                >
-                  <span className="font-extrabold text-[10px] tracking-wider border border-brand px-1 py-0.5 rounded leading-none">
-                    GIF
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  className="p-2 hover:bg-brand/10 rounded-full transition-colors"
-                  title="Poll"
-                >
-                  <BarChart2 className="w-5 h-5 stroke-[2] rotate-90" />
-                </button>
-
-                <button
-                  type="button"
-                  className="p-2 hover:bg-brand/10 rounded-full transition-colors"
-                  title="Emoji"
-                >
-                  <Smile className="w-5 h-5 stroke-[2]" />
-                </button>
-
-                <button
-                  type="button"
-                  className="p-2 hover:bg-brand/10 rounded-full transition-colors"
-                  title="Schedule"
-                >
-                  <Calendar className="w-5 h-5 stroke-[2]" />
-                </button>
-
-                <button
-                  type="button"
-                  className="p-2 hover:bg-brand/10 rounded-full transition-colors opacity-50 cursor-not-allowed"
-                  title="Location"
-                  disabled
-                >
-                  <MapPin className="w-5 h-5 stroke-[2]" />
-                </button>
-              </div>
-
-              {/* Right: Submit Button (Screenshot styling) */}
-              <div className="flex items-center gap-3">
-                {content.length > 0 && (
-                  <span
-                    className={`text-xs ${
-                      charsRemaining < 20 ? "text-red-500 font-bold" : "text-muted"
-                    }`}
-                  >
-                    {charsRemaining}
-                  </span>
-                )}
-
-                <button
-                  onClick={handleSubmit}
-                  disabled={!canPost}
-                  className={`font-bold text-[15px] px-5 py-2 rounded-full transition-all ${
-                    canPost
-                      ? "bg-[#eff3f4] hover:bg-[#d7dbdc] text-[#0f1419] active:scale-95 shadow-sm"
-                      : "bg-[#333639] text-[#71767b] cursor-not-allowed"
+              {/* Staged Attachments Grid */}
+              {stagedFiles.length > 0 && (
+                <div
+                  className={`grid gap-2 mb-3 ${
+                    stagedFiles.length === 1 ? "grid-cols-1" : "grid-cols-2"
                   }`}
                 >
-                  {isSubmitting ? (
-                    <div className="flex items-center gap-1.5">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>{replyToPost ? "Replying..." : "Posting..."}</span>
+                  {stagedFiles.map((staged, idx) => (
+                    <div
+                      key={staged.id}
+                      className="relative rounded-2xl overflow-hidden border border-border bg-black max-h-[260px] group"
+                    >
+                      {staged.type === "video" ? (
+                        <video
+                          src={staged.previewUrl}
+                          controls
+                          className="w-full h-full object-cover max-h-[260px]"
+                        />
+                      ) : (
+                        <img
+                          src={staged.previewUrl}
+                          alt="attachment"
+                          className="w-full h-full object-cover max-h-[260px]"
+                        />
+                      )}
+                      <button
+                        onClick={() => handleRemoveStaged(idx)}
+                        className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 hover:bg-black/90 text-white transition-colors"
+                        title="Remove media"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
-                  ) : (
-                    replyToPost ? "Reply" : "Post"
+                  ))}
+                </div>
+              )}
+
+              {/* Quoted Post Card Preview (Exact X Layout) */}
+              {quotedPost && (
+                <div className="mb-3 rounded-2xl border border-border bg-card/60 overflow-hidden flex flex-col text-[14px]">
+                  <div className="p-3 pb-2 flex flex-col gap-1.5">
+                    <div className="flex items-center gap-1.5 text-foreground leading-snug">
+                      <img
+                        src={
+                          quotedPost.author?.avatar_url ||
+                          "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"
+                        }
+                        alt={quotedPost.author?.display_name || "User"}
+                        className="w-5 h-5 rounded-full object-cover shrink-0"
+                      />
+                      <span className="font-bold text-foreground truncate">
+                        {quotedPost.author?.display_name || quotedPost.author?.username || "User"}
+                      </span>
+                      {quotedPost.author?.is_verified && (
+                        <VerifiedBadge type={quotedPost.author.verified_type} />
+                      )}
+                      <span className="text-muted font-normal truncate">
+                        @{quotedPost.author?.username || "user"}
+                      </span>
+                      {quotedPost.created_at && (
+                        <>
+                          <span className="text-muted font-normal">·</span>
+                          <span className="text-muted font-normal text-xs shrink-0">
+                            {formatRelativeTime(quotedPost.created_at)}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    {quotedPost.content && (
+                      <p className="text-foreground/90 line-clamp-3 whitespace-pre-wrap break-words">
+                        {quotedPost.content}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Quoted Media Preview */}
+                  {quotedPost.media && quotedPost.media.length > 0 && (
+                    <div className="border-t border-border overflow-hidden bg-black/20 max-h-[220px]">
+                      {quotedPost.media[0].media_type === "video" ? (
+                        <div className="w-full h-full max-h-[220px] bg-black flex items-center justify-center relative">
+                          <video
+                            src={quotedPost.media[0].url}
+                            className="w-full h-full object-cover max-h-[220px]"
+                            preload="metadata"
+                          />
+                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                            <span className="px-2.5 py-1 rounded-full bg-black/70 text-white text-xs font-semibold">
+                              Video
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <img
+                          src={quotedPost.media[0].url}
+                          alt="Quoted attachment"
+                          className="w-full max-h-[220px] object-cover"
+                        />
+                      )}
+                    </div>
                   )}
-                </button>
+                </div>
+              )}
+
+              {/* Audience Pill: Everyone can reply (Screenshot) */}
+              <div className="flex items-center gap-1.5 text-brand font-bold text-[13px] hover:bg-brand/10 py-1 px-3 rounded-full w-fit cursor-pointer transition-colors -ml-3 mb-2">
+                <Globe className="w-4 h-4 stroke-[2.2]" />
+                <span>Everyone can reply</span>
+              </div>
+
+              {/* Bottom Toolbar & Post Action */}
+              <div className="border-t border-border pt-3 flex items-center justify-between">
+                {/* Media Action Icons */}
+                <div className="flex items-center gap-1 -ml-2 text-brand">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    multiple
+                    accept={X_ALLOWED_MEDIA_ACCEPT}
+                    className="hidden"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-2 hover:bg-brand/10 rounded-full transition-colors"
+                    title="Media"
+                  >
+                    <ImageIcon className="w-5 h-5 stroke-[2]" />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="p-2 hover:bg-brand/10 rounded-full transition-colors flex items-center justify-center"
+                    title="GIF"
+                  >
+                    <span className="font-extrabold text-[10px] tracking-wider border border-brand px-1 py-0.5 rounded leading-none">
+                      GIF
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="p-2 hover:bg-brand/10 rounded-full transition-colors"
+                    title="Poll"
+                  >
+                    <BarChart2 className="w-5 h-5 stroke-[2] rotate-90" />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="p-2 hover:bg-brand/10 rounded-full transition-colors"
+                    title="Emoji"
+                  >
+                    <Smile className="w-5 h-5 stroke-[2]" />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="p-2 hover:bg-brand/10 rounded-full transition-colors"
+                    title="Schedule"
+                  >
+                    <Calendar className="w-5 h-5 stroke-[2]" />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="p-2 hover:bg-brand/10 rounded-full transition-colors opacity-50 cursor-not-allowed"
+                    title="Location"
+                    disabled
+                  >
+                    <MapPin className="w-5 h-5 stroke-[2]" />
+                  </button>
+                </div>
+
+                {/* Right: Submit Button (Screenshot styling) */}
+                <div className="flex items-center gap-3">
+                  {content.length > 0 && (
+                    <span
+                      className={`text-xs ${
+                        charsRemaining < 20 ? "text-red-500 font-bold" : "text-muted"
+                      }`}
+                    >
+                      {charsRemaining}
+                    </span>
+                  )}
+
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!canPost}
+                    className={`font-bold text-[15px] px-5 py-2 rounded-full transition-all ${
+                      canPost
+                        ? "bg-[#eff3f4] hover:bg-[#d7dbdc] text-[#0f1419] active:scale-95 shadow-sm"
+                        : "bg-[#333639] text-[#71767b] cursor-not-allowed"
+                    }`}
+                  >
+                    {isSubmitting ? (
+                      <div className="flex items-center gap-1.5">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>{replyToPost ? "Replying..." : "Posting..."}</span>
+                      </div>
+                    ) : (
+                      replyToPost ? "Reply" : "Post"
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
   );
 }

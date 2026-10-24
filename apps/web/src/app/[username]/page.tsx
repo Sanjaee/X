@@ -35,15 +35,15 @@ export default function UserProfilePage() {
   const username = params.username as string;
 
   const urlTab = searchParams.get("tab");
-  const initialTab: "posts" | "replies" | "reposts" | "media" =
-    urlTab === "replies" || urlTab === "reposts" || urlTab === "media" ? urlTab : "posts";
+  const initialTab: "posts" | "replies" | "reposts" | "media" | "likes" =
+    urlTab === "replies" || urlTab === "reposts" || urlTab === "media" || urlTab === "likes" ? urlTab : "posts";
 
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const { currentUser, updateUser: setCurrentUser } = useCurrentUser();
   const [relationship, setRelationship] = useState<SocialRelationship | null>(null);
   const [mutuals, setMutuals] = useState<User[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [activeTab, setActiveTab] = useState<"posts" | "replies" | "reposts" | "media">(initialTab);
+  const [activeTab, setActiveTab] = useState<"posts" | "replies" | "reposts" | "media" | "likes">(initialTab);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -52,7 +52,7 @@ export default function UserProfilePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
 
-  const handleTabChange = (newTab: "posts" | "replies" | "reposts" | "media") => {
+  const handleTabChange = (newTab: "posts" | "replies" | "reposts" | "media" | "likes") => {
     if (newTab === activeTab) return;
     setActiveTab(newTab);
     const newUrl = newTab === "posts" ? `/${username}` : `/${username}?tab=${newTab}`;
@@ -64,8 +64,8 @@ export default function UserProfilePage() {
     const handlePopState = () => {
       const sp = new URLSearchParams(window.location.search);
       const t = sp.get("tab");
-      const valid: "posts" | "replies" | "reposts" | "media" =
-        t === "replies" || t === "reposts" || t === "media" ? t : "posts";
+      const valid: "posts" | "replies" | "reposts" | "media" | "likes" =
+        t === "replies" || t === "reposts" || t === "media" || t === "likes" ? t : "posts";
       setActiveTab(valid);
     };
     window.addEventListener("popstate", handlePopState);
@@ -510,6 +510,7 @@ export default function UserProfilePage() {
                       { id: "replies", label: "Replies" },
                       { id: "reposts", label: "Reposts" },
                       { id: "media", label: "Media" },
+                      { id: "likes", label: "Likes" },
                     ].map((tab) => (
                       <button
                         key={tab.id}
@@ -539,6 +540,7 @@ export default function UserProfilePage() {
                         {activeTab === "replies" && "No replies yet. When they reply to posts, their replies will show up here."}
                         {activeTab === "reposts" && "No reposts yet. When they repost posts, they will show up here."}
                         {activeTab === "media" && "No media yet. When they post photos or videos, they will show up here."}
+                        {activeTab === "likes" && "No likes yet. When they like posts, they will show up here."}
                       </div>
                     ) : (
                       <>

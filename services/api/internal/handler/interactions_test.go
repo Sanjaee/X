@@ -55,6 +55,10 @@ func setupInteractionsTestRouter() (*chi.Mux, repository.Repository) {
 			auth.Delete("/posts/{postId}/reposts", h.UndoRepost)
 			auth.Delete("/posts/{postId}/repost", h.UndoRepost)
 
+			auth.Post("/posts/{postId}/bookmarks", h.BookmarkPost)
+			auth.Delete("/posts/{postId}/bookmarks", h.RemoveBookmark)
+			auth.Get("/bookmarks", h.GetBookmarks)
+
 			auth.Post("/admin/maintenance/reconcile-counters", h.ReconcileCounters)
 		})
 	})
@@ -380,5 +384,95 @@ func TestCounterReconciliation(t *testing.T) {
 	_ = json.Unmarshal(wRec.Body.Bytes(), &recRes)
 	if !recRes.DryRun {
 		t.Errorf("Expected DryRun=true in response")
+	}
+}
+
+// Test 6: Bookmarking and Profile Likes Tab Endpoints
+func TestBookmarkFlowAndLikesTab(t *testing.T) {
+	r, repo := setupInteractionsTestRouter()
+	userToken := registerTestUserInInteractions(t, r, "bookmarkuser", "bookmark@example.com")
+	userObj, _ := repo.GetUserByUsername(nil, "bookmarkuser", nil)
+
+	// Create a post
+	postObj := createTestPost(t, r, userToken, "Post to be bookmarked and liked", nil, nil)
+	postID := postObj.ID
+
+	// 1. Initially bookmarks should be empty
+	wList1 := httptest.NewRecorder()
+	reqList1 := httptest.NewRequest("GET", "/api/v1/bookmarks", nil)
+	reqList1.Header.Set("Authorization", "Bearer "+userToken)
+	r.ServeHTTP(wList1, reqList1)
+	if wList1.Code != http.StatusOK {
+		t.Fatalf("Expected 200 on /bookmarks, got %d", wList1.Code)
+	}
+	var resList1 struct {
+		Posts []domain.Post `json:"posts"`
+	}
+	_ = json.Unmarshal(wList1.Body.Bytes(), &resList1)
+	if len(resList1.Posts) != 0 {
+		t.Errorf("Expected 0 bookmarks initially, got %d", len(resList1.Posts))
+	}
+
+	// 2. Bookmark post
+	wMark := httptest.NewRecorder()
+	reqMark := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/posts/%s/bookmarks", postID), nil)
+	reqMark.Header.Set("Authorization", "Bearer "+userToken)
+	r.ServeHTTP(wMark, reqMark)
+	if wMark.Code != http.StatusOK {
+		t.Fatalf("Expected 200 on bookmark, got %d: %s", wMark.Code, wMark.Body.String())
+	}
+
+	// 3. Fetch bookmarks again - should have 1 post
+	wList2 := httptest.NewRecorder()
+	reqList2 := httptest.NewRequest("GET", "/api/v1/bookmarks", nil)
+	reqList2.Header.Set("Authorization", "Bearer "+userToken)
+	r.ServeHTTP(wList2, reqList2)
+	var resList2 struct {
+		Posts []domain.Post `json:"posts"`
+	}
+	_ = json.Unmarshal(wList2.Body.Bytes(), &resList2)
+	if len(resList2.Posts) != 1 || resList2.Posts[0].ID != postID {
+		t.Errorf("Expected 1 bookmark with post ID %s, got %+v", postID, resList2.Posts)
+	}
+
+	// 4. Like post and verify profile "likes" tab
+	wLike := httptest.NewRecorder()
+	reqLike := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/posts/%s/likes", postID), nil)
+	reqLike.Header.Set("Authorization", "Bearer "+userToken)
+	r.ServeHTTP(wLike, reqLike)
+	if wLike.Code != http.StatusOK {
+		t.Fatalf("Expected 200 on like post, got %d", wLike.Code)
+	}
+
+	wLikesTab := httptest.NewRecorder()
+	reqLikesTab := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/users/%s/posts?tab=likes", userObj.Username), nil)
+	r.ServeHTTP(wLikesTab, reqLikesTab)
+	var likesTabRes struct {
+		Posts []domain.Post `json:"posts"`
+	}
+	_ = json.Unmarshal(wLikesTab.Body.Bytes(), &likesTabRes)
+	if len(likesTabRes.Posts) != 1 || likesTabRes.Posts[0].ID != postID {
+		t.Errorf("Expected 1 liked post in profile likes tab, got %d", len(likesTabRes.Posts))
+	}
+
+	// 5. Unbookmark post
+	wUnmark := httptest.NewRecorder()
+	reqUnmark := httptest.NewRequest("DELETE", fmt.Sprintf("/api/v1/posts/%s/bookmarks", postID), nil)
+	reqUnmark.Header.Set("Authorization", "Bearer "+userToken)
+	r.ServeHTTP(wUnmark, reqUnmark)
+	if wUnmark.Code != http.StatusOK {
+		t.Fatalf("Expected 200 on unbookmark, got %d", wUnmark.Code)
+	}
+
+	wList3 := httptest.NewRecorder()
+	reqList3 := httptest.NewRequest("GET", "/api/v1/bookmarks", nil)
+	reqList3.Header.Set("Authorization", "Bearer "+userToken)
+	r.ServeHTTP(wList3, reqList3)
+	var resList3 struct {
+		Posts []domain.Post `json:"posts"`
+	}
+	_ = json.Unmarshal(wList3.Body.Bytes(), &resList3)
+	if len(resList3.Posts) != 0 {
+		t.Errorf("Expected 0 bookmarks after removal, got %d", len(resList3.Posts))
 	}
 }

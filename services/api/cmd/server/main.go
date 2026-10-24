@@ -225,6 +225,7 @@ func main() {
 
 			auth.Post("/posts/{postId}/bookmarks", h.BookmarkPost)
 			auth.Delete("/posts/{postId}/bookmarks", h.RemoveBookmark)
+			auth.Get("/bookmarks", h.GetBookmarks)
 
 			// Social Graph (Follow, Block, Mute, Mutuals, Relationships)
 			auth.Post("/users/{username}/follow", h.FollowUser)

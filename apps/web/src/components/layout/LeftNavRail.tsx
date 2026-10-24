@@ -63,7 +63,6 @@ export function LeftNavRail({
     { label: "Explore", href: "/explore", icon: Search },
     { label: "Notifications", href: "/notifications", icon: Bell },
     { label: "Messages", href: "/messages", icon: Mail },
-    { label: "Grok", href: "/grok", icon: Sparkles },
     { label: "Bookmarks", href: "/bookmarks", icon: Bookmark },
     { label: "Premium", href: "/premium", icon: BadgeCheck },
     ...(isAdmin ? [{ label: "Admin", href: "/admin", icon: Shield }] : []),

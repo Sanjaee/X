@@ -33,7 +33,7 @@ import { PostCard } from "@/components/feed/PostCard";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { User, Post, MediaObject } from "@/types";
 import { apiRequest } from "@/lib/api";
-import { formatFullTimestamp, formatNumber, cn } from "@/lib/utils";
+import { formatFullTimestamp, formatRelativeTime, formatNumber, cn } from "@/lib/utils";
 import { useMediaViewer } from "@/components/media/MediaViewerContext";
 import { VideoPlayer } from "@/components/media/VideoPlayer";
 import {
@@ -41,6 +41,7 @@ import {
   filterValidMediaFiles,
 } from "@/lib/mediaValidation";
 import { useCurrentUser } from "@/lib/useCurrentUser";
+import { VerifiedBadge } from "@/components/common/VerifiedBadge";
 
 interface StagedFile {
   id: string;
@@ -465,7 +466,7 @@ export default function PostDetailPage() {
                   </div>
                 )}
 
-                {/* Quoted Post Card Preview if present */}
+                {/* Quoted Post Card Preview if present (X Specification Layout) */}
                 {post.quote_post && (
                   <div
                     onClick={(e) => {
@@ -474,28 +475,73 @@ export default function PostDetailPage() {
                         `/${post.quote_post?.author?.username || "user"}/status/${post.quote_post?.id}`
                       );
                     }}
-                    className="mb-4 p-3 rounded-2xl border border-border bg-card hover:bg-subtle/30 transition-colors cursor-pointer flex flex-col gap-2"
+                    className="mb-4 rounded-2xl border border-border bg-card/60 hover:bg-subtle/30 transition-colors cursor-pointer flex flex-col overflow-hidden"
                   >
-                    <div className="flex items-center gap-1.5 text-[14px]">
-                      <img
-                        src={
-                          post.quote_post.author?.avatar_url ||
-                          "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"
-                        }
-                        alt="Author"
-                        className="w-5 h-5 rounded-full object-cover"
-                      />
-                      <span className="font-bold text-foreground">
-                        {post.quote_post.author?.display_name || "User"}
-                      </span>
-                      <span className="text-muted">
-                        @{post.quote_post.author?.username || "user"}
-                      </span>
+                    <div className="p-3 pb-2 flex flex-col gap-1.5">
+                      <div className="flex items-center gap-1.5 text-[14px] leading-snug">
+                        <img
+                          src={
+                            post.quote_post.author?.avatar_url ||
+                            "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"
+                          }
+                          alt="Author"
+                          className="w-5 h-5 rounded-full object-cover shrink-0"
+                        />
+                        <span className="font-bold text-foreground truncate">
+                          {post.quote_post.author?.display_name || post.quote_post.author?.username || "User"}
+                        </span>
+                        {post.quote_post.author?.is_verified && (
+                          <VerifiedBadge type={post.quote_post.author.verified_type} />
+                        )}
+                        <span className="text-muted truncate">
+                          @{post.quote_post.author?.username || "user"}
+                        </span>
+                        <span className="text-muted">·</span>
+                        <span className="text-muted text-xs shrink-0">
+                          {formatRelativeTime(post.quote_post.created_at)}
+                        </span>
+                      </div>
+                      {post.quote_post.content && (
+                        <p className="text-[14px] leading-5 text-foreground whitespace-pre-wrap break-words">
+                          {post.quote_post.content}
+                        </p>
+                      )}
                     </div>
-                    {post.quote_post.content && (
-                      <p className="text-[14px] leading-5 text-foreground whitespace-pre-wrap break-words">
-                        {post.quote_post.content}
-                      </p>
+
+                    {/* Quoted Media Attachments */}
+                    {post.quote_post.media && post.quote_post.media.length > 0 && (
+                      <div className="border-t border-border overflow-hidden bg-black/20">
+                        {post.quote_post.media[0].media_type === "video" ? (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (post.quote_post) openMedia(post.quote_post, 0);
+                            }}
+                            className="w-full aspect-video bg-black flex items-center justify-center relative group"
+                          >
+                            <VideoPlayer
+                              src={post.quote_post.media[0].url}
+                              mode="in_feed"
+                              onOpenViewer={() => post.quote_post && openMedia(post.quote_post, 0)}
+                            />
+                          </div>
+                        ) : (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (post.quote_post) openMedia(post.quote_post, 0);
+                            }}
+                            className="w-full max-h-[300px] overflow-hidden bg-muted/20"
+                          >
+                            <img
+                              src={post.quote_post.media[0].url}
+                              alt="Quoted media"
+                              loading="lazy"
+                              className="w-full h-full object-cover hover:opacity-95 transition-opacity"
+                            />
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}

@@ -248,26 +248,6 @@ export function EditProfileModal({
                   }}
                 />
               </div>
-
-              {/* Exact 'Edit photo with Imagine' Card from reference screenshot */}
-              <div className="flex-1 bg-[#16181c] border border-neutral-800 rounded-xl p-3 flex items-center justify-between gap-2.5">
-                <div className="min-w-0">
-                  <h4 className="text-[14px] font-bold text-foreground leading-tight truncate">
-                    Edit your photo with Imagine
-                  </h4>
-                  <p className="text-[12px] text-muted leading-tight mt-0.5 line-clamp-1">
-                    Create custom styles in seconds
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => avatarInputRef.current?.click()}
-                  className="bg-neutral-800 hover:bg-neutral-700 text-foreground text-[13px] font-bold px-3.5 py-1.5 rounded-full border border-neutral-700 flex items-center gap-1.5 shrink-0 transition-colors"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-brand" />
-                  <span>Edit Photo</span>
-                </button>
-              </div>
             </div>
 
             {/* Form Fields: Floating label style matching X reference */}

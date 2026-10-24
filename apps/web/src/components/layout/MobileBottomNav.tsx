@@ -24,7 +24,6 @@ export function MobileBottomNav({ onOpenComposer }: MobileBottomNavProps) {
 
   const isHome = pathname === "/";
   const isSearch = pathname.startsWith("/search") || pathname.startsWith("/explore");
-  const isGrok = pathname.startsWith("/grok");
   const isNotifs = pathname.startsWith("/notifications");
   const isMessages = pathname.startsWith("/messages");
 
@@ -74,19 +73,6 @@ export function MobileBottomNav({ onOpenComposer }: MobileBottomNavProps) {
           />
         </Link>
 
-        {/* 3. Grok / Radar Compass */}
-        <Link
-          href="/explore"
-          className="flex-1 flex flex-col items-center justify-center h-full relative text-foreground hover:opacity-80 transition-opacity"
-          aria-label="Grok"
-        >
-          <Compass
-            className={cn(
-              "w-[26px] h-[26px]",
-              isGrok ? "stroke-[2.8] text-foreground" : "stroke-[1.8] text-foreground/80"
-            )}
-          />
-        </Link>
 
         {/* 4. Notifications */}
         <Link

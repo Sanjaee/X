@@ -460,35 +460,73 @@ export function PostCard({
           </div>
         )}
 
-        {/* Quoted Post Card Preview */}
+        {/* Quoted Post Card Preview (X Specification Layout) */}
         {post.quote_post && (
           <div
             onClick={(e) => {
               e.stopPropagation();
               router.push(`/${post.quote_post?.author?.username || "user"}/status/${post.quote_post?.id}`);
             }}
-            className="mt-3 p-3 rounded-2xl border border-border bg-subtle/20 hover:bg-subtle/40 transition-colors flex flex-col gap-1.5 cursor-pointer"
+            className="mt-3 rounded-2xl border border-border bg-subtle/20 hover:bg-subtle/40 transition-colors flex flex-col overflow-hidden cursor-pointer"
           >
-            <div className="flex items-center gap-1.5 text-[14px]">
-              <img
-                src={post.quote_post.author?.avatar_url || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"}
-                alt={post.quote_post.author?.display_name || "User"}
-                className="w-5 h-5 rounded-full object-cover"
-              />
-              <span className="font-bold text-foreground hover:underline">
-                {post.quote_post.author?.display_name || post.quote_post.author?.username || "User"}
-              </span>
-              {post.quote_post.author?.is_verified && (
-                <VerifiedBadge type={post.quote_post.author.verified_type} />
+            <div className="p-3 pb-2 flex flex-col gap-1.5">
+              <div className="flex items-center gap-1.5 text-[14px] leading-snug">
+                <img
+                  src={post.quote_post.author?.avatar_url || "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"}
+                  alt={post.quote_post.author?.display_name || "User"}
+                  className="w-5 h-5 rounded-full object-cover shrink-0"
+                />
+                <span className="font-bold text-foreground hover:underline truncate">
+                  {post.quote_post.author?.display_name || post.quote_post.author?.username || "User"}
+                </span>
+                {post.quote_post.author?.is_verified && (
+                  <VerifiedBadge type={post.quote_post.author.verified_type} />
+                )}
+                <span className="text-muted truncate">@{post.quote_post.author?.username || "user"}</span>
+                <span className="text-muted">·</span>
+                <span className="text-muted hover:underline text-xs shrink-0">{formatRelativeTime(post.quote_post.created_at)}</span>
+              </div>
+              {post.quote_post.content && (
+                <p className="text-[14px] leading-5 text-foreground whitespace-pre-wrap break-words">
+                  {post.quote_post.content}
+                </p>
               )}
-              <span className="text-muted">@{post.quote_post.author?.username || "user"}</span>
-              <span className="text-muted">·</span>
-              <span className="text-muted hover:underline">{formatRelativeTime(post.quote_post.created_at)}</span>
             </div>
-            {post.quote_post.content && (
-              <p className="text-[14px] leading-5 text-foreground whitespace-pre-wrap break-words">
-                {post.quote_post.content}
-              </p>
+
+            {/* Quoted Media Attachments */}
+            {post.quote_post.media && post.quote_post.media.length > 0 && (
+              <div className="border-t border-border overflow-hidden bg-black/20">
+                {post.quote_post.media[0].media_type === "video" ? (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (post.quote_post) openMedia(post.quote_post, 0);
+                    }}
+                    className="w-full aspect-video bg-black flex items-center justify-center relative group"
+                  >
+                    <VideoPlayer
+                      src={post.quote_post.media[0].url}
+                      mode="in_feed"
+                      onOpenViewer={() => post.quote_post && openMedia(post.quote_post, 0)}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (post.quote_post) openMedia(post.quote_post, 0);
+                    }}
+                    className="w-full max-h-[300px] overflow-hidden bg-muted/20"
+                  >
+                    <img
+                      src={post.quote_post.media[0].url}
+                      alt="Quoted media"
+                      loading="lazy"
+                      className="w-full h-full object-cover hover:opacity-95 transition-opacity"
+                    />
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}
