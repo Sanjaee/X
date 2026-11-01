@@ -35,9 +35,9 @@
     "semantic_hash": "92148e944052d888769e169e95545b8e"
   },
   "apps/web/src/app/api/auth/[...nextauth]/route.ts": {
-    "mtime": 1791997685.5864215,
-    "ast_hash": "df21b367043222699c0e6a3e803425b4",
-    "semantic_hash": "df21b367043222699c0e6a3e803425b4"
+    "mtime": 1793550232.7992022,
+    "ast_hash": "bdcb25d7fe6b35cd4bcc276a82ee9a38",
+    "semantic_hash": "bdcb25d7fe6b35cd4bcc276a82ee9a38"
   },
   "apps/web/src/app/bookmarks/page.tsx": {
     "mtime": 1792820186.205158,
@@ -75,9 +75,9 @@
     "semantic_hash": "4673f3092b50d70c4e8154302379e98f"
   },
   "apps/web/src/components/auth/AuthModal.tsx": {
-    "mtime": 1793375548.1448681,
-    "ast_hash": "7b113a19a0e70c361f712e9f057e8889",
-    "semantic_hash": "7b113a19a0e70c361f712e9f057e8889"
+    "mtime": 1793550294.1197565,
+    "ast_hash": "872520d968c69676115e6f59bbead0bb",
+    "semantic_hash": "872520d968c69676115e6f59bbead0bb"
   },
   "apps/web/src/components/common/VerifiedBadge.tsx": {
     "mtime": 1793528364.3959117,
@@ -105,9 +105,9 @@
     "semantic_hash": "6657ce6f9839ddc508a553b15fca3ca2"
   },
   "apps/web/src/components/providers/AppProviders.tsx": {
-    "mtime": 1793548700.08193,
-    "ast_hash": "00cb8111910877d7b84e2e989280e9d5",
-    "semantic_hash": "00cb8111910877d7b84e2e989280e9d5"
+    "mtime": 1793550300.8300447,
+    "ast_hash": "7a4500cf674c019091cfebb7f753ae96",
+    "semantic_hash": "7a4500cf674c019091cfebb7f753ae96"
   },
   "apps/web/src/components/search/SearchBarDropdown.tsx": {
     "mtime": 1793531669.22375,
@@ -125,9 +125,9 @@
     "semantic_hash": "f7452166d706c4006cbd5131f008a4c5"
   },
   "apps/web/src/lib/auth.ts": {
-    "mtime": 1793372311.335163,
-    "ast_hash": "8a990fe66ecc8b8b920ec0b2e0ca4ba4",
-    "semantic_hash": "8a990fe66ecc8b8b920ec0b2e0ca4ba4"
+    "mtime": 1793550314.613705,
+    "ast_hash": "fce5a1c3414ee9b09500c811bd6fa523",
+    "semantic_hash": "fce5a1c3414ee9b09500c811bd6fa523"
   },
   "apps/web/src/lib/query-keys.ts": {
     "mtime": 1792075609.0371644,

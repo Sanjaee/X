@@ -787,7 +787,6 @@
       "apps_web_src_components_profile_editprofilemodal",
       "apps_web_src_components_profile_editprofilemodal_editprofilemodal",
       "apps_web_src_components_profile_editprofilemodal_editprofilemodalprops",
-      "apps_web_src_components_providers_appproviders_nextauthsync",
       "apps_web_src_lib_api",
       "apps_web_src_lib_api_apirequest",
       "apps_web_src_lib_api_getapibase",
@@ -817,6 +816,7 @@
       "apps_web_src_components_media_photoviewermodal_photoviewermodal",
       "apps_web_src_components_providers_appproviders",
       "apps_web_src_components_providers_appproviders_appproviders",
+      "apps_web_src_components_providers_appproviders_nextauthsync",
       "apps_web_src_components_subscription_upgrademodal",
       "apps_web_src_components_subscription_upgrademodal_cryptocurrencyoption",
       "apps_web_src_components_subscription_upgrademodal_num",
@@ -1149,52 +1149,53 @@
       "trendingtopic"
     ],
     "33": [
+      "apps_web_src_app_api_auth_nextauth_route",
+      "apps_web_src_app_api_auth_nextauth_route_getdynamicauthoptions",
+      "apps_web_src_app_api_auth_nextauth_route_handler",
+      "apps_web_src_lib_auth",
+      "apps_web_src_lib_auth_authoptions"
+    ],
+    "34": [
       "apps_web_src_components_layout_toploadingbar",
       "apps_web_src_components_layout_toploadingbar_routespinner",
       "apps_web_src_components_layout_toploadingbar_routespinnerprops",
       "apps_web_src_components_layout_toploadingbar_toploadingbar",
       "apps_web_src_components_layout_toploadingbar_toploadingbarinner"
     ],
-    "34": [
+    "35": [
       "entitlements",
       "repository_postgresrepository_createsubscription",
       "repository_postgresrepository_getactivesubscription",
       "repository_postgresrepository_getuserentitlements",
       "subscription"
     ],
-    "35": [
+    "36": [
       "services_api_internal_middleware_concurrency",
       "services_api_internal_middleware_concurrency_concurrencylimiter",
       "services_api_internal_middleware_concurrency_getactiverequests",
       "services_api_internal_middleware_concurrency_maxbodysizemiddleware",
       "services_api_internal_middleware_concurrency_requesttimeoutmiddleware"
     ],
-    "36": [
-      "apps_web_src_app_api_auth_nextauth_route",
-      "apps_web_src_app_api_auth_nextauth_route_handler",
-      "apps_web_src_lib_auth",
-      "apps_web_src_lib_auth_authoptions"
-    ],
     "37": [
-      "apps_web_src_middleware",
-      "apps_web_src_middleware_config",
-      "apps_web_src_middleware_middleware"
-    ],
-    "38": [
-      "duration",
-      "repository_postgresrepository_cleanupoldoutboxevents",
-      "repository_postgresrepository_dismissuserrecommendation"
-    ],
-    "39": [
-      "outboxevent",
-      "repository_postgresrepository_createoutboxevent",
-      "repository_postgresrepository_getpendingoutboxevents"
-    ],
-    "40": [
       "auditlog",
       "repository_memoryrepository_createauditlog",
       "repository_memoryrepository_getauditlogs",
       "repository_memoryrepository_getsecurityauditlogs"
+    ],
+    "38": [
+      "apps_web_src_middleware",
+      "apps_web_src_middleware_config",
+      "apps_web_src_middleware_middleware"
+    ],
+    "39": [
+      "duration",
+      "repository_postgresrepository_cleanupoldoutboxevents",
+      "repository_postgresrepository_dismissuserrecommendation"
+    ],
+    "40": [
+      "outboxevent",
+      "repository_postgresrepository_createoutboxevent",
+      "repository_postgresrepository_getpendingoutboxevents"
     ],
     "41": [
       "repository_memoryrepository_cleanupoldoutboxevents",
@@ -1202,19 +1203,19 @@
       "services_api_internal_repository_memory_go_duration"
     ],
     "42": [
-      "repository_memoryrepository_createverificationapplication",
-      "repository_memoryrepository_getverificationapplication",
-      "services_api_internal_repository_memory_go_verificationapplication"
-    ],
-    "43": [
       "repository_memoryrepository_createmediaobject",
       "repository_memoryrepository_getmediaobjectbyid",
       "services_api_internal_repository_memory_go_mediaobject"
     ],
-    "44": [
+    "43": [
       "repository_memoryrepository_createmessage",
       "repository_memoryrepository_getmessages",
       "services_api_internal_repository_memory_go_message"
+    ],
+    "44": [
+      "repository_memoryrepository_createverificationapplication",
+      "repository_memoryrepository_getverificationapplication",
+      "services_api_internal_repository_memory_go_verificationapplication"
     ],
     "45": [
       "repository_memoryrepository_getusertopicpreferences",
@@ -1252,283 +1253,283 @@
       "scripts_test_all_apis_run"
     ],
     "52": [
+      "adminoverview",
+      "repository_memoryrepository_getadminoverview"
+    ],
+    "53": [
       "apps_web_next_config",
       "apps_web_next_config_nextconfig"
     ],
-    "53": [
+    "54": [
       "apps_web_next_env_d",
       "apps_web_next_env_d_rationale_4"
     ],
-    "54": [
+    "55": [
       "apps_web_tailwind_config",
       "apps_web_tailwind_config_config"
     ],
-    "55": [
+    "56": [
       "counterreconciliationresult",
       "repository_postgresrepository_reconcilecounters"
     ],
-    "56": [
+    "57": [
       "feedfeedback",
       "repository_postgresrepository_recordfeedfeedback"
     ],
-    "57": [
+    "58": [
       "feedimpression",
       "repository_postgresrepository_recordfeedimpressions"
     ],
-    "58": [
+    "59": [
       "rankingweights",
       "repository_postgresrepository_getactiveweights"
     ],
-    "59": [
+    "60": [
       "repository_memoryrepository_reconcilecounters",
       "services_api_internal_repository_memory_go_counterreconciliationresult"
     ],
-    "60": [
+    "61": [
       "scripts_backup_db",
       "scripts_backup_db_sh__entry"
     ],
-    "61": [
+    "62": [
       "scripts_benchmark_search",
       "scripts_benchmark_search_measure_endpoint"
     ],
-    "62": [
+    "63": [
       "scripts_monitoring",
       "scripts_monitoring_sh__entry"
     ],
-    "63": [
+    "64": [
       "apps_web_postcss_config"
     ],
-    "64": [
+    "65": [
       "client"
     ],
-    "65": [
+    "66": [
       "config"
     ],
-    "66": [
+    "67": [
       "pkg_github_com_x_reconstruction_api"
     ],
-    "67": [
+    "68": [
       "plisioservice"
     ],
-    "68": [
+    "69": [
       "repository"
     ],
-    "69": [
+    "70": [
       "scripts_dev"
     ],
-    "70": [
+    "71": [
       "scripts_load_test_spike"
     ],
-    "71": [
+    "72": [
       "scripts_test"
     ],
-    "72": [
+    "73": [
       "scripts_test_auth"
     ],
-    "73": [
+    "74": [
       "scripts_test_auth_flow"
     ],
-    "74": [
+    "75": [
       "scripts_test_media_viewer"
     ],
-    "75": [
+    "76": [
       "services_api_internal_domain_models_go_membershipentitlement"
     ],
-    "76": [
+    "77": [
       "services_api_internal_domain_models_go_message"
     ],
-    "77": [
+    "78": [
       "services_api_internal_handler_admin_go_request"
     ],
-    "78": [
+    "79": [
       "services_api_internal_handler_admin_go_responsewriter"
     ],
-    "79": [
+    "80": [
       "services_api_internal_handler_handler_go_mediaobject"
     ],
-    "80": [
+    "81": [
       "services_api_internal_handler_handler_go_paymentorder"
     ],
-    "81": [
+    "82": [
       "services_api_internal_handler_handler_go_request"
     ],
-    "82": [
+    "83": [
       "services_api_internal_handler_handler_go_subscription"
     ],
-    "83": [
+    "84": [
       "services_api_internal_handler_payments_go_request"
     ],
-    "84": [
+    "85": [
       "services_api_internal_handler_payments_go_responsewriter"
     ],
-    "85": [
+    "86": [
       "services_api_internal_handler_recommendation_test_go_mux"
     ],
-    "86": [
+    "87": [
       "services_api_internal_handler_recommendation_test_go_t"
     ],
-    "87": [
+    "88": [
       "services_api_internal_media_media_go_mediaobject"
     ],
-    "88": [
+    "89": [
       "services_api_internal_middleware_authorization_go_handler"
     ],
-    "89": [
+    "90": [
       "services_api_internal_middleware_middleware_go_conn"
     ],
-    "90": [
+    "91": [
       "services_api_internal_middleware_middleware_go_user"
     ],
-    "91": [
+    "92": [
       "services_api_internal_payment_plisio_go_client"
     ],
-    "92": [
+    "93": [
       "services_api_internal_payment_plisio_go_context"
     ],
-    "93": [
+    "94": [
       "services_api_internal_payment_plisio_go_rawmessage"
     ],
-    "94": [
+    "95": [
       "services_api_internal_payment_plisio_go_uuid"
     ],
-    "95": [
+    "96": [
       "services_api_internal_realtime_hub_go_conn"
     ],
-    "96": [
+    "97": [
       "services_api_internal_realtime_hub_go_rawmessage"
     ],
-    "97": [
+    "98": [
       "services_api_internal_realtime_hub_go_rwmutex"
     ],
-    "98": [
+    "99": [
       "services_api_internal_repository_memory_go_adminoverview"
     ],
-    "99": [
+    "100": [
       "services_api_internal_repository_memory_go_adminpostfilter"
     ],
-    "100": [
+    "101": [
       "services_api_internal_repository_memory_go_auditlog"
     ],
-    "101": [
+    "102": [
       "services_api_internal_repository_memory_go_membershipentitlement"
     ],
-    "102": [
+    "103": [
       "services_api_internal_repository_memory_go_membershipplan"
     ],
-    "103": [
+    "104": [
       "services_api_internal_repository_memory_go_permission"
     ],
-    "104": [
+    "105": [
       "services_api_internal_repository_memory_go_role"
     ],
-    "105": [
+    "106": [
       "services_api_internal_repository_memory_go_rwmutex"
     ],
-    "106": [
+    "107": [
       "services_api_internal_repository_memory_go_usermembership"
     ],
-    "107": [
+    "108": [
       "services_api_internal_repository_postgres_go_context"
     ],
-    "108": [
+    "109": [
       "services_api_internal_repository_postgres_go_conversation"
     ],
-    "109": [
+    "110": [
       "services_api_internal_repository_postgres_go_counterreconciliationresult"
     ],
-    "110": [
+    "111": [
       "services_api_internal_repository_postgres_go_duration"
     ],
-    "111": [
+    "112": [
       "services_api_internal_repository_postgres_go_entitlements"
     ],
-    "112": [
+    "113": [
       "services_api_internal_repository_postgres_go_feedcursor"
     ],
-    "113": [
+    "114": [
       "services_api_internal_repository_postgres_go_feedfeedback"
     ],
-    "114": [
+    "115": [
       "services_api_internal_repository_postgres_go_feedimpression"
     ],
-    "115": [
+    "116": [
       "services_api_internal_repository_postgres_go_followrequest"
     ],
-    "116": [
+    "117": [
       "services_api_internal_repository_postgres_go_invoice"
     ],
-    "117": [
+    "118": [
       "services_api_internal_repository_postgres_go_mediaobject"
     ],
-    "118": [
+    "119": [
       "services_api_internal_repository_postgres_go_message"
     ],
-    "119": [
+    "120": [
       "services_api_internal_repository_postgres_go_notification"
     ],
-    "120": [
+    "121": [
       "services_api_internal_repository_postgres_go_outboxevent"
     ],
-    "121": [
+    "122": [
       "services_api_internal_repository_postgres_go_paymentorder"
     ],
-    "122": [
+    "123": [
       "services_api_internal_repository_postgres_go_post"
     ],
-    "123": [
+    "124": [
       "services_api_internal_repository_postgres_go_rankingweights"
     ],
-    "124": [
+    "125": [
       "services_api_internal_repository_postgres_go_recentsearch"
     ],
-    "125": [
+    "126": [
       "services_api_internal_repository_postgres_go_searchfilterparams"
     ],
-    "126": [
+    "127": [
       "services_api_internal_repository_postgres_go_session"
     ],
-    "127": [
+    "128": [
       "services_api_internal_repository_postgres_go_socialrelationship"
     ],
-    "128": [
+    "129": [
       "services_api_internal_repository_postgres_go_subscription"
     ],
-    "129": [
+    "130": [
       "services_api_internal_repository_postgres_go_subscriptionplan"
     ],
-    "130": [
+    "131": [
       "services_api_internal_repository_postgres_go_time"
     ],
-    "131": [
+    "132": [
       "services_api_internal_repository_postgres_go_trendingtopic"
     ],
-    "132": [
+    "133": [
       "services_api_internal_repository_postgres_go_user"
     ],
-    "133": [
+    "134": [
       "services_api_internal_repository_postgres_go_userrecommendation"
     ],
-    "134": [
+    "135": [
       "services_api_internal_repository_postgres_go_usertopicpreference"
     ],
-    "135": [
+    "136": [
       "services_api_internal_repository_postgres_go_uuid"
     ],
-    "136": [
+    "137": [
       "services_api_internal_repository_postgres_go_verificationapplication"
     ],
-    "137": [
+    "138": [
       "services_api_internal_repository_postgres_go_verificationbadge"
     ],
-    "138": [
+    "139": [
       "services_api_internal_repository_postgres_rbac"
     ],
-    "139": [
-      "systemhealth"
-    ],
     "140": [
-      "adminoverview",
-      "repository_memoryrepository_getadminoverview"
+      "systemhealth"
     ]
   },
   "cohesion": {
@@ -1544,8 +1545,8 @@
     "9": 0.06956521739130435,
     "10": 0.046511627906976744,
     "11": 0.08710801393728224,
-    "12": 0.1891891891891892,
-    "13": 0.09852216748768473,
+    "12": 0.19682539682539682,
+    "13": 0.09425287356321839,
     "14": 0.07407407407407407,
     "15": 0.10153846153846154,
     "16": 0.16333333333333333,
@@ -1565,14 +1566,14 @@
     "30": 0.3333333333333333,
     "31": 0.2857142857142857,
     "32": 0.2857142857142857,
-    "33": 0.4,
+    "33": 0.6,
     "34": 0.4,
     "35": 0.4,
-    "36": 0.6666666666666666,
-    "37": 0.6666666666666666,
+    "36": 0.4,
+    "37": 0.5,
     "38": 0.6666666666666666,
     "39": 0.6666666666666666,
-    "40": 0.5,
+    "40": 0.6666666666666666,
     "41": 0.6666666666666666,
     "42": 0.6666666666666666,
     "43": 0.6666666666666666,
@@ -1786,18 +1787,23 @@
   "questions": [
     {
       "type": "bridge_node",
+      "question": "Why does `MemoryRepository` connect `MemoryRepository` to `T`, `Context`, `AuditLog`, `.DismissUserRecommendation`, `.GetMediaObjectByID`, `.GetMessages`, `.GetVerificationApplication`, `.GetUserTopicPreferences`, `.ReconcileCounters`, `Hub`, `Post`, `.GetAdminOverview`, `.GetActiveSubscription`, `Role`, `.GetPlanEntitlements`, `.GetBillingHistory`?",
+      "why": "High betweenness centrality (0.160) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
       "question": "Why does `CryptoGateway` connect `CryptoGateway` to `Hub`, `Duration`?",
-      "why": "High betweenness centrality (0.164) - this node is a cross-community bridge."
+      "why": "High betweenness centrality (0.150) - this node is a cross-community bridge."
     },
     {
       "type": "bridge_node",
       "question": "Why does `PostgresRepository` connect `PostgresRepository` to `NewPostgresRepository`, `Context`, `.GetActiveSubscription`, `Duration`, `.CreateOutboxEvent`, `.GetUserBadges`, `.CreateSession`, `Post`, `.GetAdminPosts`, `.GetSubscriptionPlanByID`, `.GetUserTopicPreferences`, `.ReconcileCounters`, `.RecordFeedFeedback`, `.RecordFeedImpressions`, `.GetActiveWeights`, `PaymentOrder`?",
-      "why": "High betweenness centrality (0.157) - this node is a cross-community bridge."
+      "why": "High betweenness centrality (0.143) - this node is a cross-community bridge."
     },
     {
       "type": "isolated_nodes",
       "question": "What connects `name`, `version`, `private` to the rest of the system?",
-      "why": "128 weakly-connected nodes found - possible documentation gaps or missing edges."
+      "why": "127 weakly-connected nodes found - possible documentation gaps or missing edges."
     },
     {
       "type": "low_cohesion",
@@ -1813,11 +1819,6 @@
       "type": "low_cohesion",
       "question": "Should `T` be split into smaller, more focused modules?",
       "why": "Cohesion score 0.06486486486486487 - nodes in this community are weakly interconnected."
-    },
-    {
-      "type": "low_cohesion",
-      "question": "Should `models.go` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.08249603384452671 - nodes in this community are weakly interconnected."
     }
   ]
 }

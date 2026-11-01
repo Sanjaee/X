@@ -11,6 +11,18 @@ import { PhotoViewerModal } from "@/components/media/PhotoViewerModal";
 function NextAuthSync() {
   const { data: session, status } = useSession();
 
+  // Clean stale error query params from previous failed OAuth redirects
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search.includes("error=OAuthCallback")) {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("error");
+        url.searchParams.delete("callbackUrl");
+        window.history.replaceState({}, document.title, url.pathname + (url.search ? url.search : ""));
+      } catch {}
+    }
+  }, []);
+
   useEffect(() => {
     if (status === "authenticated" && (session as { sessionToken?: string })?.sessionToken) {
       const token = (session as { sessionToken?: string }).sessionToken;

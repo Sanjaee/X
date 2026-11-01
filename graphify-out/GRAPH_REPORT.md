@@ -4,12 +4,12 @@
 - cluster-only mode — file stats not available
 
 ## Summary
-- 1248 nodes · 3283 edges · 141 communities (39 shown, 102 thin omitted)
+- 1249 nodes · 3283 edges · 141 communities (40 shown, 101 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 106 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `49054da3`
+- Built from commit: `3b847cc5`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -47,17 +47,17 @@
 - .GetPlanEntitlements
 - .GetBillingHistory
 - NewPostgresRepository
+- route.ts
 - TopLoadingBar.tsx
 - .GetActiveSubscription
-- route.ts
+- AuditLog
 - middleware.ts
 - Duration
 - .CreateOutboxEvent
-- AuditLog
 - .DismissUserRecommendation
-- .GetVerificationApplication
 - .GetMediaObjectByID
 - .GetMessages
+- .GetVerificationApplication
 - .GetUserTopicPreferences
 - .GetUserBadges
 - .CreateSession
@@ -65,6 +65,7 @@
 - .GetSubscriptionPlanByID
 - .GetUserTopicPreferences
 - test_all_apis.py
+- .GetAdminOverview
 - next.config.js
 - next-env.d.ts
 - tailwind.config.ts
@@ -144,7 +145,6 @@
 - VerificationApplication
 - VerificationBadge
 - SystemHealth
-- .GetAdminOverview
 
 ## God Nodes (most connected - your core abstractions)
 1. `MemoryRepository` - 175 edges
@@ -173,7 +173,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (141 total, 102 thin omitted)
+## Communities (141 total, 101 thin omitted)
 
 ### Community 0 - "Request"
 Cohesion: 0.07
@@ -224,11 +224,11 @@ Cohesion: 0.09
 Nodes (27): Config, Image, MediaService, CryptoCurrency, CryptoGateway, CryptoInvoice, CryptoOperation, WebhookPayload (+19 more)
 
 ### Community 12 - "apiRequest"
-Cohesion: 0.19
-Nodes (19): SettingsSection, AuthModal(), AuthModalProps, LeftNavRail(), LeftNavRailProps, RightSidebar(), RightSidebarProps, EditProfileModal() (+11 more)
+Cohesion: 0.20
+Nodes (18): SettingsSection, AuthModal(), AuthModalProps, LeftNavRail(), LeftNavRailProps, RightSidebar(), RightSidebarProps, EditProfileModal() (+10 more)
 
 ### Community 13 - "cn"
-Cohesion: 0.10
+Cohesion: 0.09
 Nodes (21): metadata, ComposerContext, ComposerContextValue, ComposerProvider(), useComposer(), AppShell(), RouteTransition(), MediaViewerProvider() (+13 more)
 
 ### Community 14 - "compilerOptions"
@@ -291,25 +291,29 @@ Nodes (3): Entitlements, Subscription, UserMembership
 Cohesion: 0.29
 Nodes (3): categorizeTopic(), NewPostgresRepository(), TrendingTopic
 
+### Community 33 - "route.ts"
+Cohesion: 0.60
+Nodes (3): getDynamicAuthOptions(), handler(), authOptions
+
 ## Knowledge Gaps
-- **128 isolated node(s):** `name`, `version`, `private`, `dev`, `build` (+123 more)
+- **127 isolated node(s):** `name`, `version`, `private`, `dev`, `build` (+122 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **102 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **101 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
+- **Why does `MemoryRepository` connect `MemoryRepository` to `T`, `Context`, `AuditLog`, `.DismissUserRecommendation`, `.GetMediaObjectByID`, `.GetMessages`, `.GetVerificationApplication`, `.GetUserTopicPreferences`, `.ReconcileCounters`, `Hub`, `Post`, `.GetAdminOverview`, `.GetActiveSubscription`, `Role`, `.GetPlanEntitlements`, `.GetBillingHistory`?**
+  _High betweenness centrality (0.160) - this node is a cross-community bridge._
 - **Why does `CryptoGateway` connect `CryptoGateway` to `Hub`, `Duration`?**
-  _High betweenness centrality (0.164) - this node is a cross-community bridge._
+  _High betweenness centrality (0.150) - this node is a cross-community bridge._
 - **Why does `PostgresRepository` connect `PostgresRepository` to `NewPostgresRepository`, `Context`, `.GetActiveSubscription`, `Duration`, `.CreateOutboxEvent`, `.GetUserBadges`, `.CreateSession`, `Post`, `.GetAdminPosts`, `.GetSubscriptionPlanByID`, `.GetUserTopicPreferences`, `.ReconcileCounters`, `.RecordFeedFeedback`, `.RecordFeedImpressions`, `.GetActiveWeights`, `PaymentOrder`?**
-  _High betweenness centrality (0.157) - this node is a cross-community bridge._
+  _High betweenness centrality (0.143) - this node is a cross-community bridge._
 - **What connects `name`, `version`, `private` to the rest of the system?**
-  _128 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _127 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Request` be split into smaller, more focused modules?**
   _Cohesion score 0.07298509018871858 - nodes in this community are weakly interconnected._
 - **Should `Context` be split into smaller, more focused modules?**
   _Cohesion score 0.05225225225225225 - nodes in this community are weakly interconnected._
 - **Should `T` be split into smaller, more focused modules?**
   _Cohesion score 0.06486486486486487 - nodes in this community are weakly interconnected._
-- **Should `models.go` be split into smaller, more focused modules?**
-  _Cohesion score 0.08249603384452671 - nodes in this community are weakly interconnected._

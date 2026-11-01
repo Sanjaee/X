@@ -38,7 +38,8 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = "login" }:
     try {
       setGoogleLoading(true);
       setError(null);
-      await signIn("google", { callbackUrl: window.location.href });
+      const cleanCallback = window.location.origin + (window.location.pathname === "/" ? "" : window.location.pathname);
+      await signIn("google", { callbackUrl: cleanCallback || "/" });
     } catch (err: any) {
       setError(err.message || "Failed to initialize Google authentication");
       setGoogleLoading(false);
