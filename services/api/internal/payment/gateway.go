@@ -137,9 +137,13 @@ func (g *CryptoGateway) FetchCurrencies(ctx context.Context) ([]CryptoCurrency, 
 	}
 	g.cacheMu.Unlock()
 
-	body, err := g.request(ctx, "/currencies", url.Values{})
+	path := "/currencies/USD"
+	body, err := g.request(ctx, path, url.Values{})
 	if err != nil {
-		return nil, err
+		body, err = g.request(ctx, "/currencies", url.Values{})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var wrap struct {
@@ -187,11 +191,12 @@ func (g *CryptoGateway) FetchCurrencies(ctx context.Context) ([]CryptoCurrency, 
 	return out, nil
 }
 
-// IsSupportedCurrency checks a coin code against the live list.
+// IsSupportedCurrency checks a coin code against the live list,
+// falling back to standard default currencies if the gateway is unreachable.
 func (g *CryptoGateway) IsSupportedCurrency(ctx context.Context, code string) bool {
 	coins, err := g.FetchCurrencies(ctx)
-	if err != nil {
-		return false
+	if err != nil || len(coins) == 0 {
+		coins = GetDefaultCurrencies()
 	}
 	for _, c := range coins {
 		if strings.EqualFold(c.CID, code) || strings.EqualFold(c.Currency, code) {
