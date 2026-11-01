@@ -25,7 +25,7 @@ export function UserNameWithRole({
   const hasBadge = r && r !== "member" && r !== "user";
   if (r) {
     return (
-      <div className={`inline-flex items-baseline gap-1.5 ${className} min-w-0 leading-snug`}>
+      <div className={`inline-flex items-baseline gap-0.5 ${className} min-w-0 leading-snug`}>
         {hasBadge && (
           <span className={`${getRoleBadge(r)} shrink-0 whitespace-nowrap inline-block leading-snug`} />
         )}
