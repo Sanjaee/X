@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X, Clock, Loader2, ArrowUpRight } from "lucide-react";
 import { apiRequest } from "@/lib/api";
-import { User } from "@/types";
+import { User, TrendingTopic } from "@/types";
+import { formatNumber } from "@/lib/utils";
 import { UserNameWithRole } from "@/components/ui/UserNameWithRole";
 
 interface RecentSearchItem {
@@ -34,6 +35,7 @@ export function SearchBarDropdown({
   const [query, setQuery] = useState(initialQuery);
   const [isOpen, setIsOpen] = useState(false);
   const [recentSearches, setRecentSearches] = useState<RecentSearchItem[]>([]);
+  const [trendingTopics, setTrendingTopics] = useState<TrendingTopic[]>([]);
   const [suggestions, setSuggestions] = useState<SuggestionData>({ queries: [], users: [] });
   const [isLoading, setIsLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
@@ -41,6 +43,22 @@ export function SearchBarDropdown({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Load trending topics for instant discovery
+  const loadTrending = useCallback(async () => {
+    try {
+      const res = await apiRequest<{ trending: TrendingTopic[] }>("/explore/trending?limit=5");
+      if (res?.trending) {
+        setTrendingTopics(res.trending);
+      }
+    } catch {
+      // Ignore background error
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTrending();
+  }, [loadTrending]);
 
   // Sync external initialQuery if updated
   useEffect(() => {
@@ -184,9 +202,12 @@ export function SearchBarDropdown({
   };
 
   // Total selectable items in dropdown for keyboard navigation
-  const allSelectableItems: { type: "recent" | "query" | "user"; value: string; user?: User }[] = [
+  const allSelectableItems: { type: "recent" | "trending" | "query" | "user"; value: string; user?: User }[] = [
     ...(!query.trim()
-      ? recentSearches.map((r) => ({ type: "recent" as const, value: r.query }))
+      ? [
+          ...recentSearches.map((r) => ({ type: "recent" as const, value: r.query })),
+          ...trendingTopics.map((t) => ({ type: "trending" as const, value: t.topic })),
+        ]
       : [
           ...suggestions.queries.map((q) => ({ type: "query" as const, value: q })),
           ...suggestions.users.map((u) => ({ type: "user" as const, value: u.username, user: u })),
@@ -244,6 +265,7 @@ export function SearchBarDropdown({
           onFocus={() => {
             setIsOpen(true);
             loadRecentSearches();
+            loadTrending();
           }}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -280,49 +302,81 @@ export function SearchBarDropdown({
             </div>
           )}
 
-          {/* When Query is empty: Show Recent Searches */}
+          {/* When Query is empty: Show Recent Searches & Trending Topics */}
           {!query.trim() && (
             <div>
-              <div className="flex items-center justify-between px-4 py-2">
-                <span className="font-extrabold text-[17px] text-foreground">Recent</span>
-                {recentSearches.length > 0 && (
-                  <button
-                    onClick={clearAllRecent}
-                    className="text-brand hover:underline text-[13px] font-bold"
-                  >
-                    Clear all
-                  </button>
-                )}
-              </div>
-
-              {recentSearches.length === 0 ? (
-                <div className="px-4 py-6 text-center text-muted text-[14px]">
-                  Try searching for people, topics, or keywords
-                </div>
-              ) : (
-                <div className="flex flex-col">
-                  {recentSearches.map((item, idx) => (
-                    <div
-                      key={item.query}
-                      onClick={() => handleNavigateSearch(item.query)}
-                      className={`px-4 py-3 flex items-center justify-between hover:bg-subtle cursor-pointer transition-colors ${
-                        selectedIndex === idx ? "bg-subtle" : ""
-                      }`}
+              {recentSearches.length > 0 && (
+                <div className="border-b border-border/40 pb-2">
+                  <div className="flex items-center justify-between px-4 py-2">
+                    <span className="font-extrabold text-[16px] text-foreground">Recent</span>
+                    <button
+                      onClick={clearAllRecent}
+                      className="text-brand hover:underline text-[13px] font-bold"
                     >
-                      <div className="flex items-center gap-3">
-                        <Clock className="w-4 h-4 text-muted shrink-0" />
-                        <span className="text-[15px] font-medium text-foreground">{item.query}</span>
-                      </div>
-                      <button
-                        onClick={(e) => deleteRecentItem(e, item)}
-                        className="p-1 hover:bg-muted/20 rounded-full text-muted hover:text-foreground"
+                      Clear all
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col">
+                    {recentSearches.map((item, idx) => (
+                      <div
+                        key={item.query}
+                        onClick={() => handleNavigateSearch(item.query)}
+                        className={`px-4 py-2.5 flex items-center justify-between hover:bg-subtle cursor-pointer transition-colors ${
+                          selectedIndex === idx ? "bg-subtle" : ""
+                        }`}
                       >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
+                        <div className="flex items-center gap-3">
+                          <Clock className="w-4 h-4 text-muted shrink-0" />
+                          <span className="text-[15px] font-medium text-foreground">{item.query}</span>
+                        </div>
+                        <button
+                          onClick={(e) => deleteRecentItem(e, item)}
+                          className="p-1 hover:bg-muted/20 rounded-full text-muted hover:text-foreground"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
+
+              {/* Trending Topics (Search based on trending) */}
+              <div className="py-2">
+                <div className="px-4 py-2">
+                  <span className="font-extrabold text-[16px] text-foreground">Trending for you</span>
+                </div>
+                {trendingTopics.length > 0 ? (
+                  <div className="flex flex-col">
+                    {trendingTopics.map((item, idx) => {
+                      const itemIndex = recentSearches.length + idx;
+                      return (
+                        <div
+                          key={item.topic}
+                          onClick={() => handleNavigateSearch(item.topic)}
+                          className={`px-4 py-2.5 flex items-center justify-between hover:bg-subtle cursor-pointer transition-colors ${
+                            selectedIndex === itemIndex ? "bg-subtle" : ""
+                          }`}
+                        >
+                          <div>
+                            <span className="text-[12px] text-muted block leading-none">{item.category}</span>
+                            <span className="text-[15px] font-bold text-foreground block mt-1">{item.topic}</span>
+                            <span className="text-[12px] text-muted block mt-0.5">
+                              {formatNumber(item.posts_count || 0)} posts
+                            </span>
+                          </div>
+                          <ArrowUpRight className="w-4 h-4 text-muted shrink-0" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="px-4 py-4 text-center text-muted text-[14px]">
+                    No trending topics right now
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

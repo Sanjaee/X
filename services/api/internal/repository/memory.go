@@ -1288,6 +1288,58 @@ func (r *MemoryRepository) GetPaymentOrderByID(ctx context.Context, orderID uuid
 	return o, nil
 }
 
+func (r *MemoryRepository) GetActivePaymentOrder(ctx context.Context, userID uuid.UUID) (*domain.PaymentOrder, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var latest *domain.PaymentOrder
+	for _, o := range r.orders {
+		if o.UserID == userID && o.Status == "pending" {
+			if latest == nil || o.CreatedAt.After(latest.CreatedAt) {
+				latest = o
+			}
+		}
+	}
+	return latest, nil
+}
+
+func (r *MemoryRepository) CountDailyPaymentOrders(ctx context.Context, userID uuid.UUID) (int, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		loc = time.FixedZone("WIB", 7*3600)
+	}
+	nowJkt := time.Now().In(loc)
+	todayY, todayM, todayD := nowJkt.Date()
+
+	count := 0
+	for _, o := range r.orders {
+		if o.UserID == userID {
+			oJkt := o.CreatedAt.In(loc)
+			oy, om, od := oJkt.Date()
+			if oy == todayY && om == todayM && od == todayD {
+				count++
+			}
+		}
+	}
+	return count, nil
+}
+
+func (r *MemoryRepository) CancelPaymentOrder(ctx context.Context, orderID, userID uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	o, ok := r.orders[orderID]
+	if !ok || o.UserID != userID || o.Status != "pending" {
+		return errors.New("order cannot be cancelled")
+	}
+	o.Status = "cancelled"
+	o.UpdatedAt = time.Now()
+	return nil
+}
+
 func (r *MemoryRepository) UpdatePaymentOrderStatus(ctx context.Context, orderID uuid.UUID, status, invoiceURL string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

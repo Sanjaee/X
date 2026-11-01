@@ -17,6 +17,7 @@ import {
   X_ALLOWED_MEDIA_ACCEPT,
   filterValidMediaFiles,
 } from "@/lib/mediaValidation";
+import { useUpgradeModal } from "@/components/subscription/UpgradeModalContext";
 
 interface PostComposerProps {
   currentUser: User | null;
@@ -40,6 +41,7 @@ export function PostComposer({
   onPostSuccess,
   onOpenAuth,
 }: PostComposerProps) {
+  const { openUpgradeModal } = useUpgradeModal();
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stagedFiles, setStagedFiles] = useState<StagedAttachment[]>([]);
@@ -268,12 +270,13 @@ export function PostComposer({
 
           <div className="flex items-center gap-3">
             {!currentUser?.is_verified && content.length > 200 && (
-              <a
-                href="/premium"
+              <button
+                type="button"
+                onClick={() => openUpgradeModal()}
                 className="text-[12px] text-brand hover:underline hidden sm:inline"
               >
                 Need 4,000 chars? Premium
-              </a>
+              </button>
             )}
 
             {content.length > 0 && (

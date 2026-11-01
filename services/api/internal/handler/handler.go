@@ -41,18 +41,18 @@ type Handler struct {
 	repo       repository.Repository
 	storageDir string
 	mediaSvc   *media.MediaService
-	plisioSvc  *payment.PlisioService
+	gateway    *payment.CryptoGateway
 	hub        *realtime.Hub
 	rdb        *redis.Client
 }
 
-func NewHandler(repo repository.Repository, storageDir string, mediaSvc *media.MediaService, plisioSvc *payment.PlisioService, hub *realtime.Hub, rdb *redis.Client) *Handler {
+func NewHandler(repo repository.Repository, storageDir string, mediaSvc *media.MediaService, gateway *payment.CryptoGateway, hub *realtime.Hub, rdb *redis.Client) *Handler {
 	_ = os.MkdirAll(storageDir, 0755)
 	return &Handler{
 		repo:       repo,
 		storageDir: storageDir,
 		mediaSvc:   mediaSvc,
-		plisioSvc:  plisioSvc,
+		gateway:    gateway,
 		hub:        hub,
 		rdb:        rdb,
 	}
@@ -2102,118 +2102,6 @@ func (h *Handler) GetMySubscription(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-type CheckoutRequest struct {
-	PlanID         string `json:"plan_id"`
-	BillingCycle   string `json:"billing_cycle"` // 'monthly' or 'annual'
-	CryptoCurrency string `json:"currency"`      // e.g. 'USDT_TRX', 'BTC', 'ETH'
-}
-
-func (h *Handler) CheckoutSubscription(w http.ResponseWriter, r *http.Request) {
-	user := middleware.GetUserFromContext(r.Context())
-	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized")
-		return
-	}
-
-	var req CheckoutRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	if req.PlanID == "" {
-		req.PlanID = "vip"
-	}
-	if req.BillingCycle == "" {
-		req.BillingCycle = "monthly"
-	}
-	if req.CryptoCurrency == "" {
-		req.CryptoCurrency = "USDT_TRX"
-	}
-
-	var planID, planName, planCurrency string
-	var amountCents int
-
-	// Prioritize dynamic membership_plans configured in Admin
-	if memPlan, err := h.repo.GetMembershipPlanByID(r.Context(), req.PlanID); err == nil && memPlan != nil {
-		if !memPlan.IsActive || memPlan.Key == "free" || memPlan.PriceAmountCents <= 0 {
-			writeError(w, http.StatusBadRequest, "selected plan is not available for purchase")
-			return
-		}
-		planID = memPlan.ID
-		planName = memPlan.Name
-		planCurrency = memPlan.Currency
-		if planCurrency == "" {
-			planCurrency = "USD"
-		}
-		amountCents = memPlan.PriceAmountCents
-		if req.BillingCycle == "annual" {
-			amountCents = memPlan.PriceAmountCents * 12
-		}
-	} else {
-		plan, err := h.repo.GetSubscriptionPlanByID(r.Context(), req.PlanID)
-		if err != nil {
-			writeError(w, http.StatusNotFound, "subscription plan not found")
-			return
-		}
-		planID = plan.ID
-		planName = plan.Name
-		planCurrency = plan.Currency
-		amountCents = plan.MonthlyPriceCents
-		if req.BillingCycle == "annual" {
-			amountCents = plan.AnnualPriceCents
-		}
-	}
-
-	order := &domain.PaymentOrder{
-		ID:           uuid.New(),
-		UserID:       user.ID,
-		PlanID:       planID,
-		BillingCycle: req.BillingCycle,
-		AmountCents:  amountCents,
-		Currency:     planCurrency,
-		Provider:     "plisio",
-		Status:       "pending",
-	}
-
-	var wlInv *payment.PlisioWhiteLabelInvoice
-	if h.plisioSvc != nil {
-		inv, err := h.plisioSvc.CreateWhiteLabelInvoice(r.Context(), order.ID, planName, amountCents, req.CryptoCurrency, user.Email)
-		if err == nil && inv != nil {
-			wlInv = inv
-			order.ProviderInvoiceURL = inv.InvoiceURL
-			order.ProviderOrderID = inv.TxnID
-
-			// Store white label payload in metadata
-			order.Metadata = map[string]interface{}{
-				"white_label":            inv,
-				"wallet_hash":            inv.WalletHash,
-				"qr_code":                inv.QRCode,
-				"amount":                 inv.Amount,
-				"currency":               inv.Currency,
-				"expire_utc":             inv.ExpireUTC,
-				"expected_confirmations": inv.ExpectedConfirmations,
-			}
-		}
-	}
-
-	if err := h.repo.CreatePaymentOrder(r.Context(), order); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to create payment order")
-		return
-	}
-
-	writeJSON(w, http.StatusCreated, map[string]interface{}{
-		"order_id":     order.ID,
-		"plan_id":      planID,
-		"plan_name":    planName,
-		"amount_cents": amountCents,
-		"currency":     planCurrency,
-		"invoice_url":  order.ProviderInvoiceURL,
-		"status":       order.Status,
-		"white_label":  wlInv,
-	})
-}
-
 func (h *Handler) activateOrderMembershipAndRole(ctx context.Context, order *domain.PaymentOrder) *domain.Subscription {
 	periodDays := 30
 	if order.BillingCycle == "annual" {
@@ -2349,158 +2237,6 @@ func (h *Handler) SimulatePayment(w http.ResponseWriter, r *http.Request) {
 		"verified_type": "blue",
 		"message":       "Payment simulation successful. Subscription and badge activated!",
 	})
-}
-
-// GetSubscriptionOrder retrieves order status and white-label data, with optional live Plisio operations check
-func (h *Handler) GetSubscriptionOrder(w http.ResponseWriter, r *http.Request) {
-	user := middleware.GetUserFromContext(r.Context())
-	if user == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized")
-		return
-	}
-
-	orderIDStr := chi.URLParam(r, "orderId")
-	orderID, err := uuid.Parse(orderIDStr)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid order id")
-		return
-	}
-
-	order, err := h.repo.GetPaymentOrderByID(r.Context(), orderID)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "order not found")
-		return
-	}
-
-	if order.UserID != user.ID {
-		writeError(w, http.StatusForbidden, "forbidden")
-		return
-	}
-
-	// Active status verification against Plisio operations if still pending
-	if order.Status == "pending" && h.plisioSvc != nil {
-		opResp, err := h.plisioSvc.FetchOperations(r.Context(), order.ID.String())
-		if err == nil && opResp != nil && opResp.Status == "success" {
-			for _, op := range opResp.Data.Operations {
-				if op.Type == "invoice" && (op.Params.OrderNumber == order.ID.String() || op.ID == order.ProviderOrderID) {
-					opStatus := strings.ToLower(op.Status)
-					if opStatus == "completed" || opStatus == "mismatch" {
-						_ = h.repo.UpdatePaymentOrderStatus(r.Context(), order.ID, "completed", "")
-						order.Status = "completed"
-						_ = h.activateOrderMembershipAndRole(r.Context(), order)
-					}
-					break
-				}
-			}
-		}
-	}
-
-	planName := order.PlanID
-	if memPlan, err := h.repo.GetMembershipPlanByID(r.Context(), order.PlanID); err == nil && memPlan != nil {
-		planName = memPlan.Name
-	} else if plan, err := h.repo.GetSubscriptionPlanByID(r.Context(), order.PlanID); err == nil && plan != nil {
-		planName = plan.Name
-	}
-
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"order":       order,
-		"plan_name":   planName,
-		"white_label": order.Metadata["white_label"],
-	})
-}
-
-// GetCryptoCurrencies returns the list of supported cryptocurrencies
-func (h *Handler) GetCryptoCurrencies(w http.ResponseWriter, r *http.Request) {
-	var cryptos []payment.PlisioCryptoInfo
-	if h.plisioSvc != nil {
-		cryptos = h.plisioSvc.FetchCurrencies(r.Context())
-	} else {
-		cryptos = payment.GetSupportedCryptos()
-	}
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"success": true,
-		"cryptos": cryptos,
-		"data":    cryptos,
-	})
-}
-
-// HandlePlisioWebhook handles real IPN callbacks from Plisio cryptocurrency gateway (Section 6F)
-func (h *Handler) HandlePlisioWebhook(w http.ResponseWriter, r *http.Request) {
-	bodyBytes, err := io.ReadAll(r.Body)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "failed to read body")
-		return
-	}
-
-	var data map[string]interface{}
-	_ = json.Unmarshal(bodyBytes, &data)
-
-	var payload payment.PlisioWebhookPayload
-	_ = json.Unmarshal(bodyBytes, &payload)
-
-	// Fallback to form parsing if JSON empty
-	if payload.OrderNumber == "" {
-		_ = r.ParseForm()
-		payload.Status = r.FormValue("status")
-		payload.OrderNumber = r.FormValue("order_number")
-		payload.TxnID = r.FormValue("txn_id")
-		payload.VerifyHash = r.FormValue("verify_hash")
-		if data == nil {
-			data = make(map[string]interface{})
-			for k, v := range r.Form {
-				if len(v) > 0 {
-					data[k] = v[0]
-				}
-			}
-		}
-	}
-
-	if payload.OrderNumber == "" {
-		writeError(w, http.StatusBadRequest, "order_number is required")
-		return
-	}
-
-	// LM-SEC-002 Remediation: Validate cryptographic signature with PLISIO_API_KEY
-	if h.plisioSvc != nil {
-		if payload.VerifyHash == "" {
-			slog.Warn("Plisio webhook rejected: verify_hash is missing")
-			writeError(w, http.StatusUnauthorized, "verify_hash signature is required")
-			return
-		}
-		if !h.plisioSvc.VerifyWebhook(data, payload.VerifyHash, bodyBytes) {
-			slog.Warn("Plisio webhook signature verification failed", "received_hash", payload.VerifyHash)
-			writeError(w, http.StatusUnprocessableEntity, "signature verification failed")
-			return
-		}
-	}
-
-	orderID, err := uuid.Parse(payload.OrderNumber)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid order_number format")
-		return
-	}
-
-	order, err := h.repo.GetPaymentOrderByID(r.Context(), orderID)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "order not found")
-		return
-	}
-
-	// Idempotency: skip if already completed
-	if order.Status == "completed" {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "already_processed"})
-		return
-	}
-
-	status := strings.ToLower(payload.Status)
-	if status == "completed" || status == "mismatch" {
-		_ = h.repo.UpdatePaymentOrderStatus(r.Context(), order.ID, "completed", "")
-		_ = h.activateOrderMembershipAndRole(r.Context(), order)
-	} else if status == "expired" || status == "cancelled" {
-		_ = h.repo.UpdatePaymentOrderStatus(r.Context(), order.ID, status, "")
-	}
-
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (h *Handler) GetBillingHistory(w http.ResponseWriter, r *http.Request) {

@@ -446,16 +446,6 @@ export default function PostDetailPage() {
                   </button>
                 </div>
 
-                {/* Translation hint banner */}
-                <div className="flex items-center gap-1.5 text-xs text-muted mb-3 flex-wrap">
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Translate post</span>
-                  <button className="text-brand hover:underline font-medium">
-                    Show original
-                  </button>
-                  <Settings className="w-3.5 h-3.5 text-muted hover:text-foreground cursor-pointer" />
-                </div>
-
                 {/* Focal Content Text */}
                 <p className="text-[19px] leading-6 text-foreground mb-3 whitespace-pre-wrap break-words">
                   {post.content}

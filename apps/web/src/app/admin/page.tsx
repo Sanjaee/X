@@ -1363,7 +1363,7 @@ export default function AdminDashboardPage() {
                           </div>
                           {plan.key !== 'free' && (
                             <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-brand/15 text-brand">
-                              Live on /premium
+                              Active Plan
                             </span>
                           )}
                         </div>

@@ -18,6 +18,7 @@ import { PostModal } from "@/components/composer/PostModal";
 import { Plus, Radio, ArrowUp } from "lucide-react";
 import Link from "next/link";
 import { useCurrentUser } from "@/lib/useCurrentUser";
+import { useUpgradeModal } from "@/components/subscription/UpgradeModalContext";
 
 interface FeedResponse {
   posts: Post[];
@@ -37,6 +38,7 @@ function encodeFeedCursor(createdAt: string, id: string): string {
 
 export default function HomePage() {
   const queryClient = useQueryClient();
+  const { openUpgradeModal } = useUpgradeModal();
   const { currentUser, logout: handleLogout, updateUser: setCurrentUser } = useCurrentUser();
   const [activeTab, setActiveTab] = useState<"for_you" | "following">("for_you");
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -395,12 +397,13 @@ export default function HomePage() {
               </div>
 
               {/* Subscribe Pill Button */}
-              <Link
-                href="/premium"
+              <button
+                type="button"
+                onClick={() => openUpgradeModal()}
                 className="text-xs font-bold px-3.5 py-1.5 rounded-full border border-border text-foreground hover:bg-subtle transition-colors"
               >
                 Subscribe
-              </Link>
+              </button>
             </div>
 
             {/* Feed Tabs: For you & Following + Add List Button */}

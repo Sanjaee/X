@@ -18,6 +18,7 @@ import {
 import { User } from "@/types";
 import { UserNameWithRole } from "@/components/ui/UserNameWithRole";
 import { formatNumber } from "@/lib/utils";
+import { useUpgradeModal } from "@/components/subscription/UpgradeModalContext";
 
 interface MobileDrawerProps {
   isOpen: boolean;
@@ -34,6 +35,8 @@ export function MobileDrawer({
   onOpenAuth,
   onLogout,
 }: MobileDrawerProps) {
+  const { openUpgradeModal } = useUpgradeModal();
+
   // Prevent body scroll when drawer is open
   useEffect(() => {
     if (isOpen) {
@@ -166,18 +169,21 @@ export function MobileDrawer({
                 className="flex items-center gap-4 py-3 px-2 rounded-xl hover:bg-subtle transition-colors"
               >
                 <UserIcon className="w-6 h-6 stroke-[2]" />
-                <span>Profil</span>
+                <span>Profile</span>
               </Link>
             )}
 
-            <Link
-              href="/premium"
-              onClick={onClose}
-              className="flex items-center gap-4 py-3 px-2 rounded-xl hover:bg-subtle transition-colors"
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                openUpgradeModal();
+              }}
+              className="flex items-center gap-4 py-3 px-2 rounded-xl hover:bg-subtle transition-colors w-full text-left"
             >
               <BadgeCheck className="w-6 h-6 stroke-[2] text-brand" />
               <span>Premium</span>
-            </Link>
+            </button>
 
             <Link
               href="/bookmarks"
@@ -185,7 +191,7 @@ export function MobileDrawer({
               className="flex items-center gap-4 py-3 px-2 rounded-xl hover:bg-subtle transition-colors"
             >
               <Bookmark className="w-6 h-6 stroke-[2]" />
-              <span>Markah</span>
+              <span>Bookmarks</span>
             </Link>
 
             <Link
@@ -194,17 +200,20 @@ export function MobileDrawer({
               className="flex items-center gap-4 py-3 px-2 rounded-xl hover:bg-subtle transition-colors"
             >
               <Sparkles className="w-6 h-6 stroke-[2]" />
-              <span>Jelajahi Topik</span>
+              <span>Explore Topics</span>
             </Link>
 
-            <Link
-              href="/premium"
-              onClick={onClose}
-              className="flex items-center gap-4 py-3 px-2 rounded-xl hover:bg-subtle transition-colors"
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                openUpgradeModal();
+              }}
+              className="flex items-center gap-4 py-3 px-2 rounded-xl hover:bg-subtle transition-colors w-full text-left"
             >
               <Coins className="w-6 h-6 stroke-[2]" />
-              <span>Monetisasi</span>
-            </Link>
+              <span>Monetization</span>
+            </button>
           </nav>
         </div>
 

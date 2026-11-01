@@ -275,11 +275,12 @@ type PaymentOrder struct {
 	BillingCycle       string                 `json:"billing_cycle"`
 	AmountCents        int                    `json:"amount_cents"`
 	Currency           string                 `json:"currency"`
-	Provider           string                 `json:"provider"`
-	ProviderOrderID    string                 `json:"provider_order_id,omitempty"`
-	ProviderInvoiceURL string                 `json:"provider_invoice_url,omitempty"`
+	// Gateway internals are never serialized to clients.
+	Provider           string                 `json:"-"`
+	ProviderOrderID    string                 `json:"-"`
+	ProviderInvoiceURL string                 `json:"-"`
 	Status             string                 `json:"status"`
-	Metadata           map[string]interface{} `json:"metadata,omitempty"`
+	Metadata           map[string]interface{} `json:"-"`
 	CreatedAt          time.Time              `json:"created_at"`
 	UpdatedAt          time.Time              `json:"updated_at"`
 }

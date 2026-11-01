@@ -97,6 +97,27 @@ func (r *PostgresRepository) ensureSearchSchema(ctx context.Context) {
 			UNIQUE(user_id, query)
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_recent_searches_user ON recent_searches (user_id, searched_at DESC);`,
+		`DO $$
+		BEGIN
+			IF EXISTS (SELECT 1 FROM posts WHERE content ~ '#[a-zA-Z0-9_]{2,50}') AND NOT EXISTS (SELECT 1 FROM post_hashtags) THEN
+				INSERT INTO hashtags (id, tag, posts_count, created_at)
+				SELECT gen_random_uuid(), lower(m[1]), count(*), NOW()
+				FROM (
+					SELECT regexp_matches(content, '#([a-zA-Z0-9_]{2,50})', 'g') AS m
+					FROM posts
+					WHERE deleted_at IS NULL
+				) sub
+				GROUP BY lower(m[1])
+				ON CONFLICT (tag) DO UPDATE SET posts_count = hashtags.posts_count + EXCLUDED.posts_count;
+
+				INSERT INTO post_hashtags (post_id, hashtag_id)
+				SELECT DISTINCT p.id, h.id
+				FROM posts p
+				CROSS JOIN LATERAL regexp_matches(p.content, '#([a-zA-Z0-9_]{2,50})', 'g') AS m
+				JOIN hashtags h ON h.tag = lower(m[1])
+				ON CONFLICT DO NOTHING;
+			END IF;
+		END $$;`,
 	}
 	for _, stmt := range stmts {
 		_, _ = r.db.ExecContext(ctx, stmt)
@@ -1976,6 +1997,71 @@ func (r *PostgresRepository) GetPaymentOrderByID(ctx context.Context, orderID uu
 	return &o, err
 }
 
+func (r *PostgresRepository) GetActivePaymentOrder(ctx context.Context, userID uuid.UUID) (*domain.PaymentOrder, error) {
+	query := `
+		SELECT id, user_id, plan_id, billing_cycle, amount_cents, currency, provider, provider_order_id, provider_invoice_url, status, metadata, created_at, updated_at
+		FROM payment_orders
+		WHERE user_id = $1 AND status = 'pending'
+		ORDER BY created_at DESC
+		LIMIT 1;
+	`
+	var o domain.PaymentOrder
+	var provOrderID, invoiceURL sql.NullString
+	var metaBytes []byte
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(
+		&o.ID, &o.UserID, &o.PlanID, &o.BillingCycle, &o.AmountCents, &o.Currency, &o.Provider,
+		&provOrderID, &invoiceURL, &o.Status, &metaBytes, &o.CreatedAt, &o.UpdatedAt,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if provOrderID.Valid {
+		o.ProviderOrderID = provOrderID.String
+	}
+	if invoiceURL.Valid {
+		o.ProviderInvoiceURL = invoiceURL.String
+	}
+	if len(metaBytes) > 0 {
+		_ = json.Unmarshal(metaBytes, &o.Metadata)
+	}
+	return &o, nil
+}
+
+func (r *PostgresRepository) CountDailyPaymentOrders(ctx context.Context, userID uuid.UUID) (int, error) {
+	query := `
+		SELECT COUNT(*)
+		FROM payment_orders
+		WHERE user_id = $1
+		  AND (created_at AT TIME ZONE 'Asia/Jakarta')::date = (NOW() AT TIME ZONE 'Asia/Jakarta')::date;
+	`
+	var count int
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(&count)
+	return count, err
+}
+
+func (r *PostgresRepository) CancelPaymentOrder(ctx context.Context, orderID, userID uuid.UUID) error {
+	query := `
+		UPDATE payment_orders
+		SET status = 'cancelled', updated_at = NOW()
+		WHERE id = $1 AND user_id = $2 AND status = 'pending';
+	`
+	res, err := r.db.ExecContext(ctx, query, orderID, userID)
+	if err != nil {
+		return err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return errors.New("order cannot be cancelled or was not found in pending status")
+	}
+	return nil
+}
+
 func (r *PostgresRepository) UpdatePaymentOrderStatus(ctx context.Context, orderID uuid.UUID, status, invoiceURL string) error {
 	query := `
 		UPDATE payment_orders
@@ -3552,7 +3638,7 @@ func (r *PostgresRepository) GetTrendingTopics(ctx context.Context, limit int) (
 		}
 	}
 
-	// Dynamic fallback: extract top trending keywords/hashtags directly from real posts when hashtag table has fewer items
+	// Fallback 1: Extract real #hashtags directly from posts if rolling window has fewer items
 	if len(topics) < limit {
 		remaining := limit - len(topics)
 		kwRows, err := r.db.QueryContext(ctx, `
@@ -3562,58 +3648,45 @@ func (r *PostgresRepository) GetTrendingTopics(ctx context.Context, limit int) (
 					p.author_id,
 					(p.likes_count + p.reposts_count * 2 + p.replies_count * 3) AS engagement,
 					(regexp_matches(
-						regexp_replace(p.content, 'https?://\S+|@[a-zA-Z0-9_]+', '', 'g'),
-						'(#?[a-zA-Z][a-zA-Z0-9_]{2,29})',
+						p.content,
+						'(?:^|[^a-zA-Z0-9_])#([a-zA-Z0-9_]{2,50})',
 						'g'
-					))[1] AS raw_token
+					))[1] AS raw_tag
 				FROM posts p
 				WHERE p.deleted_at IS NULL
-				  AND p.created_at >= NOW() - INTERVAL '30 days'
-			),
-			filtered AS (
-				SELECT
-					post_id,
-					author_id,
-					engagement,
-					raw_token,
-					LOWER(raw_token) AS norm_token
-				FROM tokens
-				WHERE LOWER(TRIM(LEADING '#' FROM raw_token)) NOT IN (
-					'the','and','for','that','this','with','you','are','was','but','not','have','from','they','will','what','when','your','can','all','just','like','more','about','out','has','who','how','one','our','new','now','get',' test','testing','post','posts',
-					'dan','yang','ini','itu','dari','untuk','dengan','ada','bisa','tidak','gak','aja','udah','sudah','lagi','sama','buat','kalo','kalau','mau','apa','jangan','saya','aku','kamu','dia','kita','mereka'
-				)
 			)
 			SELECT
-				MAX(raw_token) AS display_token,
+				LOWER(raw_tag) AS clean_tag,
 				COUNT(DISTINCT post_id) AS posts_cnt,
 				COUNT(DISTINCT author_id) AS authors_cnt,
 				COALESCE(SUM(engagement), 0) AS total_eng
-			FROM filtered
-			GROUP BY norm_token
+			FROM tokens
+			WHERE raw_tag IS NOT NULL AND raw_tag != ''
+			GROUP BY LOWER(raw_tag)
 			ORDER BY (
 				COUNT(DISTINCT author_id) * 3.0 +
 				COUNT(DISTINCT post_id) * 1.5 +
 				COALESCE(SUM(engagement), 0) * 0.2
 			) DESC, posts_cnt DESC
 			LIMIT $1;
-		`, remaining*3)
+		`, remaining*2)
 		if err == nil {
 			defer kwRows.Close()
 			for kwRows.Next() {
 				if len(topics) >= limit {
 					break
 				}
-				var displayToken string
+				var cleanTag string
 				var postsCnt, authorsCnt, totalEng int
-				if err := kwRows.Scan(&displayToken, &postsCnt, &authorsCnt, &totalEng); err == nil && displayToken != "" {
-					key := strings.ToLower(strings.TrimPrefix(displayToken, "#"))
+				if err := kwRows.Scan(&cleanTag, &postsCnt, &authorsCnt, &totalEng); err == nil && cleanTag != "" {
+					key := strings.ToLower(cleanTag)
 					if !existingTags[key] && !existingTags["#"+key] {
 						existingTags[key] = true
 						existingTags["#"+key] = true
 						vel := float64(authorsCnt)*3.0 + float64(postsCnt)*1.5 + float64(totalEng)*0.2
 						topics = append(topics, domain.TrendingTopic{
-							Category:      categorizeTopic(displayToken),
-							Topic:         displayToken,
+							Category:      categorizeTopic(cleanTag),
+							Topic:         "#" + cleanTag,
 							PostsCount:    postsCnt,
 							VelocityScore: vel,
 						})

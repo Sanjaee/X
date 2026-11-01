@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useUpgradeModal } from '@/components/subscription/UpgradeModalContext';
 
 interface VerifiedBadgeProps {
   type?: 'blue' | 'business' | 'government' | 'gold' | 'grey' | 'staff' | string;
@@ -10,6 +11,7 @@ interface VerifiedBadgeProps {
 
 export function VerifiedBadge({ type = 'blue', size = 'sm', showPopover = true }: VerifiedBadgeProps) {
   const [open, setOpen] = useState(false);
+  const { openUpgradeModal } = useUpgradeModal();
 
   // Normalize type
   const normalizedType = type === 'business' ? 'gold' : type === 'government' ? 'grey' : type;
@@ -89,12 +91,16 @@ export function VerifiedBadge({ type = 'blue', size = 'sm', showPopover = true }
             <p className="text-[13px] text-[#71767b] leading-relaxed mb-3">
               {config.desc}
             </p>
-            <a
-              href="/premium"
-              className="text-[13px] text-[#1d9bf0] font-semibold hover:underline block"
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                openUpgradeModal();
+              }}
+              className="text-[13px] text-[#1d9bf0] font-semibold hover:underline block text-left"
             >
               Learn more about verified subscriptions
-            </a>
+            </button>
           </div>
         </>
       )}

@@ -23,6 +23,7 @@ import { UserNameWithRole } from "@/components/ui/UserNameWithRole";
 import { useRealtime } from "@/lib/useRealtime";
 import { useComposer } from "@/components/composer/ComposerContext";
 import { useCurrentUser } from "@/lib/useCurrentUser";
+import { useUpgradeModal } from "@/components/subscription/UpgradeModalContext";
 
 interface LeftNavRailProps {
   currentUser?: User | null;
@@ -39,6 +40,7 @@ export function LeftNavRail({
 }: LeftNavRailProps) {
   const pathname = usePathname();
   const { openComposer } = useComposer();
+  const { openUpgradeModal } = useUpgradeModal();
   const { currentUser: authUser, logout: authLogout } = useCurrentUser();
   const currentUser = propUser !== undefined ? propUser : authUser;
   const onLogout = propLogout || authLogout;
@@ -119,6 +121,22 @@ export function LeftNavRail({
                 : item.label === "Messages"
                 ? unreadMessageCount
                 : 0;
+
+            if (item.label === "Premium") {
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => openUpgradeModal()}
+                  className="flex items-center gap-4 p-2.5 xl:py-3 xl:px-4 rounded-full hover:bg-subtle transition-colors group text-foreground w-full text-left"
+                >
+                  <div className="relative flex items-center justify-center">
+                    <Icon className="w-7 h-7 stroke-[2]" />
+                  </div>
+                  <span className="hidden xl:inline text-[20px] leading-6">{item.label}</span>
+                </button>
+              );
+            }
 
             return (
               <Link

@@ -26,6 +26,8 @@ function NextAuthSync() {
 }
 
 import { ComposerProvider } from "@/components/composer/ComposerContext";
+import { UpgradeModalProvider } from "@/components/subscription/UpgradeModalContext";
+import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -49,8 +51,11 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
         <RealtimeProvider>
           <MediaViewerProvider>
             <ComposerProvider>
-              {children}
-              <PhotoViewerModal />
+              <UpgradeModalProvider>
+                {children}
+                <PhotoViewerModal />
+                <UpgradeModal />
+              </UpgradeModalProvider>
             </ComposerProvider>
           </MediaViewerProvider>
         </RealtimeProvider>

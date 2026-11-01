@@ -26,6 +26,20 @@ const nextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: "/premium",
+        destination: "/?upgrade=true",
+        permanent: false,
+      },
+      {
+        source: "/premium/:path*",
+        destination: "/?upgrade=true",
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       {

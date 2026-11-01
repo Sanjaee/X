@@ -108,6 +108,9 @@ type Repository interface {
 	// Billing & Orders
 	CreatePaymentOrder(ctx context.Context, order *domain.PaymentOrder) error
 	GetPaymentOrderByID(ctx context.Context, orderID uuid.UUID) (*domain.PaymentOrder, error)
+	GetActivePaymentOrder(ctx context.Context, userID uuid.UUID) (*domain.PaymentOrder, error)
+	CountDailyPaymentOrders(ctx context.Context, userID uuid.UUID) (int, error)
+	CancelPaymentOrder(ctx context.Context, orderID, userID uuid.UUID) error
 	UpdatePaymentOrderStatus(ctx context.Context, orderID uuid.UUID, status, invoiceURL string) error
 	GetBillingHistory(ctx context.Context, userID uuid.UUID) ([]domain.PaymentOrder, []domain.Invoice, error)
 	CreateInvoice(ctx context.Context, inv *domain.Invoice) error

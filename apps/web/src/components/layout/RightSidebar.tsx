@@ -13,6 +13,7 @@ import { TrendingTopic, UserRecommendation, User, AuthResponse } from "@/types";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { UserNameWithRole } from "@/components/ui/UserNameWithRole";
+import { useUpgradeModal } from "@/components/subscription/UpgradeModalContext";
 
 interface RightSidebarProps {
   onSearch?: (query: string) => void;
@@ -30,6 +31,7 @@ export function RightSidebar({
   onOpenAuth,
 }: RightSidebarProps) {
   const router = useRouter();
+  const { openUpgradeModal } = useUpgradeModal();
   const { currentUser: authUser, updateUser } = useCurrentUser();
   const user = propUser !== undefined ? propUser : authUser;
   const [localAuthOpen, setLocalAuthOpen] = useState(false);
@@ -363,12 +365,13 @@ export function RightSidebar({
           <p className="text-[15px] leading-5 text-foreground mb-3 font-normal">
             Subscribe to unlock new features and if eligible, receive a creator revenue share.
           </p>
-          <Link
-            href="/premium"
+          <button
+            type="button"
+            onClick={() => openUpgradeModal()}
             className="inline-block bg-brand hover:bg-brand-hover text-white font-bold py-2 px-5 rounded-full text-[15px] transition-colors"
           >
             Subscribe
-          </Link>
+          </button>
         </div>
       ) : user === null ? (
         renderSignInCard()

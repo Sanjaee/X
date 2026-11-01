@@ -21,8 +21,10 @@ type Config struct {
 	RateLimitPerMin       int
 
 	// Monetization & Payments
-	PLISIO_API_KEY string // STRICT: Variable name must be PLISIO_API_KEY
-	AppURL         string
+	// Crypto payment gateway (server-side only; never exposed to clients)
+	PaymentGatewayAPIKey  string
+	PaymentGatewayBaseURL string
+	AppURL                string
 
 	// Cloudflare R2 Object Storage
 	R2AccountID       string
@@ -46,7 +48,11 @@ func Load() *Config {
 	maxConcurrent := getEnvInt("MAX_CONCURRENT_REQUESTS", 300)
 	rateLimitMin := getEnvInt("RATE_LIMIT_PER_MIN", 120)
 
-	plisioApiKey := getEnv("PLISIO_API_KEY", "")
+	gatewayAPIKey := getEnv("PAYMENT_GATEWAY_API_KEY", "")
+	if gatewayAPIKey == "" {
+		gatewayAPIKey = getEnv("PLISIO_API_KEY", "")
+	}
+	gatewayBaseURL := getEnv("PAYMENT_GATEWAY_BASE_URL", "https://api.plisio.net/api/v1")
 	appURL := getEnv("APP_URL", "http://localhost")
 
 	r2AccountID := getEnv("R2_ACCOUNT_ID", "")
@@ -68,7 +74,8 @@ func Load() *Config {
 		DBMaxIdleConns:        dbMaxIdle,
 		MaxConcurrentRequests: maxConcurrent,
 		RateLimitPerMin:       rateLimitMin,
-		PLISIO_API_KEY:        plisioApiKey,
+		PaymentGatewayAPIKey:  gatewayAPIKey,
+		PaymentGatewayBaseURL: gatewayBaseURL,
 		AppURL:                appURL,
 		R2AccountID:           r2AccountID,
 		R2AccessKeyID:         r2AccessKeyID,

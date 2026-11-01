@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Search, Settings, MoreHorizontal } from "lucide-react";
 import { LeftNavRail } from "@/components/layout/LeftNavRail";
 import { RightSidebar } from "@/components/layout/RightSidebar";
@@ -11,6 +12,7 @@ import { formatNumber, cn } from "@/lib/utils";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 
 export default function ExplorePage() {
+  const router = useRouter();
   const { currentUser } = useCurrentUser();
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"for_you" | "trending" | "news" | "sports">("for_you");
@@ -40,19 +42,11 @@ export default function ExplorePage() {
     );
   }, [trendingTopics, activeTab]);
 
-  const handleSearch = async (e?: React.FormEvent, customQuery?: string) => {
+  const handleSearch = (e?: React.FormEvent, customQuery?: string) => {
     if (e) e.preventDefault();
-    const q = customQuery !== undefined ? customQuery : query;
-    if (!q.trim()) return;
-    setIsSearching(true);
-    try {
-      const res = await apiRequest<{ posts: Post[] }>(`/search?q=${encodeURIComponent(q)}`);
-      setSearchResults(res.posts || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSearching(false);
-    }
+    const q = (customQuery !== undefined ? customQuery : query).trim();
+    if (!q) return;
+    router.push(`/search?q=${encodeURIComponent(q)}&tab=top`);
   };
 
   return (
@@ -124,10 +118,7 @@ export default function ExplorePage() {
               {filteredTopics.map((t) => (
                 <div
                   key={t.topic}
-                  onClick={() => {
-                    setQuery(t.topic);
-                    handleSearch(undefined, t.topic);
-                  }}
+                  onClick={() => handleSearch(undefined, t.topic)}
                   className="px-4 py-3.5 hover:bg-subtle cursor-pointer transition-colors flex justify-between items-start"
                 >
                   <div>

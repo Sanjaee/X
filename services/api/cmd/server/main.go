@@ -70,8 +70,8 @@ func main() {
 	go hub.Run(ctxHub)
 
 	mediaSvc := media.NewMediaService(cfg)
-	plisioSvc := payment.NewPlisioService(cfg)
-	h := handler.NewHandler(repo, cfg.StorageDir, mediaSvc, plisioSvc, hub, rdb)
+	cryptoGateway := payment.NewCryptoGateway(cfg)
+	h := handler.NewHandler(repo, cfg.StorageDir, mediaSvc, cryptoGateway, hub, rdb)
 
 	// Start Outbox Worker (Transactional Outbox pattern for asynchronous event fanout)
 	go h.StartOutboxWorker(ctxHub)
@@ -163,8 +163,8 @@ func main() {
 			authPub.Post("/auth/google", h.GoogleAuth)
 		})
 
-		// Public Webhook for Plisio Cryptocurrency Gateway (Section 6F)
-		v1.Post("/webhooks/payments/plisio", h.HandlePlisioWebhook)
+		// Public webhook for the crypto payment gateway (Section 6F)
+		v1.Post("/webhooks/payments/crypto", h.HandleCryptoWebhook)
 
 		// Publicly readable endpoints (with optional viewer identity context)
 		v1.Group(func(pub chi.Router) {
@@ -183,7 +183,7 @@ func main() {
 			pub.Get("/search/suggestions", h.GetSearchSuggestions)
 			pub.Get("/subscription-plans", h.GetSubscriptionPlans)
 			pub.Get("/membership/plans", h.GetMembershipPlansCatalog)
-			pub.Get("/subscriptions/cryptos", h.GetCryptoCurrencies)
+			pub.Get("/payments/currencies", h.GetCryptoCurrencies)
 
 			// Social Graph public reads
 			pub.Get("/users/{username}/followers", h.GetFollowers)
@@ -265,7 +265,9 @@ func main() {
 			// Subscriptions & Monetization (Section 6A)
 			auth.Get("/subscriptions/me", h.GetMySubscription)
 			auth.Post("/subscriptions/checkout", h.CheckoutSubscription)
+			auth.Get("/subscriptions/orders/active", h.GetActiveSubscriptionOrder)
 			auth.Get("/subscriptions/orders/{orderId}", h.GetSubscriptionOrder)
+			auth.Post("/subscriptions/orders/{orderId}/cancel", h.CancelSubscriptionOrder)
 			auth.Post("/subscriptions/{subscriptionId}/cancel", h.CancelSubscription)
 			auth.Post("/subscriptions/simulate-payment", h.SimulatePayment)
 			auth.Get("/billing/history", h.GetBillingHistory)
