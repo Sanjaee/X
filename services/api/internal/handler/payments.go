@@ -40,16 +40,20 @@ type CheckoutRequest struct {
 }
 
 // GetCryptoCurrencies GET /payments/currencies — live list of payable coins,
-// fetched server-side so the gateway key/host never reach the browser.
+// fetched server-side from Plisio so the gateway key/host never reach the browser.
 func (h *Handler) GetCryptoCurrencies(w http.ResponseWriter, r *http.Request) {
-	var coins []payment.CryptoCurrency
-	var err error
-	if h.gateway != nil {
-		coins, err = h.gateway.FetchCurrencies(r.Context())
+	if h.gateway == nil || !h.gateway.IsConfigured() {
+		writeError(w, http.StatusServiceUnavailable, "payment gateway is not configured")
+		return
 	}
-	if err != nil || len(coins) == 0 {
-		coins = payment.GetDefaultCurrencies()
+
+	coins, err := h.gateway.FetchCurrencies(r.Context())
+	if err != nil {
+		slog.Error("payments.fetch_currencies_failed", "error", err.Error())
+		writeError(w, http.StatusBadGateway, "failed to load currencies from payment provider: "+err.Error())
+		return
 	}
+
 	w.Header().Set("Cache-Control", "public, max-age=60")
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"currencies": coins,

@@ -107,26 +107,10 @@ var ErrGatewayUnavailable = errors.New("payment gateway is not configured")
 // Currencies
 // ---------------------------------------------------------------------------
 
-// GetDefaultCurrencies returns standard payable cryptocurrencies.
-func GetDefaultCurrencies() []CryptoCurrency {
-	return []CryptoCurrency{
-		{CID: "USDT_TRX", Currency: "USDT_TRX", Name: "Tether (TRC-20)", Icon: "/crypto-icons/USDT_TRX.svg", PriceUsd: "1.00"},
-		{CID: "BTC", Currency: "BTC", Name: "Bitcoin", Icon: "/crypto-icons/BTC.svg"},
-		{CID: "ETH", Currency: "ETH", Name: "Ethereum", Icon: "/crypto-icons/ETH.svg"},
-		{CID: "LTC", Currency: "LTC", Name: "Litecoin", Icon: "/crypto-icons/LTC.svg"},
-		{CID: "SOL", Currency: "SOL", Name: "Solana", Icon: "/crypto-icons/SOL.svg"},
-		{CID: "DOGE", Currency: "DOGE", Name: "Dogecoin", Icon: "/crypto-icons/DOGE.svg"},
-		{CID: "TRX", Currency: "TRX", Name: "TRON", Icon: "/crypto-icons/TRX.svg"},
-		{CID: "BNB", Currency: "BNB", Name: "BNB Chain", Icon: "/crypto-icons/BNB.svg"},
-		{CID: "TON", Currency: "TON", Name: "Toncoin", Icon: "/crypto-icons/TON.svg"},
-		{CID: "XMR", Currency: "XMR", Name: "Monero", Icon: "/crypto-icons/XMR.svg"},
-	}
-}
-
-// FetchCurrencies returns the live list of payable coins (cached briefly).
+// FetchCurrencies returns the live list of payable coins purely from Plisio (cached briefly).
 func (g *CryptoGateway) FetchCurrencies(ctx context.Context) ([]CryptoCurrency, error) {
 	if !g.IsConfigured() {
-		return GetDefaultCurrencies(), nil
+		return nil, ErrGatewayUnavailable
 	}
 
 	g.cacheMu.Lock()
@@ -152,13 +136,14 @@ func (g *CryptoGateway) FetchCurrencies(ctx context.Context) ([]CryptoCurrency, 
 			Name        string      `json:"name"`
 			Cid         string      `json:"cid"`
 			Currency    string      `json:"currency"`
+			Icon        string      `json:"icon"`
 			PriceUsd    interface{} `json:"price_usd"`
 			Hidden      interface{} `json:"hidden"`
 			Maintenance bool        `json:"maintenance"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(body, &wrap); err != nil || wrap.Status != "success" {
-		return nil, errors.New("gateway currencies: unexpected response")
+		return nil, errors.New("gateway currencies: unexpected response from provider")
 	}
 
 	out := make([]CryptoCurrency, 0, len(wrap.Data))
@@ -174,12 +159,15 @@ func (g *CryptoGateway) FetchCurrencies(ctx context.Context) ([]CryptoCurrency, 
 		if c.PriceUsd != nil {
 			price = fmt.Sprintf("%v", c.PriceUsd)
 		}
+		icon := c.Icon
+		if icon != "" && !strings.HasPrefix(icon, "http") && !strings.HasPrefix(icon, "/") {
+			icon = "https://plisio.net/" + icon
+		}
 		out = append(out, CryptoCurrency{
 			CID:      cid,
 			Currency: c.Currency,
 			Name:     c.Name,
-			// Icons are served statically from /public — never from the gateway host.
-			Icon:     "/crypto-icons/" + cid + ".svg",
+			Icon:     icon,
 			PriceUsd: price,
 		})
 	}
@@ -191,12 +179,11 @@ func (g *CryptoGateway) FetchCurrencies(ctx context.Context) ([]CryptoCurrency, 
 	return out, nil
 }
 
-// IsSupportedCurrency checks a coin code against the live list,
-// falling back to standard default currencies if the gateway is unreachable.
+// IsSupportedCurrency checks a coin code against the live list from Plisio.
 func (g *CryptoGateway) IsSupportedCurrency(ctx context.Context, code string) bool {
 	coins, err := g.FetchCurrencies(ctx)
 	if err != nil || len(coins) == 0 {
-		coins = GetDefaultCurrencies()
+		return false
 	}
 	for _, c := range coins {
 		if strings.EqualFold(c.CID, code) || strings.EqualFold(c.Currency, code) {

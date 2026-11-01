@@ -135,7 +135,7 @@ export function UpgradeModal() {
 
   // Currencies state (fetched from real Go API)
   const [currencies, setCurrencies] = useState<CryptoCurrencyOption[]>([]);
-  const [selectedCoin, setSelectedCoin] = useState<string>('USDT_TRX');
+  const [selectedCoin, setSelectedCoin] = useState<string>('');
   const [coinSearch, setCoinSearch] = useState('');
   const [loadingCoins, setLoadingCoins] = useState(false);
 
@@ -256,13 +256,14 @@ export function UpgradeModal() {
         .then((res) => {
           if (res?.currencies && res.currencies.length > 0) {
             setCurrencies(res.currencies);
-            if (!res.currencies.some((c) => c.currency === selectedCoin || c.cid === selectedCoin)) {
+            if (!selectedCoin || !res.currencies.some((c) => c.currency === selectedCoin || c.cid === selectedCoin)) {
               setSelectedCoin(res.currencies[0].currency || res.currencies[0].cid);
             }
           }
         })
-        .catch((err) => {
+        .catch((err: any) => {
           console.warn('Could not load currencies:', err);
+          setPaymentError(err?.message || 'Failed to load cryptocurrencies from payment provider');
         })
         .finally(() => {
           setLoadingCoins(false);
@@ -775,6 +776,10 @@ export function UpgradeModal() {
                     {loadingCoins && currencies.length === 0 ? (
                       <div className="flex justify-center py-8">
                         <Loader2 className="w-6 h-6 animate-spin text-[#1d9bf0]" />
+                      </div>
+                    ) : currencies.length === 0 ? (
+                      <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-center text-xs text-red-400">
+                        {paymentError || 'No cryptocurrencies available from payment provider.'}
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[260px] overflow-y-auto pr-1">

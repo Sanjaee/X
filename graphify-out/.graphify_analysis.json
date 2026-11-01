@@ -1,9 +1,6 @@
 {
   "communities": {
     "0": [
-      "cryptoinvoice",
-      "cryptooperation",
-      "handler_checkoutrequest",
       "handler_handler",
       "handler_handler_activateordermembershipandrole",
       "handler_handler_adminassignusermembership",
@@ -33,13 +30,10 @@
       "handler_handler_applyverification",
       "handler_handler_blockuser",
       "handler_handler_bookmarkpost",
-      "handler_handler_buildorderstatus",
       "handler_handler_cancelfollowrequest",
       "handler_handler_cancelsubscription",
       "handler_handler_cancelsubscriptionorder",
-      "handler_handler_checkoutsubscription",
       "handler_handler_clearrecentsearches",
-      "handler_handler_closeorder",
       "handler_handler_createconversation",
       "handler_handler_createfollowrequest",
       "handler_handler_createpost",
@@ -48,7 +42,6 @@
       "handler_handler_deleterecentsearch",
       "handler_handler_dismissuserrecommendation",
       "handler_handler_followuser",
-      "handler_handler_getactivesubscriptionorder",
       "handler_handler_getbillinghistory",
       "handler_handler_getbookmarks",
       "handler_handler_getconversationbyid",
@@ -73,7 +66,6 @@
       "handler_handler_getrecentsearches",
       "handler_handler_getsearchsuggestions",
       "handler_handler_getsocialrelationship",
-      "handler_handler_getsubscriptionorder",
       "handler_handler_getsubscriptionplans",
       "handler_handler_gettopicpreferences",
       "handler_handler_gettrendingtopics",
@@ -83,7 +75,6 @@
       "handler_handler_getuserposts",
       "handler_handler_getwhotofollow",
       "handler_handler_googleauth",
-      "handler_handler_handlecryptowebhook",
       "handler_handler_healthlive",
       "handler_handler_healthmetrics",
       "handler_handler_healthready",
@@ -96,7 +87,6 @@
       "handler_handler_muteuser",
       "handler_handler_notifyuser",
       "handler_handler_patchpost",
-      "handler_handler_plandisplayname",
       "handler_handler_reconcilecounters",
       "handler_handler_recordfeedfeedback",
       "handler_handler_recordfeedimpressions",
@@ -112,7 +102,6 @@
       "handler_handler_sendmessage",
       "handler_handler_servewebsocket",
       "handler_handler_setsessioncookie",
-      "handler_handler_settleorder",
       "handler_handler_simulatepayment",
       "handler_handler_startoutboxworker",
       "handler_handler_unblockuser",
@@ -129,99 +118,12 @@
       "services_api_internal_handler_handler_go_responsewriter",
       "services_api_internal_handler_handler_writeerror",
       "services_api_internal_handler_handler_writejson",
-      "services_api_internal_handler_payments",
-      "services_api_internal_handler_payments_expired",
-      "services_api_internal_handler_payments_go_paymentorder",
-      "services_api_internal_handler_payments_go_uuid",
-      "services_api_internal_handler_payments_invoicefrommetadata",
-      "services_api_internal_handler_payments_lockorder",
-      "services_api_internal_handler_payments_tounix",
       "services_api_internal_middleware_middleware_getuserfromcontext",
       "services_api_internal_middleware_middleware_getviewerid",
       "services_api_internal_middleware_middleware_go_context",
       "services_api_internal_middleware_middleware_go_uuid"
     ],
     "1": [
-      "config_config",
-      "domain_adminoverview",
-      "domain_adminpostfilter",
-      "domain_auditlog",
-      "domain_conversation",
-      "domain_countermismatchdetail",
-      "domain_counterreconciliationresult",
-      "domain_databasehealth",
-      "domain_entitlements",
-      "domain_feedfeedback",
-      "domain_feedimpression",
-      "domain_follow",
-      "domain_followrequest",
-      "domain_hashtag",
-      "domain_invoice",
-      "domain_mediaobject",
-      "domain_membershipentitlement",
-      "domain_membershipplan",
-      "domain_message",
-      "domain_messagereaction",
-      "domain_newpostscheckresponse",
-      "domain_notification",
-      "domain_notificationpreferences",
-      "domain_outboxevent",
-      "domain_pageinfo",
-      "domain_paymentorder",
-      "domain_permission",
-      "domain_post",
-      "domain_postfeatures",
-      "domain_rankingexperiment",
-      "domain_recentsearch",
-      "domain_redishealth",
-      "domain_role",
-      "domain_rolepermission",
-      "domain_runtimemetrics",
-      "domain_searchfilterparams",
-      "domain_searchsuggestionsresponse",
-      "domain_servicestatus",
-      "domain_session",
-      "domain_socialrelationship",
-      "domain_subscription",
-      "domain_subscriptionplan",
-      "domain_systemhealth",
-      "domain_trendingtopic",
-      "domain_user",
-      "domain_usermembership",
-      "domain_userrecommendation",
-      "domain_userrole",
-      "domain_usersettings",
-      "domain_usertopicpreference",
-      "domain_userusagecounter",
-      "domain_verificationapplication",
-      "domain_verificationbadge",
-      "image",
-      "media_mediaservice",
-      "media_mediaservice_compressjpeg",
-      "media_mediaservice_compresspngtojpeg",
-      "media_mediaservice_processandupload",
-      "media_mediaservice_savelocalfallback",
-      "reader",
-      "services_api_internal_config_config",
-      "services_api_internal_config_config_getenv",
-      "services_api_internal_config_config_getenvint",
-      "services_api_internal_config_config_load",
-      "services_api_internal_domain_models",
-      "services_api_internal_domain_models_go_time",
-      "services_api_internal_domain_models_go_uuid",
-      "services_api_internal_media_media",
-      "services_api_internal_media_media_go_client",
-      "services_api_internal_media_media_go_context",
-      "services_api_internal_media_media_go_uuid",
-      "services_api_internal_media_media_newmediaservice",
-      "services_api_internal_media_media_resizeifneeded",
-      "services_api_internal_search_parser",
-      "services_api_internal_search_parser_parsequery",
-      "services_api_internal_search_parser_test",
-      "services_api_internal_search_parser_test_go_t",
-      "services_api_internal_search_parser_test_testparsequery"
-    ],
-    "2": [
       "cryptogateway",
       "hub",
       "mediaservice",
@@ -298,7 +200,7 @@
       "services_api_internal_repository_repository",
       "t"
     ],
-    "3": [
+    "2": [
       "context",
       "conversation",
       "followrequest",
@@ -374,74 +276,71 @@
       "uuid",
       "verificationapplication"
     ],
-    "4": [
-      "b",
-      "diversityreranker",
+    "3": [
+      "domain_adminoverview",
+      "domain_adminpostfilter",
+      "domain_auditlog",
+      "domain_conversation",
+      "domain_countermismatchdetail",
+      "domain_counterreconciliationresult",
+      "domain_databasehealth",
+      "domain_entitlements",
+      "domain_feedfeedback",
+      "domain_feedimpression",
+      "domain_follow",
+      "domain_followrequest",
+      "domain_hashtag",
+      "domain_invoice",
+      "domain_mediaobject",
+      "domain_membershipentitlement",
+      "domain_membershipplan",
+      "domain_message",
+      "domain_messagereaction",
+      "domain_newpostscheckresponse",
+      "domain_notification",
+      "domain_notificationpreferences",
+      "domain_outboxevent",
+      "domain_pageinfo",
+      "domain_paymentorder",
+      "domain_permission",
+      "domain_post",
+      "domain_postfeatures",
+      "domain_rankingexperiment",
       "domain_rankingweights",
-      "feedoptions",
-      "feedresult",
-      "recommendation_candidate",
-      "recommendation_candidateprovider",
-      "recommendation_candidatesource",
-      "recommendation_candidatesource_has",
-      "recommendation_diversityreranker",
-      "recommendation_diversityreranker_rerank",
-      "recommendation_engine",
-      "recommendation_engine_generatefeed",
-      "recommendation_features",
-      "recommendation_feedcursor",
-      "recommendation_feedmetrics",
-      "recommendation_feedoptions",
-      "recommendation_feedresult",
-      "recommendation_mockcandidateprovider",
-      "recommendation_mockcandidateprovider_getactiveweights",
-      "recommendation_mockcandidateprovider_getexplorationcandidates",
-      "recommendation_mockcandidateprovider_getfollowingcandidates",
-      "recommendation_mockcandidateprovider_getfollowingposts",
-      "recommendation_mockcandidateprovider_getfreshcandidates",
-      "recommendation_mockcandidateprovider_getsocialengagementcandidates",
-      "recommendation_mockcandidateprovider_gettopiccandidates",
-      "recommendation_mockcandidateprovider_gettrendingcandidates",
-      "recommendation_mockcandidateprovider_getviewerinteractions",
+      "domain_recentsearch",
+      "domain_redishealth",
+      "domain_role",
+      "domain_rolepermission",
+      "domain_runtimemetrics",
+      "domain_searchfilterparams",
+      "domain_searchsuggestionsresponse",
+      "domain_servicestatus",
+      "domain_session",
+      "domain_socialrelationship",
+      "domain_subscription",
+      "domain_subscriptionplan",
+      "domain_systemhealth",
+      "domain_trendingtopic",
+      "domain_user",
+      "domain_usermembership",
+      "domain_userrecommendation",
+      "domain_userrole",
+      "domain_usersettings",
+      "domain_usertopicpreference",
+      "domain_userusagecounter",
+      "domain_verificationapplication",
+      "domain_verificationbadge",
+      "services_api_internal_domain_models",
       "services_api_internal_domain_models_defaultrankingweights",
-      "services_api_internal_recommendation_cursor",
-      "services_api_internal_recommendation_cursor_decodecursor",
-      "services_api_internal_recommendation_cursor_encodecursor",
-      "services_api_internal_recommendation_cursor_go_time",
-      "services_api_internal_recommendation_cursor_go_uuid",
-      "services_api_internal_recommendation_diversity",
-      "services_api_internal_recommendation_diversity_newdiversityreranker",
-      "services_api_internal_recommendation_engine",
-      "services_api_internal_recommendation_engine_go_context",
-      "services_api_internal_recommendation_engine_newengine",
-      "services_api_internal_recommendation_engine_test",
-      "services_api_internal_recommendation_engine_test_benchmarkdiversityreranker",
-      "services_api_internal_recommendation_engine_test_benchmarkscoringengine",
-      "services_api_internal_recommendation_engine_test_go_context",
-      "services_api_internal_recommendation_engine_test_go_post",
-      "services_api_internal_recommendation_engine_test_go_t",
-      "services_api_internal_recommendation_engine_test_go_uuid",
-      "services_api_internal_recommendation_engine_test_testcursorroundtrip",
-      "services_api_internal_recommendation_engine_test_testdiversityreranking",
-      "services_api_internal_recommendation_engine_test_testfeedevaluator",
-      "services_api_internal_recommendation_engine_test_testfreshnessdecay",
-      "services_api_internal_recommendation_evaluator",
-      "services_api_internal_recommendation_evaluator_evaluatefeed",
-      "services_api_internal_recommendation_evaluator_go_post",
-      "services_api_internal_recommendation_evaluator_go_time",
-      "services_api_internal_recommendation_scoring",
-      "services_api_internal_recommendation_scoring_calculateengagementvelocity",
-      "services_api_internal_recommendation_scoring_calculateexplorationscore",
-      "services_api_internal_recommendation_scoring_calculatefreshness",
-      "services_api_internal_recommendation_scoring_calculatelinearscore",
-      "services_api_internal_recommendation_scoring_calculatequalityscore",
-      "services_api_internal_recommendation_scoring_go_time",
-      "services_api_internal_recommendation_types",
-      "services_api_internal_recommendation_types_go_post",
-      "services_api_internal_recommendation_types_go_time",
-      "services_api_internal_recommendation_types_go_uuid"
+      "services_api_internal_domain_models_go_time",
+      "services_api_internal_domain_models_go_uuid",
+      "services_api_internal_search_parser",
+      "services_api_internal_search_parser_parsequery",
+      "services_api_internal_search_parser_test",
+      "services_api_internal_search_parser_test_go_t",
+      "services_api_internal_search_parser_test_testparsequery"
     ],
-    "5": [
+    "4": [
       "repository_memoryrepository_addrecentsearch",
       "repository_memoryrepository_admindeletepost",
       "repository_memoryrepository_assignroletouser",
@@ -499,6 +398,62 @@
       "services_api_internal_repository_memory_go_socialrelationship",
       "services_api_internal_repository_memory_go_userrecommendation",
       "services_api_internal_repository_memory_go_uuid"
+    ],
+    "5": [
+      "b",
+      "recommendation_candidate",
+      "recommendation_candidatesource",
+      "recommendation_candidatesource_has",
+      "recommendation_diversityreranker",
+      "recommendation_diversityreranker_rerank",
+      "recommendation_features",
+      "recommendation_feedcursor",
+      "recommendation_feedmetrics",
+      "recommendation_feedoptions",
+      "recommendation_feedresult",
+      "recommendation_mockcandidateprovider",
+      "recommendation_mockcandidateprovider_getactiveweights",
+      "recommendation_mockcandidateprovider_getexplorationcandidates",
+      "recommendation_mockcandidateprovider_getfollowingcandidates",
+      "recommendation_mockcandidateprovider_getfollowingposts",
+      "recommendation_mockcandidateprovider_getfreshcandidates",
+      "recommendation_mockcandidateprovider_getsocialengagementcandidates",
+      "recommendation_mockcandidateprovider_gettopiccandidates",
+      "recommendation_mockcandidateprovider_gettrendingcandidates",
+      "recommendation_mockcandidateprovider_getviewerinteractions",
+      "services_api_internal_recommendation_cursor",
+      "services_api_internal_recommendation_cursor_decodecursor",
+      "services_api_internal_recommendation_cursor_encodecursor",
+      "services_api_internal_recommendation_cursor_go_time",
+      "services_api_internal_recommendation_cursor_go_uuid",
+      "services_api_internal_recommendation_diversity",
+      "services_api_internal_recommendation_diversity_newdiversityreranker",
+      "services_api_internal_recommendation_engine_test",
+      "services_api_internal_recommendation_engine_test_benchmarkdiversityreranker",
+      "services_api_internal_recommendation_engine_test_benchmarkscoringengine",
+      "services_api_internal_recommendation_engine_test_go_context",
+      "services_api_internal_recommendation_engine_test_go_post",
+      "services_api_internal_recommendation_engine_test_go_t",
+      "services_api_internal_recommendation_engine_test_go_uuid",
+      "services_api_internal_recommendation_engine_test_testcursorroundtrip",
+      "services_api_internal_recommendation_engine_test_testdiversityreranking",
+      "services_api_internal_recommendation_engine_test_testfeedevaluator",
+      "services_api_internal_recommendation_engine_test_testfreshnessdecay",
+      "services_api_internal_recommendation_evaluator",
+      "services_api_internal_recommendation_evaluator_evaluatefeed",
+      "services_api_internal_recommendation_evaluator_go_post",
+      "services_api_internal_recommendation_evaluator_go_time",
+      "services_api_internal_recommendation_scoring",
+      "services_api_internal_recommendation_scoring_calculateengagementvelocity",
+      "services_api_internal_recommendation_scoring_calculateexplorationscore",
+      "services_api_internal_recommendation_scoring_calculatefreshness",
+      "services_api_internal_recommendation_scoring_calculatelinearscore",
+      "services_api_internal_recommendation_scoring_calculatequalityscore",
+      "services_api_internal_recommendation_scoring_go_time",
+      "services_api_internal_recommendation_types",
+      "services_api_internal_recommendation_types_go_post",
+      "services_api_internal_recommendation_types_go_time",
+      "services_api_internal_recommendation_types_go_uuid"
     ],
     "6": [
       "permission",
@@ -601,6 +556,54 @@
       "services_api_internal_repository_postgres_rbac_go_uuid"
     ],
     "8": [
+      "conn",
+      "logger",
+      "middleware_contextkey",
+      "middleware_memorylimiter",
+      "middleware_memorylimiter_isallowed",
+      "middleware_responsewriterwrapper",
+      "middleware_responsewriterwrapper_flush",
+      "middleware_responsewriterwrapper_hijack",
+      "middleware_responsewriterwrapper_unwrap",
+      "middleware_responsewriterwrapper_writeheader",
+      "mutex",
+      "rawmessage",
+      "readwriter",
+      "realtime_client",
+      "realtime_client_handleinboundevent",
+      "realtime_client_readpump",
+      "realtime_client_writepump",
+      "realtime_hub",
+      "realtime_hub_broadcastall",
+      "realtime_hub_broadcastmessage",
+      "realtime_hub_broadcasttoconversation",
+      "realtime_hub_broadcasttouser",
+      "realtime_hub_run",
+      "realtime_hub_subscribetoconversation",
+      "realtime_hub_unsubscribefromconversation",
+      "realtime_inboundevent",
+      "realtime_outboundevent",
+      "rwmutex",
+      "services_api_internal_middleware_middleware",
+      "services_api_internal_middleware_middleware_authmiddleware",
+      "services_api_internal_middleware_middleware_authmiddlewarewithcache",
+      "services_api_internal_middleware_middleware_go_client",
+      "services_api_internal_middleware_middleware_go_repository",
+      "services_api_internal_middleware_middleware_go_responsewriter",
+      "services_api_internal_middleware_middleware_loggermiddleware",
+      "services_api_internal_middleware_middleware_recoverymiddleware",
+      "services_api_internal_middleware_ratelimit",
+      "services_api_internal_middleware_ratelimit_go_time",
+      "services_api_internal_middleware_ratelimit_ratelimiter",
+      "services_api_internal_realtime_hub",
+      "services_api_internal_realtime_hub_go_context",
+      "services_api_internal_realtime_hub_go_request",
+      "services_api_internal_realtime_hub_go_responsewriter",
+      "services_api_internal_realtime_hub_go_uuid",
+      "services_api_internal_realtime_hub_newhub",
+      "services_api_internal_realtime_hub_servews"
+    ],
+    "9": [
       "apps_web_package",
       "apps_web_package_dependencies",
       "apps_web_package_dependencies_clsx",
@@ -645,7 +648,7 @@
       "types_react_dom",
       "typescript"
     ],
-    "9": [
+    "10": [
       "apps_web_src_app_status_postid_photo_photoindex_page",
       "apps_web_src_app_status_postid_photo_photoindex_page_page",
       "apps_web_src_app_username_status_postid_page",
@@ -681,7 +684,6 @@
       "apps_web_src_components_media_videoplayer",
       "apps_web_src_components_media_videoplayer_videoplayer",
       "apps_web_src_components_media_videoplayer_videoplayerprops",
-      "apps_web_src_components_ui_usernamewithrole_usernamewithrole",
       "apps_web_src_components_virtualized_list_virtualizedfeed",
       "apps_web_src_components_virtualized_list_virtualizedfeed_virtualizedfeedprops",
       "apps_web_src_lib_mediavalidation_x_allowed_media_accept",
@@ -690,51 +692,14 @@
       "apps_web_src_types_index_mediaobject",
       "apps_web_src_types_index_post"
     ],
-    "10": [
-      "conn",
-      "logger",
-      "middleware_contextkey",
-      "middleware_responsewriterwrapper",
-      "middleware_responsewriterwrapper_flush",
-      "middleware_responsewriterwrapper_hijack",
-      "middleware_responsewriterwrapper_unwrap",
-      "middleware_responsewriterwrapper_writeheader",
-      "rawmessage",
-      "readwriter",
-      "realtime_client",
-      "realtime_client_handleinboundevent",
-      "realtime_client_readpump",
-      "realtime_client_writepump",
-      "realtime_hub",
-      "realtime_hub_broadcastall",
-      "realtime_hub_broadcastmessage",
-      "realtime_hub_broadcasttoconversation",
-      "realtime_hub_broadcasttouser",
-      "realtime_hub_run",
-      "realtime_hub_subscribetoconversation",
-      "realtime_hub_unsubscribefromconversation",
-      "realtime_inboundevent",
-      "realtime_outboundevent",
-      "rwmutex",
-      "services_api_internal_middleware_middleware",
-      "services_api_internal_middleware_middleware_authmiddleware",
-      "services_api_internal_middleware_middleware_authmiddlewarewithcache",
-      "services_api_internal_middleware_middleware_go_client",
-      "services_api_internal_middleware_middleware_go_repository",
-      "services_api_internal_middleware_middleware_go_responsewriter",
-      "services_api_internal_middleware_middleware_loggermiddleware",
-      "services_api_internal_middleware_middleware_recoverymiddleware",
-      "services_api_internal_realtime_hub",
-      "services_api_internal_realtime_hub_go_context",
-      "services_api_internal_realtime_hub_go_request",
-      "services_api_internal_realtime_hub_go_responsewriter",
-      "services_api_internal_realtime_hub_go_uuid",
-      "services_api_internal_realtime_hub_newhub",
-      "services_api_internal_realtime_hub_servews"
-    ],
     "11": [
       "apps_web_src_app_bookmarks_page",
       "apps_web_src_app_bookmarks_page_bookmarkspage",
+      "apps_web_src_app_messages_page",
+      "apps_web_src_app_messages_page_messagescontent",
+      "apps_web_src_app_messages_page_messagespage",
+      "apps_web_src_app_notifications_page",
+      "apps_web_src_app_notifications_page_notificationspage",
       "apps_web_src_app_page",
       "apps_web_src_app_page_encodefeedcursor",
       "apps_web_src_app_page_feedresponse",
@@ -749,15 +714,11 @@
       "apps_web_src_app_settings_page",
       "apps_web_src_app_settings_page_settingspage",
       "apps_web_src_app_settings_page_settingssection",
-      "apps_web_src_components_common_verifiedbadge",
-      "apps_web_src_components_common_verifiedbadge_verifiedbadge",
-      "apps_web_src_components_common_verifiedbadge_verifiedbadgeprops",
+      "apps_web_src_components_auth_authmodal_authmodal",
       "apps_web_src_components_composer_mobilecomposermodal",
       "apps_web_src_components_composer_mobilecomposermodal_mobilecomposermodal",
       "apps_web_src_components_composer_mobilecomposermodal_mobilecomposermodalprops",
       "apps_web_src_components_composer_mobilecomposermodal_stagedattachment",
-      "apps_web_src_components_composer_postcomposer_postcomposer",
-      "apps_web_src_components_layout_leftnavrail_leftnavrail",
       "apps_web_src_components_layout_mobilebottomnav",
       "apps_web_src_components_layout_mobilebottomnav_mobilebottomnav",
       "apps_web_src_components_layout_mobilebottomnav_mobilebottomnavprops",
@@ -765,18 +726,24 @@
       "apps_web_src_components_layout_mobiledrawer_mobiledrawer",
       "apps_web_src_components_layout_mobiledrawer_mobiledrawerprops",
       "apps_web_src_components_layout_rightsidebar_rightsidebar",
-      "apps_web_src_components_subscription_upgrademodalcontext_useupgrademodal",
       "apps_web_src_components_virtualized_list_virtualizedfeed_virtualizedfeed",
       "apps_web_src_lib_query_keys",
       "apps_web_src_lib_query_keys_feedkeys",
-      "apps_web_src_lib_query_keys_searchkeys"
+      "apps_web_src_lib_query_keys_searchkeys",
+      "apps_web_src_lib_userealtime_userealtime"
     ],
     "12": [
       "client",
       "config",
-      "middleware_memorylimiter",
-      "middleware_memorylimiter_isallowed",
-      "mutex",
+      "handler_checkoutrequest",
+      "handler_handler_buildorderstatus",
+      "handler_handler_checkoutsubscription",
+      "handler_handler_closeorder",
+      "handler_handler_getactivesubscriptionorder",
+      "handler_handler_getsubscriptionorder",
+      "handler_handler_handlecryptowebhook",
+      "handler_handler_plandisplayname",
+      "handler_handler_settleorder",
       "payment_cryptocurrency",
       "payment_cryptogateway",
       "payment_cryptogateway_createinvoice",
@@ -790,13 +757,16 @@
       "payment_cryptoinvoice",
       "payment_cryptooperation",
       "payment_webhookpayload",
-      "services_api_internal_middleware_ratelimit",
-      "services_api_internal_middleware_ratelimit_go_time",
-      "services_api_internal_middleware_ratelimit_ratelimiter",
+      "services_api_internal_handler_payments",
+      "services_api_internal_handler_payments_expired",
+      "services_api_internal_handler_payments_go_uuid",
+      "services_api_internal_handler_payments_invoicefrommetadata",
+      "services_api_internal_handler_payments_lockorder",
+      "services_api_internal_handler_payments_tounix",
       "services_api_internal_payment_gateway",
       "services_api_internal_payment_gateway_firstnonempty",
       "services_api_internal_payment_gateway_gatewayerrormessage",
-      "services_api_internal_payment_gateway_getdefaultcurrencies",
+      "services_api_internal_payment_gateway_go_uuid",
       "services_api_internal_payment_gateway_istruthy",
       "services_api_internal_payment_gateway_newcryptogateway",
       "time",
@@ -814,13 +784,23 @@
       "apps_web_src_components_common_tierpresentation_tierbadge",
       "apps_web_src_components_common_tierpresentation_tierbadgeprops",
       "apps_web_src_components_common_tierpresentation_tierkey",
+      "apps_web_src_lib_userealtime",
+      "apps_web_src_lib_userealtime_realtimecontext",
+      "apps_web_src_lib_userealtime_realtimecontexttype",
+      "apps_web_src_lib_userealtime_realtimeprovider",
+      "apps_web_src_lib_userealtime_toastnotification",
+      "apps_web_src_lib_userealtime_typingevent",
       "apps_web_src_types_index",
       "apps_web_src_types_index_adminoverview",
       "apps_web_src_types_index_auditlog",
+      "apps_web_src_types_index_authresponse",
+      "apps_web_src_types_index_conversation",
       "apps_web_src_types_index_entitlements",
       "apps_web_src_types_index_followrequest",
       "apps_web_src_types_index_membershipentitlement",
+      "apps_web_src_types_index_message",
       "apps_web_src_types_index_newpostsresponse",
+      "apps_web_src_types_index_notification",
       "apps_web_src_types_index_permission",
       "apps_web_src_types_index_role",
       "apps_web_src_types_index_socialrelationship",
@@ -832,64 +812,41 @@
       "apps_web_src_types_index_verificationbadge"
     ],
     "14": [
-      "apps_web_src_app_explore_page",
-      "apps_web_src_app_explore_page_explorepage",
-      "apps_web_src_app_username_followers_page",
-      "apps_web_src_app_username_followers_page_followerspage",
-      "apps_web_src_app_username_following_page",
-      "apps_web_src_app_username_following_page_followingpage",
-      "apps_web_src_app_username_page",
-      "apps_web_src_app_username_page_userprofilepage",
-      "apps_web_src_components_auth_authmodal",
-      "apps_web_src_components_auth_authmodal_authmodal",
-      "apps_web_src_components_auth_authmodal_authmodalprops",
-      "apps_web_src_components_layout_rightsidebar",
-      "apps_web_src_components_layout_rightsidebar_rightsidebarprops",
-      "apps_web_src_components_profile_editprofilemodal",
-      "apps_web_src_components_profile_editprofilemodal_editprofilemodal",
-      "apps_web_src_components_profile_editprofilemodal_editprofilemodalprops",
-      "apps_web_src_lib_api",
-      "apps_web_src_lib_api_apirequest",
-      "apps_web_src_lib_api_getapibase",
-      "apps_web_src_lib_api_getstoredtoken",
-      "apps_web_src_lib_api_getstoreduser",
-      "apps_web_src_lib_api_setstoredtoken",
-      "apps_web_src_lib_api_setstoreduser",
-      "apps_web_src_lib_usecurrentuser",
-      "apps_web_src_lib_usecurrentuser_usecurrentuser",
-      "apps_web_src_types_index_authresponse",
-      "apps_web_src_types_index_user"
+      "apps_web_src_app_layout",
+      "apps_web_src_app_layout_metadata",
+      "apps_web_src_app_layout_rootlayout",
+      "apps_web_src_components_common_verifiedbadge",
+      "apps_web_src_components_common_verifiedbadge_verifiedbadge",
+      "apps_web_src_components_common_verifiedbadge_verifiedbadgeprops",
+      "apps_web_src_components_composer_postcomposer",
+      "apps_web_src_components_composer_postcomposer_postcomposer",
+      "apps_web_src_components_composer_postcomposer_postcomposerprops",
+      "apps_web_src_components_composer_postcomposer_stagedattachment",
+      "apps_web_src_components_layout_appshell_appshell",
+      "apps_web_src_components_media_mediaviewercontext_mediaviewerprovider",
+      "apps_web_src_components_media_photoviewermodal_photoviewermodal",
+      "apps_web_src_components_providers_appproviders",
+      "apps_web_src_components_providers_appproviders_appproviders",
+      "apps_web_src_components_providers_appproviders_nextauthsync",
+      "apps_web_src_components_subscription_upgrademodal",
+      "apps_web_src_components_subscription_upgrademodal_cryptocurrencyoption",
+      "apps_web_src_components_subscription_upgrademodal_num",
+      "apps_web_src_components_subscription_upgrademodal_parsedroleplan",
+      "apps_web_src_components_subscription_upgrademodal_paymentorderstatus",
+      "apps_web_src_components_subscription_upgrademodal_role_metadata",
+      "apps_web_src_components_subscription_upgrademodal_upgrademodal",
+      "apps_web_src_components_subscription_upgrademodalcontext",
+      "apps_web_src_components_subscription_upgrademodalcontext_upgrademodalcontext",
+      "apps_web_src_components_subscription_upgrademodalcontext_upgrademodalcontexttype",
+      "apps_web_src_components_subscription_upgrademodalcontext_upgrademodalprovider",
+      "apps_web_src_components_subscription_upgrademodalcontext_useupgrademodal",
+      "apps_web_src_lib_mediavalidation",
+      "apps_web_src_lib_mediavalidation_filtervalidmediafiles",
+      "apps_web_src_lib_mediavalidation_isvalidmediafile",
+      "apps_web_src_lib_mediavalidation_x_allowed_media_extensions",
+      "apps_web_src_types_index_membershipplan"
     ],
     "15": [
-      "apps_web_src_app_messages_page",
-      "apps_web_src_app_messages_page_messagescontent",
-      "apps_web_src_app_messages_page_messagespage",
-      "apps_web_src_app_notifications_page",
-      "apps_web_src_app_notifications_page_notificationspage",
-      "apps_web_src_components_composer_composercontext",
-      "apps_web_src_components_composer_composercontext_composercontext",
-      "apps_web_src_components_composer_composercontext_composercontextvalue",
-      "apps_web_src_components_composer_composercontext_composerprovider",
-      "apps_web_src_components_composer_composercontext_usecomposer",
-      "apps_web_src_components_layout_appshell",
-      "apps_web_src_components_layout_leftnavrail",
-      "apps_web_src_components_layout_leftnavrail_leftnavrailprops",
-      "apps_web_src_components_layout_routetransition",
-      "apps_web_src_components_layout_routetransition_routetransition",
-      "apps_web_src_lib_userealtime",
-      "apps_web_src_lib_userealtime_realtimecontext",
-      "apps_web_src_lib_userealtime_realtimecontexttype",
-      "apps_web_src_lib_userealtime_toastnotification",
-      "apps_web_src_lib_userealtime_typingevent",
-      "apps_web_src_lib_userealtime_userealtime",
-      "apps_web_src_lib_utils",
-      "apps_web_src_lib_utils_cn",
-      "apps_web_src_lib_utils_formatfulltimestamp",
-      "apps_web_src_types_index_conversation",
-      "apps_web_src_types_index_message",
-      "apps_web_src_types_index_notification"
-    ],
-    "16": [
       "apps_web_tsconfig",
       "apps_web_tsconfig_compileroptions",
       "apps_web_tsconfig_compileroptions_allowjs",
@@ -917,6 +874,34 @@
       "ref_node_modules",
       "ref_ts",
       "ref_tsx"
+    ],
+    "16": [
+      "apps_web_src_components_auth_authmodal",
+      "apps_web_src_components_auth_authmodal_authmodalprops",
+      "apps_web_src_components_composer_composercontext",
+      "apps_web_src_components_composer_composercontext_composercontext",
+      "apps_web_src_components_composer_composercontext_composercontextvalue",
+      "apps_web_src_components_composer_composercontext_composerprovider",
+      "apps_web_src_components_layout_rightsidebar",
+      "apps_web_src_components_layout_rightsidebar_rightsidebarprops",
+      "apps_web_src_components_profile_editprofilemodal",
+      "apps_web_src_components_profile_editprofilemodal_editprofilemodal",
+      "apps_web_src_components_profile_editprofilemodal_editprofilemodalprops",
+      "apps_web_src_components_search_searchbardropdown",
+      "apps_web_src_components_search_searchbardropdown_recentsearchitem",
+      "apps_web_src_components_search_searchbardropdown_searchbardropdown",
+      "apps_web_src_components_search_searchbardropdown_searchbardropdownprops",
+      "apps_web_src_components_search_searchbardropdown_suggestiondata",
+      "apps_web_src_lib_api",
+      "apps_web_src_lib_api_apirequest",
+      "apps_web_src_lib_api_getapibase",
+      "apps_web_src_lib_api_getstoredtoken",
+      "apps_web_src_lib_api_getstoreduser",
+      "apps_web_src_lib_api_setstoredtoken",
+      "apps_web_src_lib_api_setstoreduser",
+      "apps_web_src_lib_usecurrentuser",
+      "apps_web_src_types_index_trendingtopic",
+      "apps_web_src_types_index_user"
     ],
     "17": [
       "feedcursor",
@@ -971,30 +956,48 @@
       "services_api_internal_repository_memory_go_searchfilterparams"
     ],
     "19": [
-      "apps_web_src_app_layout",
-      "apps_web_src_app_layout_metadata",
-      "apps_web_src_app_layout_rootlayout",
-      "apps_web_src_components_layout_appshell_appshell",
-      "apps_web_src_components_media_mediaviewercontext_mediaviewerprovider",
-      "apps_web_src_components_media_photoviewermodal_photoviewermodal",
-      "apps_web_src_components_providers_appproviders",
-      "apps_web_src_components_providers_appproviders_appproviders",
-      "apps_web_src_components_providers_appproviders_nextauthsync",
-      "apps_web_src_components_subscription_upgrademodal",
-      "apps_web_src_components_subscription_upgrademodal_cryptocurrencyoption",
-      "apps_web_src_components_subscription_upgrademodal_num",
-      "apps_web_src_components_subscription_upgrademodal_parsedroleplan",
-      "apps_web_src_components_subscription_upgrademodal_paymentorderstatus",
-      "apps_web_src_components_subscription_upgrademodal_role_metadata",
-      "apps_web_src_components_subscription_upgrademodal_upgrademodal",
-      "apps_web_src_components_subscription_upgrademodalcontext",
-      "apps_web_src_components_subscription_upgrademodalcontext_upgrademodalcontext",
-      "apps_web_src_components_subscription_upgrademodalcontext_upgrademodalcontexttype",
-      "apps_web_src_components_subscription_upgrademodalcontext_upgrademodalprovider",
-      "apps_web_src_lib_userealtime_realtimeprovider",
-      "apps_web_src_types_index_membershipplan"
+      "apps_web_src_app_explore_page",
+      "apps_web_src_app_explore_page_explorepage",
+      "apps_web_src_app_username_followers_page",
+      "apps_web_src_app_username_followers_page_followerspage",
+      "apps_web_src_app_username_following_page",
+      "apps_web_src_app_username_following_page_followingpage",
+      "apps_web_src_app_username_page",
+      "apps_web_src_app_username_page_userprofilepage",
+      "apps_web_src_components_composer_composercontext_usecomposer",
+      "apps_web_src_components_layout_appshell",
+      "apps_web_src_components_layout_leftnavrail",
+      "apps_web_src_components_layout_leftnavrail_leftnavrail",
+      "apps_web_src_components_layout_leftnavrail_leftnavrailprops",
+      "apps_web_src_components_layout_routetransition",
+      "apps_web_src_components_layout_routetransition_routetransition",
+      "apps_web_src_components_ui_usernamewithrole_usernamewithrole",
+      "apps_web_src_lib_usecurrentuser_usecurrentuser",
+      "apps_web_src_lib_utils",
+      "apps_web_src_lib_utils_cn",
+      "apps_web_src_lib_utils_formatfulltimestamp"
     ],
     "20": [
+      "config_config",
+      "image",
+      "media_mediaservice",
+      "media_mediaservice_compressjpeg",
+      "media_mediaservice_compresspngtojpeg",
+      "media_mediaservice_processandupload",
+      "media_mediaservice_savelocalfallback",
+      "reader",
+      "services_api_internal_config_config",
+      "services_api_internal_config_config_getenv",
+      "services_api_internal_config_config_getenvint",
+      "services_api_internal_config_config_load",
+      "services_api_internal_media_media",
+      "services_api_internal_media_media_go_client",
+      "services_api_internal_media_media_go_context",
+      "services_api_internal_media_media_go_uuid",
+      "services_api_internal_media_media_newmediaservice",
+      "services_api_internal_media_media_resizeifneeded"
+    ],
+    "21": [
       "apps_web_src_app_bookmarks_loading",
       "apps_web_src_app_bookmarks_loading_loading",
       "apps_web_src_app_loading",
@@ -1011,7 +1014,7 @@
       "apps_web_src_components_skeletons_profileskeleton",
       "apps_web_src_components_skeletons_profileskeleton_profileskeleton"
     ],
-    "21": [
+    "22": [
       "handler_admindeletepostrequest",
       "handler_assignmembershiprequest",
       "handler_createrolerequest",
@@ -1027,7 +1030,7 @@
       "services_api_internal_handler_admin_go_time",
       "services_api_internal_handler_admin_go_uuid"
     ],
-    "22": [
+    "23": [
       "apps_web_src_app_explore_loading",
       "apps_web_src_app_explore_loading_loading",
       "apps_web_src_app_messages_loading",
@@ -1040,20 +1043,6 @@
       "apps_web_src_components_skeletons_otherskeletons_exploreskeleton",
       "apps_web_src_components_skeletons_otherskeletons_messagesskeleton",
       "apps_web_src_components_skeletons_otherskeletons_notificationsskeleton"
-    ],
-    "23": [
-      "apps_web_src_components_search_searchbardropdown",
-      "apps_web_src_components_search_searchbardropdown_recentsearchitem",
-      "apps_web_src_components_search_searchbardropdown_searchbardropdown",
-      "apps_web_src_components_search_searchbardropdown_searchbardropdownprops",
-      "apps_web_src_components_search_searchbardropdown_suggestiondata",
-      "apps_web_src_components_ui_usernamewithrole",
-      "apps_web_src_components_ui_usernamewithrole_usernamewithroleprops",
-      "apps_web_src_types_index_trendingtopic",
-      "apps_web_src_utils_rolestyles",
-      "apps_web_src_utils_rolestyles_getrolebadge",
-      "apps_web_src_utils_rolestyles_getroledisplayname",
-      "apps_web_src_utils_rolestyles_getrolenameclass"
     ],
     "24": [
       "handler_createpostrequest",
@@ -1080,6 +1069,17 @@
       "apps_web_src_components_media_videoprogressbar_videoprogressbarprops"
     ],
     "26": [
+      "diversityreranker",
+      "feedoptions",
+      "feedresult",
+      "recommendation_candidateprovider",
+      "recommendation_engine",
+      "recommendation_engine_generatefeed",
+      "services_api_internal_recommendation_engine",
+      "services_api_internal_recommendation_engine_go_context",
+      "services_api_internal_recommendation_engine_newengine"
+    ],
+    "27": [
       "repository_memoryrepository_assignusermembership",
       "repository_memoryrepository_createsubscription",
       "repository_memoryrepository_getactivesubscription",
@@ -1090,7 +1090,7 @@
       "services_api_internal_repository_memory_go_subscription",
       "usermembership"
     ],
-    "27": [
+    "28": [
       "repository_memoryrepository_createrole",
       "repository_memoryrepository_getallroles",
       "repository_memoryrepository_getrolebyid",
@@ -1100,15 +1100,6 @@
       "repository_memoryrepository_haspermission",
       "repository_memoryrepository_updaterole",
       "role"
-    ],
-    "28": [
-      "apps_web_src_components_composer_postcomposer",
-      "apps_web_src_components_composer_postcomposer_postcomposerprops",
-      "apps_web_src_components_composer_postcomposer_stagedattachment",
-      "apps_web_src_lib_mediavalidation",
-      "apps_web_src_lib_mediavalidation_filtervalidmediafiles",
-      "apps_web_src_lib_mediavalidation_isvalidmediafile",
-      "apps_web_src_lib_mediavalidation_x_allowed_media_extensions"
     ],
     "29": [
       "invoice",
@@ -1147,68 +1138,71 @@
       "trendingtopic"
     ],
     "33": [
+      "apps_web_src_components_ui_usernamewithrole",
+      "apps_web_src_components_ui_usernamewithrole_usernamewithroleprops",
+      "apps_web_src_utils_rolestyles",
+      "apps_web_src_utils_rolestyles_getrolebadge",
+      "apps_web_src_utils_rolestyles_getroledisplayname",
+      "apps_web_src_utils_rolestyles_getrolenameclass"
+    ],
+    "34": [
       "apps_web_src_app_api_auth_nextauth_route",
       "apps_web_src_app_api_auth_nextauth_route_getdynamicauthoptions",
       "apps_web_src_app_api_auth_nextauth_route_handler",
       "apps_web_src_lib_auth",
       "apps_web_src_lib_auth_authoptions"
     ],
-    "34": [
+    "35": [
       "apps_web_src_components_layout_toploadingbar",
       "apps_web_src_components_layout_toploadingbar_routespinner",
       "apps_web_src_components_layout_toploadingbar_routespinnerprops",
       "apps_web_src_components_layout_toploadingbar_toploadingbar",
       "apps_web_src_components_layout_toploadingbar_toploadingbarinner"
     ],
-    "35": [
+    "36": [
       "entitlements",
       "repository_postgresrepository_createsubscription",
       "repository_postgresrepository_getactivesubscription",
       "repository_postgresrepository_getuserentitlements",
       "subscription"
     ],
-    "36": [
+    "37": [
       "services_api_internal_middleware_concurrency",
       "services_api_internal_middleware_concurrency_concurrencylimiter",
       "services_api_internal_middleware_concurrency_getactiverequests",
       "services_api_internal_middleware_concurrency_maxbodysizemiddleware",
       "services_api_internal_middleware_concurrency_requesttimeoutmiddleware"
     ],
-    "37": [
-      "apps_web_src_middleware",
-      "apps_web_src_middleware_config",
-      "apps_web_src_middleware_middleware"
-    ],
     "38": [
-      "duration",
-      "repository_postgresrepository_cleanupoldoutboxevents",
-      "repository_postgresrepository_dismissuserrecommendation"
-    ],
-    "39": [
-      "message",
-      "repository_postgresrepository_createmessage",
-      "repository_postgresrepository_getmessages"
-    ],
-    "40": [
-      "outboxevent",
-      "repository_postgresrepository_createoutboxevent",
-      "repository_postgresrepository_getpendingoutboxevents"
-    ],
-    "41": [
       "auditlog",
       "repository_memoryrepository_createauditlog",
       "repository_memoryrepository_getauditlogs",
       "repository_memoryrepository_getsecurityauditlogs"
     ],
+    "39": [
+      "apps_web_src_middleware",
+      "apps_web_src_middleware_config",
+      "apps_web_src_middleware_middleware"
+    ],
+    "40": [
+      "duration",
+      "repository_postgresrepository_cleanupoldoutboxevents",
+      "repository_postgresrepository_dismissuserrecommendation"
+    ],
+    "41": [
+      "message",
+      "repository_postgresrepository_createmessage",
+      "repository_postgresrepository_getmessages"
+    ],
     "42": [
+      "outboxevent",
+      "repository_postgresrepository_createoutboxevent",
+      "repository_postgresrepository_getpendingoutboxevents"
+    ],
+    "43": [
       "repository_memoryrepository_cleanupoldoutboxevents",
       "repository_memoryrepository_dismissuserrecommendation",
       "services_api_internal_repository_memory_go_duration"
-    ],
-    "43": [
-      "repository_memoryrepository_createverificationapplication",
-      "repository_memoryrepository_getverificationapplication",
-      "services_api_internal_repository_memory_go_verificationapplication"
     ],
     "44": [
       "repository_memoryrepository_createmediaobject",
@@ -1221,364 +1215,375 @@
       "services_api_internal_repository_memory_go_message"
     ],
     "46": [
+      "repository_memoryrepository_createverificationapplication",
+      "repository_memoryrepository_getverificationapplication",
+      "services_api_internal_repository_memory_go_verificationapplication"
+    ],
+    "47": [
       "repository_memoryrepository_getusertopicpreferences",
       "repository_memoryrepository_updateusertopicpreference",
       "services_api_internal_repository_memory_go_usertopicpreference"
     ],
-    "47": [
+    "48": [
       "repository_postgresrepository_assignverificationbadge",
       "repository_postgresrepository_getuserbadges",
       "verificationbadge"
     ],
-    "48": [
+    "49": [
       "repository_postgresrepository_createsession",
       "repository_postgresrepository_getsessionbytokenhash",
       "session"
     ],
-    "49": [
+    "50": [
       "repository_postgresrepository_getadminposts",
       "services_api_internal_repository_postgres_rbac_go_adminpostfilter",
       "services_api_internal_repository_postgres_rbac_go_post"
     ],
-    "50": [
+    "51": [
       "repository_postgresrepository_getsubscriptionplanbyid",
       "repository_postgresrepository_getsubscriptionplans",
       "subscriptionplan"
     ],
-    "51": [
+    "52": [
       "scripts_test_all_apis",
       "scripts_test_all_apis_call_api",
       "scripts_test_all_apis_run"
     ],
-    "52": [
+    "53": [
+      "adminoverview",
+      "repository_memoryrepository_getadminoverview"
+    ],
+    "54": [
       "apps_web_next_config",
       "apps_web_next_config_nextconfig"
     ],
-    "53": [
+    "55": [
       "apps_web_next_env_d",
       "apps_web_next_env_d_rationale_4"
     ],
-    "54": [
+    "56": [
       "apps_web_tailwind_config",
       "apps_web_tailwind_config_config"
     ],
-    "55": [
+    "57": [
       "counterreconciliationresult",
       "repository_postgresrepository_reconcilecounters"
     ],
-    "56": [
+    "58": [
       "feedfeedback",
       "repository_postgresrepository_recordfeedfeedback"
     ],
-    "57": [
+    "59": [
       "feedimpression",
       "repository_postgresrepository_recordfeedimpressions"
     ],
-    "58": [
+    "60": [
       "rankingweights",
       "repository_postgresrepository_getactiveweights"
     ],
-    "59": [
+    "61": [
       "repository_memoryrepository_reconcilecounters",
       "services_api_internal_repository_memory_go_counterreconciliationresult"
     ],
-    "60": [
+    "62": [
       "scripts_backup_db",
       "scripts_backup_db_sh__entry"
     ],
-    "61": [
+    "63": [
       "scripts_benchmark_search",
       "scripts_benchmark_search_measure_endpoint"
     ],
-    "62": [
+    "64": [
       "scripts_monitoring",
       "scripts_monitoring_sh__entry"
     ],
-    "63": [
+    "65": [
       "apps_web_postcss_config"
     ],
-    "64": [
-      "pkg_github_com_x_reconstruction_api"
-    ],
-    "65": [
-      "plisioservice"
-    ],
     "66": [
-      "repository"
+      "cryptoinvoice"
     ],
     "67": [
-      "scripts_dev"
+      "cryptooperation"
     ],
     "68": [
-      "scripts_load_test_spike"
+      "pkg_github_com_x_reconstruction_api"
     ],
     "69": [
-      "scripts_test"
+      "plisioservice"
     ],
     "70": [
-      "scripts_test_auth"
+      "repository"
     ],
     "71": [
-      "scripts_test_auth_flow"
+      "scripts_dev"
     ],
     "72": [
-      "scripts_test_media_viewer"
+      "scripts_load_test_spike"
     ],
     "73": [
-      "services_api_internal_domain_models_go_membershipentitlement"
+      "scripts_test"
     ],
     "74": [
-      "services_api_internal_domain_models_go_message"
+      "scripts_test_auth"
     ],
     "75": [
-      "services_api_internal_handler_admin_go_request"
+      "scripts_test_auth_flow"
     ],
     "76": [
-      "services_api_internal_handler_admin_go_responsewriter"
+      "scripts_test_media_viewer"
     ],
     "77": [
-      "services_api_internal_handler_handler_go_mediaobject"
+      "services_api_internal_domain_models_go_membershipentitlement"
     ],
     "78": [
-      "services_api_internal_handler_handler_go_paymentorder"
+      "services_api_internal_domain_models_go_message"
     ],
     "79": [
-      "services_api_internal_handler_handler_go_request"
+      "services_api_internal_handler_admin_go_request"
     ],
     "80": [
-      "services_api_internal_handler_handler_go_subscription"
+      "services_api_internal_handler_admin_go_responsewriter"
     ],
     "81": [
-      "services_api_internal_handler_payments_go_request"
+      "services_api_internal_handler_handler_go_mediaobject"
     ],
     "82": [
-      "services_api_internal_handler_payments_go_responsewriter"
+      "services_api_internal_handler_handler_go_paymentorder"
     ],
     "83": [
-      "services_api_internal_handler_recommendation_test_go_mux"
+      "services_api_internal_handler_handler_go_request"
     ],
     "84": [
-      "services_api_internal_handler_recommendation_test_go_t"
+      "services_api_internal_handler_handler_go_subscription"
     ],
     "85": [
-      "services_api_internal_media_media_go_mediaobject"
+      "services_api_internal_handler_payments_go_paymentorder"
     ],
     "86": [
-      "services_api_internal_middleware_authorization_go_handler"
+      "services_api_internal_handler_payments_go_request"
     ],
     "87": [
-      "services_api_internal_middleware_middleware_go_conn"
+      "services_api_internal_handler_payments_go_responsewriter"
     ],
     "88": [
-      "services_api_internal_middleware_middleware_go_user"
+      "services_api_internal_handler_recommendation_test_go_mux"
     ],
     "89": [
-      "services_api_internal_payment_gateway_go_client"
+      "services_api_internal_handler_recommendation_test_go_t"
     ],
     "90": [
-      "services_api_internal_payment_gateway_go_context"
+      "services_api_internal_media_media_go_mediaobject"
     ],
     "91": [
-      "services_api_internal_payment_gateway_go_time"
+      "services_api_internal_middleware_authorization_go_handler"
     ],
     "92": [
-      "services_api_internal_payment_gateway_go_uuid"
+      "services_api_internal_middleware_middleware_go_conn"
     ],
     "93": [
-      "services_api_internal_payment_plisio_go_client"
+      "services_api_internal_middleware_middleware_go_user"
     ],
     "94": [
-      "services_api_internal_payment_plisio_go_context"
+      "services_api_internal_payment_gateway_go_client"
     ],
     "95": [
-      "services_api_internal_payment_plisio_go_rawmessage"
+      "services_api_internal_payment_gateway_go_context"
     ],
     "96": [
-      "services_api_internal_payment_plisio_go_uuid"
+      "services_api_internal_payment_gateway_go_time"
     ],
     "97": [
-      "services_api_internal_realtime_hub_go_conn"
+      "services_api_internal_payment_plisio_go_client"
     ],
     "98": [
-      "services_api_internal_realtime_hub_go_rawmessage"
+      "services_api_internal_payment_plisio_go_context"
     ],
     "99": [
-      "services_api_internal_realtime_hub_go_rwmutex"
+      "services_api_internal_payment_plisio_go_rawmessage"
     ],
     "100": [
-      "services_api_internal_repository_memory_go_adminoverview"
+      "services_api_internal_payment_plisio_go_uuid"
     ],
     "101": [
-      "services_api_internal_repository_memory_go_adminpostfilter"
+      "services_api_internal_realtime_hub_go_conn"
     ],
     "102": [
-      "services_api_internal_repository_memory_go_auditlog"
+      "services_api_internal_realtime_hub_go_rawmessage"
     ],
     "103": [
-      "services_api_internal_repository_memory_go_membershipentitlement"
+      "services_api_internal_realtime_hub_go_rwmutex"
     ],
     "104": [
-      "services_api_internal_repository_memory_go_membershipplan"
+      "services_api_internal_repository_memory_go_adminoverview"
     ],
     "105": [
-      "services_api_internal_repository_memory_go_permission"
+      "services_api_internal_repository_memory_go_adminpostfilter"
     ],
     "106": [
-      "services_api_internal_repository_memory_go_role"
+      "services_api_internal_repository_memory_go_auditlog"
     ],
     "107": [
-      "services_api_internal_repository_memory_go_rwmutex"
+      "services_api_internal_repository_memory_go_membershipentitlement"
     ],
     "108": [
-      "services_api_internal_repository_memory_go_usermembership"
+      "services_api_internal_repository_memory_go_membershipplan"
     ],
     "109": [
-      "services_api_internal_repository_postgres_go_context"
+      "services_api_internal_repository_memory_go_permission"
     ],
     "110": [
-      "services_api_internal_repository_postgres_go_conversation"
+      "services_api_internal_repository_memory_go_role"
     ],
     "111": [
-      "services_api_internal_repository_postgres_go_counterreconciliationresult"
+      "services_api_internal_repository_memory_go_rwmutex"
     ],
     "112": [
-      "services_api_internal_repository_postgres_go_duration"
+      "services_api_internal_repository_memory_go_usermembership"
     ],
     "113": [
-      "services_api_internal_repository_postgres_go_entitlements"
+      "services_api_internal_repository_postgres_go_context"
     ],
     "114": [
-      "services_api_internal_repository_postgres_go_feedcursor"
+      "services_api_internal_repository_postgres_go_conversation"
     ],
     "115": [
-      "services_api_internal_repository_postgres_go_feedfeedback"
+      "services_api_internal_repository_postgres_go_counterreconciliationresult"
     ],
     "116": [
-      "services_api_internal_repository_postgres_go_feedimpression"
+      "services_api_internal_repository_postgres_go_duration"
     ],
     "117": [
-      "services_api_internal_repository_postgres_go_followrequest"
+      "services_api_internal_repository_postgres_go_entitlements"
     ],
     "118": [
-      "services_api_internal_repository_postgres_go_invoice"
+      "services_api_internal_repository_postgres_go_feedcursor"
     ],
     "119": [
-      "services_api_internal_repository_postgres_go_mediaobject"
+      "services_api_internal_repository_postgres_go_feedfeedback"
     ],
     "120": [
-      "services_api_internal_repository_postgres_go_message"
+      "services_api_internal_repository_postgres_go_feedimpression"
     ],
     "121": [
-      "services_api_internal_repository_postgres_go_notification"
+      "services_api_internal_repository_postgres_go_followrequest"
     ],
     "122": [
-      "services_api_internal_repository_postgres_go_outboxevent"
+      "services_api_internal_repository_postgres_go_invoice"
     ],
     "123": [
-      "services_api_internal_repository_postgres_go_paymentorder"
+      "services_api_internal_repository_postgres_go_mediaobject"
     ],
     "124": [
-      "services_api_internal_repository_postgres_go_post"
+      "services_api_internal_repository_postgres_go_message"
     ],
     "125": [
-      "services_api_internal_repository_postgres_go_rankingweights"
+      "services_api_internal_repository_postgres_go_notification"
     ],
     "126": [
-      "services_api_internal_repository_postgres_go_recentsearch"
+      "services_api_internal_repository_postgres_go_outboxevent"
     ],
     "127": [
-      "services_api_internal_repository_postgres_go_searchfilterparams"
+      "services_api_internal_repository_postgres_go_paymentorder"
     ],
     "128": [
-      "services_api_internal_repository_postgres_go_session"
+      "services_api_internal_repository_postgres_go_post"
     ],
     "129": [
-      "services_api_internal_repository_postgres_go_socialrelationship"
+      "services_api_internal_repository_postgres_go_rankingweights"
     ],
     "130": [
-      "services_api_internal_repository_postgres_go_subscription"
+      "services_api_internal_repository_postgres_go_recentsearch"
     ],
     "131": [
-      "services_api_internal_repository_postgres_go_subscriptionplan"
+      "services_api_internal_repository_postgres_go_searchfilterparams"
     ],
     "132": [
-      "services_api_internal_repository_postgres_go_time"
+      "services_api_internal_repository_postgres_go_session"
     ],
     "133": [
-      "services_api_internal_repository_postgres_go_trendingtopic"
+      "services_api_internal_repository_postgres_go_socialrelationship"
     ],
     "134": [
-      "services_api_internal_repository_postgres_go_user"
+      "services_api_internal_repository_postgres_go_subscription"
     ],
     "135": [
-      "services_api_internal_repository_postgres_go_userrecommendation"
+      "services_api_internal_repository_postgres_go_subscriptionplan"
     ],
     "136": [
-      "services_api_internal_repository_postgres_go_usertopicpreference"
+      "services_api_internal_repository_postgres_go_time"
     ],
     "137": [
-      "services_api_internal_repository_postgres_go_uuid"
+      "services_api_internal_repository_postgres_go_trendingtopic"
     ],
     "138": [
-      "services_api_internal_repository_postgres_go_verificationapplication"
+      "services_api_internal_repository_postgres_go_user"
     ],
     "139": [
-      "services_api_internal_repository_postgres_go_verificationbadge"
+      "services_api_internal_repository_postgres_go_userrecommendation"
     ],
     "140": [
-      "services_api_internal_repository_postgres_rbac"
+      "services_api_internal_repository_postgres_go_usertopicpreference"
     ],
     "141": [
-      "systemhealth"
+      "services_api_internal_repository_postgres_go_uuid"
     ],
     "142": [
-      "adminoverview",
-      "repository_memoryrepository_getadminoverview"
+      "services_api_internal_repository_postgres_go_verificationapplication"
+    ],
+    "143": [
+      "services_api_internal_repository_postgres_go_verificationbadge"
+    ],
+    "144": [
+      "services_api_internal_repository_postgres_rbac"
+    ],
+    "145": [
+      "systemhealth"
     ]
   },
   "cohesion": {
-    "0": 0.07298509018871858,
-    "1": 0.06060606060606061,
-    "2": 0.06486486486486487,
-    "3": 0.053313587560162905,
-    "4": 0.05048076923076923,
-    "5": 0.06766917293233082,
+    "0": 0.08870523415977961,
+    "1": 0.06486486486486487,
+    "2": 0.053313587560162905,
+    "3": 0.08249603384452671,
+    "4": 0.06766917293233082,
+    "5": 0.061495457721872815,
     "6": 0.07312925170068027,
     "7": 0.11100832562442182,
-    "8": 0.046511627906976744,
-    "9": 0.10409745293466224,
-    "10": 0.08333333333333333,
-    "11": 0.10960960960960961,
-    "12": 0.1206896551724138,
-    "13": 0.09686609686609686,
-    "14": 0.2222222222222222,
-    "15": 0.1339031339031339,
-    "16": 0.07407407407407407,
+    "8": 0.06956521739130435,
+    "9": 0.046511627906976744,
+    "10": 0.10452961672473868,
+    "11": 0.1166429587482219,
+    "12": 0.10526315789473684,
+    "13": 0.07057057057057058,
+    "14": 0.08522727272727272,
+    "15": 0.07407407407407407,
+    "16": 0.16615384615384615,
     "17": 0.16333333333333333,
     "18": 0.16205533596837945,
-    "19": 0.11255411255411256,
-    "20": 0.19047619047619047,
-    "21": 0.16483516483516483,
-    "22": 0.22727272727272727,
-    "23": 0.19696969696969696,
+    "19": 0.24736842105263157,
+    "20": 0.1830065359477124,
+    "21": 0.19047619047619047,
+    "22": 0.16483516483516483,
+    "23": 0.22727272727272727,
     "24": 0.21818181818181817,
     "25": 0.3055555555555556,
-    "26": 0.2222222222222222,
-    "27": 0.25,
-    "28": 0.42857142857142855,
+    "26": 0.3055555555555556,
+    "27": 0.2222222222222222,
+    "28": 0.25,
     "29": 0.2857142857142857,
     "30": 0.3333333333333333,
     "31": 0.2857142857142857,
     "32": 0.2857142857142857,
-    "33": 0.6,
-    "34": 0.4,
+    "33": 0.4666666666666667,
+    "34": 0.6,
     "35": 0.4,
     "36": 0.4,
-    "37": 0.6666666666666666,
-    "38": 0.6666666666666666,
+    "37": 0.4,
+    "38": 0.5,
     "39": 0.6666666666666666,
     "40": 0.6666666666666666,
-    "41": 0.5,
+    "41": 0.6666666666666666,
     "42": 0.6666666666666666,
     "43": 0.6666666666666666,
     "44": 0.6666666666666666,
@@ -1588,7 +1593,7 @@
     "48": 0.6666666666666666,
     "49": 0.6666666666666666,
     "50": 0.6666666666666666,
-    "51": 1.0,
+    "51": 0.6666666666666666,
     "52": 1.0,
     "53": 1.0,
     "54": 1.0,
@@ -1679,7 +1684,10 @@
     "139": 1.0,
     "140": 1.0,
     "141": 1.0,
-    "142": 1.0
+    "142": 1.0,
+    "143": 1.0,
+    "144": 1.0,
+    "145": 1.0
   },
   "gods": [
     {
@@ -1715,7 +1723,7 @@
     {
       "id": "apps_web_src_lib_api_apirequest",
       "label": "apiRequest()",
-      "degree": 34
+      "degree": 33
     },
     {
       "id": "apps_web_src_types_index_user",
@@ -1779,11 +1787,11 @@
       "why": "inferred connection - not explicitly stated in source; bridges separate communities"
     },
     {
-      "source": "main()",
-      "target": "Handler",
+      "source": "BenchmarkScoringEngine()",
+      "target": "DefaultRankingWeights()",
       "source_files": [
-        "services/api/cmd/server/main.go",
-        "services/api/internal/handler/handler.go"
+        "services/api/internal/recommendation/engine_test.go",
+        "services/api/internal/domain/models.go"
       ],
       "confidence": "INFERRED",
       "relation": "calls",
@@ -1793,17 +1801,17 @@
   "questions": [
     {
       "type": "bridge_node",
-      "question": "Why does `MemoryRepository` connect `MemoryRepository` to `T`, `Context`, `AuditLog`, `.DismissUserRecommendation`, `.GetVerificationApplication`, `.GetMediaObjectByID`, `.GetMessages`, `.GetAdminOverview`, `.GetUserTopicPreferences`, `.ReconcileCounters`, `Hub`, `Post`, `.GetActiveSubscription`, `Role`, `.GetPlanEntitlements`, `.GetBillingHistory`?",
-      "why": "High betweenness centrality (0.131) - this node is a cross-community bridge."
+      "question": "Why does `MemoryRepository` connect `MemoryRepository` to `T`, `Context`, `AuditLog`, `Hub`, `.DismissUserRecommendation`, `.GetMediaObjectByID`, `.GetMessages`, `.GetVerificationApplication`, `.GetUserTopicPreferences`, `Post`, `.GetAdminOverview`, `.GetActiveSubscription`, `Role`, `.ReconcileCounters`, `.GetPlanEntitlements`, `.GetBillingHistory`?",
+      "why": "High betweenness centrality (0.136) - this node is a cross-community bridge."
     },
     {
       "type": "bridge_node",
       "question": "Why does `NewMemoryRepository()` connect `T` to `MemoryRepository`?",
-      "why": "High betweenness centrality (0.098) - this node is a cross-community bridge."
+      "why": "High betweenness centrality (0.097) - this node is a cross-community bridge."
     },
     {
       "type": "bridge_node",
-      "question": "Why does `Handler` connect `Request` to `handler.go`, `T`, `Hub`?",
+      "question": "Why does `Handler` connect `Request` to `handler.go`, `T`, `CryptoGateway`, `Hub`?",
       "why": "High betweenness centrality (0.086) - this node is a cross-community bridge."
     },
     {
@@ -1814,17 +1822,17 @@
     {
       "type": "low_cohesion",
       "question": "Should `Request` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.07298509018871858 - nodes in this community are weakly interconnected."
-    },
-    {
-      "type": "low_cohesion",
-      "question": "Should `models.go` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.06060606060606061 - nodes in this community are weakly interconnected."
+      "why": "Cohesion score 0.08870523415977961 - nodes in this community are weakly interconnected."
     },
     {
       "type": "low_cohesion",
       "question": "Should `T` be split into smaller, more focused modules?",
       "why": "Cohesion score 0.06486486486486487 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Context` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.053313587560162905 - nodes in this community are weakly interconnected."
     }
   ]
 }
