@@ -2348,10 +2348,24 @@ func (h *Handler) ServeWebSocket(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r.Context())
 	if user == nil {
 		token := r.URL.Query().Get("token")
+		if token == "" {
+			if cookie, err := r.Cookie("session_token"); err == nil && cookie.Value != "" {
+				token = cookie.Value
+			}
+		}
+		if token == "" {
+			authHeader := r.Header.Get("Authorization")
+			if strings.HasPrefix(authHeader, "Bearer ") {
+				token = strings.TrimPrefix(authHeader, "Bearer ")
+			}
+		}
 		if token != "" {
 			hash := sha256.Sum256([]byte(token))
 			tokenHash := hex.EncodeToString(hash[:])
 			session, err := h.repo.GetSessionByTokenHash(r.Context(), tokenHash)
+			if err != nil {
+				session, err = h.repo.GetSessionByTokenHash(r.Context(), token)
+			}
 			if err == nil && session != nil && session.ExpiresAt.After(time.Now()) {
 				u, err := h.repo.GetUserByID(r.Context(), session.UserID, nil)
 				if err == nil && u != nil {

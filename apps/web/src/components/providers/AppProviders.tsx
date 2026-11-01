@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { SessionProvider, useSession } from "next-auth/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RealtimeProvider } from "@/lib/useRealtime";
-import { setStoredToken } from "@/lib/api";
+import { setStoredToken, setStoredUser } from "@/lib/api";
 import { MediaViewerProvider } from "@/components/media/MediaViewerContext";
 import { PhotoViewerModal } from "@/components/media/PhotoViewerModal";
 
@@ -17,6 +17,9 @@ function NextAuthSync() {
       const current = typeof window !== "undefined" ? localStorage.getItem("x_session_token") : null;
       if (token && current !== token) {
         setStoredToken(token);
+        if ((session as any)?.backendUser) {
+          setStoredUser((session as any).backendUser);
+        }
         window.dispatchEvent(new Event("x_auth_state_change"));
       }
     }

@@ -105,9 +105,9 @@
     "semantic_hash": "6657ce6f9839ddc508a553b15fca3ca2"
   },
   "apps/web/src/components/providers/AppProviders.tsx": {
-    "mtime": 1793528255.2914062,
-    "ast_hash": "d0295195fc205ddca808e8889c82ab3f",
-    "semantic_hash": "d0295195fc205ddca808e8889c82ab3f"
+    "mtime": 1793548700.08193,
+    "ast_hash": "00cb8111910877d7b84e2e989280e9d5",
+    "semantic_hash": "00cb8111910877d7b84e2e989280e9d5"
   },
   "apps/web/src/components/search/SearchBarDropdown.tsx": {
     "mtime": 1793531669.22375,
@@ -120,9 +120,9 @@
     "semantic_hash": "cb67b24c5c21f9d468963513b769d296"
   },
   "apps/web/src/lib/api.ts": {
-    "mtime": 1793505232.6184537,
-    "ast_hash": "53043f1dba0eec86b7390c32f9490b11",
-    "semantic_hash": "53043f1dba0eec86b7390c32f9490b11"
+    "mtime": 1793548672.7439625,
+    "ast_hash": "f7452166d706c4006cbd5131f008a4c5",
+    "semantic_hash": "f7452166d706c4006cbd5131f008a4c5"
   },
   "apps/web/src/lib/auth.ts": {
     "mtime": 1793372311.335163,
@@ -135,9 +135,9 @@
     "semantic_hash": "7be08f0749a65b7424ee97b1bd53f11b"
   },
   "apps/web/src/lib/useRealtime.tsx": {
-    "mtime": 1793374472.8475008,
-    "ast_hash": "2fff2c5dbc07f958d30612e43dc6c446",
-    "semantic_hash": "2fff2c5dbc07f958d30612e43dc6c446"
+    "mtime": 1793548712.8512154,
+    "ast_hash": "7b176d63e53918697418fdf7a52508a5",
+    "semantic_hash": "7b176d63e53918697418fdf7a52508a5"
   },
   "apps/web/src/lib/utils.ts": {
     "mtime": 1791988180.9742856,
@@ -195,9 +195,9 @@
     "semantic_hash": "642b88d353570568dd1a984573499c86"
   },
   "services/api/internal/handler/handler.go": {
-    "mtime": 1793518800.0413828,
-    "ast_hash": "369713781fa9a76665ede4ba0ae66170",
-    "semantic_hash": "369713781fa9a76665ede4ba0ae66170"
+    "mtime": 1793548655.0658524,
+    "ast_hash": "0ba85a548c8b252d22482f3f5b6e1ad1",
+    "semantic_hash": "0ba85a548c8b252d22482f3f5b6e1ad1"
   },
   "services/api/internal/handler/handler_test.go": {
     "mtime": 1791995513.6245914,
@@ -230,9 +230,9 @@
     "semantic_hash": "30b6c61c18a5f7739b6c3b1a90b9caf3"
   },
   "services/api/internal/middleware/middleware.go": {
-    "mtime": 1792334260.583466,
-    "ast_hash": "941b96d0449cec5495cb93564fe3f5be",
-    "semantic_hash": "941b96d0449cec5495cb93564fe3f5be"
+    "mtime": 1793548596.6362443,
+    "ast_hash": "b6ae71734461d90bbb9cdbafa11f00f7",
+    "semantic_hash": "b6ae71734461d90bbb9cdbafa11f00f7"
   },
   "services/api/internal/middleware/ratelimit.go": {
     "mtime": 1792077157.4991956,
@@ -650,9 +650,9 @@
     "semantic_hash": "b6cb46e4deaf66970e372bcfdf5e10bb"
   },
   "apps/web/src/lib/useCurrentUser.ts": {
-    "mtime": 1792337442.333004,
-    "ast_hash": "000c438f1ca6fddc8fe4b0a7512ca0a5",
-    "semantic_hash": "000c438f1ca6fddc8fe4b0a7512ca0a5"
+    "mtime": 1793548683.6329694,
+    "ast_hash": "118d6262102e6018bd3a0cda9c53b2b3",
+    "semantic_hash": "118d6262102e6018bd3a0cda9c53b2b3"
   },
   "apps/web/src/components/profile/EditProfileModal.tsx": {
     "mtime": 1792820765.7091103,
@@ -675,9 +675,9 @@
     "semantic_hash": "7d66cbeccee52cf27ecabc18f7e1122b"
   },
   "apps/web/src/components/subscription/UpgradeModal.tsx": {
-    "mtime": 1793535737.4317029,
-    "ast_hash": "d5bff76b2583ed709807b766ce16b414",
-    "semantic_hash": "d5bff76b2583ed709807b766ce16b414"
+    "mtime": 1793548724.0470402,
+    "ast_hash": "5ad96dc00447ec63527f6eb01e20ed23",
+    "semantic_hash": "5ad96dc00447ec63527f6eb01e20ed23"
   },
   "apps/web/src/components/subscription/UpgradeModalContext.tsx": {
     "mtime": 1793531721.6725962,

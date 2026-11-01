@@ -295,6 +295,11 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
         wsRef.current = null;
         retryCountRef.current += 1;
 
+        const currentToken = typeof window !== "undefined" ? localStorage.getItem("x_session_token") : null;
+        if (!currentToken) {
+          return;
+        }
+
         if (retryCountRef.current >= MAX_RETRIES) {
           console.warn("WebSocket disconnected: maximum retries reached. Awaiting valid authentication.");
           return;

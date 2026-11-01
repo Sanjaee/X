@@ -104,8 +104,9 @@ export async function apiRequest<T = any>(
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    if (res.status === 401 && typeof window !== "undefined" && token) {
+    if (res.status === 401 && typeof window !== "undefined") {
       setStoredToken(null);
+      setStoredUser(null);
       window.dispatchEvent(new Event("x_auth_state_change"));
     }
     throw new Error(data.error || `HTTP ${res.status}`);

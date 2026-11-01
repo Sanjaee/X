@@ -28,6 +28,7 @@ export function useCurrentUser() {
         return user;
       } catch (err) {
         setStoredUser(null);
+        setStoredToken(null);
         return null;
       }
     },

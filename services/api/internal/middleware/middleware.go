@@ -79,12 +79,18 @@ func AuthMiddlewareWithCache(repo repository.Repository, rdb *redis.Client, opti
 			// 4. Slow-path: Query database
 			session, err := repo.GetSessionByTokenHash(r.Context(), tokenHash)
 			if err != nil {
-				if optional {
-					next.ServeHTTP(w, r)
+				// Fallback: check if the token passed was already a hex hash
+				if sessionFallback, errFallback := repo.GetSessionByTokenHash(r.Context(), token); errFallback == nil && sessionFallback != nil {
+					session = sessionFallback
+					tokenHash = token
+				} else {
+					if optional {
+						next.ServeHTTP(w, r)
+						return
+					}
+					http.Error(w, `{"error":"invalid or expired session"}`, http.StatusUnauthorized)
 					return
 				}
-				http.Error(w, `{"error":"invalid or expired session"}`, http.StatusUnauthorized)
-				return
 			}
 
 			user, err := repo.GetUserByID(r.Context(), session.UserID, nil)

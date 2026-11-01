@@ -379,7 +379,11 @@ export function UpgradeModal() {
         throw new Error('Failed to generate payment invoice');
       }
     } catch (err: any) {
-      setPaymentError(err?.message || 'Failed to initiate payment. Please try another coin.');
+      const msg = err?.message || 'Failed to initiate payment. Please try another coin.';
+      if (msg.includes('unauthorized') || msg.includes('session') || msg.includes('401')) {
+        setAuthModalOpen(true);
+      }
+      setPaymentError(msg);
     } finally {
       setIsSubmitting(false);
     }
