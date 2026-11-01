@@ -32,13 +32,19 @@ export function useCurrentUser() {
         return null;
       }
     },
-    initialData: () => {
-      return getStoredUser() as User | null;
-    },
+    initialData: () => null,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
+
+  useEffect(() => {
+    // Populate client cache from storage cleanly after hydration to avoid React #418 SSR mismatch
+    const cached = getStoredUser();
+    if (cached && !queryClient.getQueryData(["currentUser"])) {
+      queryClient.setQueryData(["currentUser"], cached);
+    }
+  }, [queryClient]);
 
   useEffect(() => {
     const handleAuthChange = () => {

@@ -35,9 +35,9 @@
     "semantic_hash": "92148e944052d888769e169e95545b8e"
   },
   "apps/web/src/app/api/auth/[...nextauth]/route.ts": {
-    "mtime": 1793550232.7992022,
-    "ast_hash": "bdcb25d7fe6b35cd4bcc276a82ee9a38",
-    "semantic_hash": "bdcb25d7fe6b35cd4bcc276a82ee9a38"
+    "mtime": 1793551186.1021764,
+    "ast_hash": "2f417808d1e88970e355fa361adee581",
+    "semantic_hash": "2f417808d1e88970e355fa361adee581"
   },
   "apps/web/src/app/bookmarks/page.tsx": {
     "mtime": 1792820186.205158,
@@ -650,9 +650,9 @@
     "semantic_hash": "b6cb46e4deaf66970e372bcfdf5e10bb"
   },
   "apps/web/src/lib/useCurrentUser.ts": {
-    "mtime": 1793548683.6329694,
-    "ast_hash": "118d6262102e6018bd3a0cda9c53b2b3",
-    "semantic_hash": "118d6262102e6018bd3a0cda9c53b2b3"
+    "mtime": 1793551167.2060494,
+    "ast_hash": "340ecb3e7cac6ecce66e38e7087d6a7c",
+    "semantic_hash": "340ecb3e7cac6ecce66e38e7087d6a7c"
   },
   "apps/web/src/components/profile/EditProfileModal.tsx": {
     "mtime": 1792820765.7091103,

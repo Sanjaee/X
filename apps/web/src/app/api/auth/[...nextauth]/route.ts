@@ -1,8 +1,8 @@
-import NextAuth from "next-auth";
+import NextAuth, { NextAuthOptions } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { NextRequest } from "next/server";
 
-function getDynamicAuthOptions(req: NextRequest) {
+function getDynamicAuthOptions(req: NextRequest): NextAuthOptions {
   const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
   const forwardedProto = req.headers.get("x-forwarded-proto");
   const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
@@ -23,6 +23,7 @@ function getDynamicAuthOptions(req: NextRequest) {
 
   return {
     ...authOptions,
+    useSecureCookies: !isLocal,
     callbacks: {
       ...authOptions.callbacks,
       async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
@@ -43,7 +44,7 @@ function getDynamicAuthOptions(req: NextRequest) {
 }
 
 const handler = async (req: NextRequest, ctx: any) => {
-  return NextAuth(req, ctx, getDynamicAuthOptions(req));
+  return NextAuth(getDynamicAuthOptions(req))(req, ctx);
 };
 
 export { handler as GET, handler as POST };
