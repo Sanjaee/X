@@ -48,9 +48,9 @@ func Load() *Config {
 	maxConcurrent := getEnvInt("MAX_CONCURRENT_REQUESTS", 300)
 	rateLimitMin := getEnvInt("RATE_LIMIT_PER_MIN", 120)
 
-	gatewayAPIKey := getEnv("PAYMENT_GATEWAY_API_KEY", "")
+	gatewayAPIKey := getEnv("PLISIO_API_KEY", "")
 	if gatewayAPIKey == "" {
-		gatewayAPIKey = getEnv("PLISIO_API_KEY", "")
+		gatewayAPIKey = getEnv("PAYMENT_GATEWAY_API_KEY", "")
 	}
 	gatewayBaseURL := getEnv("PAYMENT_GATEWAY_BASE_URL", "https://api.plisio.net/api/v1")
 	appURL := getEnv("APP_URL", "http://localhost")

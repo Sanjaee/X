@@ -121,10 +121,9 @@ func (g *CryptoGateway) FetchCurrencies(ctx context.Context) ([]CryptoCurrency, 
 	}
 	g.cacheMu.Unlock()
 
-	path := "/currencies/USD"
-	body, err := g.request(ctx, path, url.Values{})
+	body, err := g.request(ctx, "/currencies", url.Values{})
 	if err != nil {
-		body, err = g.request(ctx, "/currencies", url.Values{})
+		body, err = g.request(ctx, "/currencies/USD", url.Values{})
 		if err != nil {
 			return nil, err
 		}
@@ -378,6 +377,7 @@ func (g *CryptoGateway) request(ctx context.Context, path string, q url.Values) 
 		return nil, errors.New("gateway: failed to build request")
 	}
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
 	resp, err := g.httpClient.Do(req)
 	if err != nil {

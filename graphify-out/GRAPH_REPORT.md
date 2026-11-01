@@ -4,12 +4,12 @@
 - cluster-only mode — file stats not available
 
 ## Summary
-- 1248 nodes · 3273 edges · 146 communities (41 shown, 105 thin omitted)
+- 1248 nodes · 3273 edges · 146 communities (40 shown, 106 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 106 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `8a36d31c`
+- Built from commit: `a655b08e`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -17,17 +17,17 @@
 - Request
 - T
 - Context
+- MockCandidateProvider
 - models.go
 - Context
-- MockCandidateProvider
 - MemoryRepository
 - PostgresRepository
 - Hub
 - dependencies
 - [postId]/page.tsx
 - search/page.tsx
-- CryptoGateway
 - index.ts
+- CryptoGateway
 - UpgradeModal.tsx
 - compilerOptions
 - api.ts
@@ -40,7 +40,6 @@
 - OtherSkeletons.tsx
 - handler.go
 - VideoControls.tsx
-- Engine
 - .GetActiveSubscription
 - Role
 - PaymentOrder
@@ -102,6 +101,7 @@
 - Client
 - Context
 - Time
+- UUID
 - Client
 - Context
 - RawMessage
@@ -172,13 +172,13 @@
   services/api/internal/handler/social_messaging_test.go → services/api/internal/realtime/hub.go
 - `RateLimiter()` --calls--> `GetUserFromContext()`  [INFERRED]
   services/api/internal/middleware/ratelimit.go → services/api/internal/middleware/middleware.go
-- `BenchmarkScoringEngine()` --calls--> `DefaultRankingWeights()`  [INFERRED]
-  services/api/internal/recommendation/engine_test.go → services/api/internal/domain/models.go
+- `main()` --calls--> `Handler`  [INFERRED]
+  services/api/cmd/server/main.go → services/api/internal/handler/handler.go
 
 ## Import Cycles
 - None detected.
 
-## Communities (146 total, 105 thin omitted)
+## Communities (146 total, 106 thin omitted)
 
 ### Community 0 - "Request"
 Cohesion: 0.09
@@ -192,17 +192,17 @@ Nodes (63): CryptoGateway, Hub, MediaService, Mux, Repository, main(), setupTest
 Cohesion: 0.05
 Nodes (12): Context, Conversation, FollowRequest, MediaObject, Notification, RecentSearch, SocialRelationship, User (+4 more)
 
-### Community 3 - "models.go"
-Cohesion: 0.08
-Nodes (59): AdminOverview, AdminPostFilter, AuditLog, Conversation, CounterMismatchDetail, CounterReconciliationResult, DatabaseHealth, Entitlements (+51 more)
+### Community 3 - "MockCandidateProvider"
+Cohesion: 0.05
+Nodes (43): B, DiversityReranker, RankingWeights, FeedOptions, FeedResult, Candidate, CandidateProvider, CandidateSource (+35 more)
 
-### Community 4 - "Context"
+### Community 4 - "models.go"
+Cohesion: 0.09
+Nodes (57): AdminOverview, AdminPostFilter, AuditLog, Conversation, CounterMismatchDetail, CounterReconciliationResult, DatabaseHealth, Entitlements (+49 more)
+
+### Community 5 - "Context"
 Cohesion: 0.07
 Nodes (6): Context, Conversation, Notification, SocialRelationship, UserRecommendation, UUID
-
-### Community 5 - "MockCandidateProvider"
-Cohesion: 0.06
-Nodes (34): B, Candidate, CandidateSource, DiversityReranker, Features, FeedCursor, FeedMetrics, FeedOptions (+26 more)
 
 ### Community 6 - "MemoryRepository"
 Cohesion: 0.07
@@ -228,13 +228,13 @@ Nodes (24): StagedFile, PostModal(), PostModalProps, StagedAttachment, PostCard(
 Cohesion: 0.12
 Nodes (22): encodeFeedCursor(), FeedResponse, HomePage(), ExploreCategory, SearchPageContent(), SearchPostsResponse, SearchTab, SearchUsersResponse (+14 more)
 
-### Community 12 - "CryptoGateway"
-Cohesion: 0.11
-Nodes (20): Client, Config, CheckoutRequest, CryptoCurrency, CryptoGateway, CryptoInvoice, CryptoOperation, WebhookPayload (+12 more)
-
-### Community 13 - "index.ts"
+### Community 12 - "index.ts"
 Cohesion: 0.07
 Nodes (31): AdminTab, ConfirmModal(), ConfirmModalProps, TIER_PRESENTATION, TierBadge(), TierBadgeProps, TierKey, RealtimeContext (+23 more)
+
+### Community 13 - "CryptoGateway"
+Cohesion: 0.11
+Nodes (19): Client, Config, CheckoutRequest, CryptoCurrency, CryptoGateway, CryptoInvoice, CryptoOperation, WebhookPayload (+11 more)
 
 ### Community 14 - "UpgradeModal.tsx"
 Cohesion: 0.09
@@ -284,30 +284,26 @@ Nodes (10): CreatePostRequest, FeedFeedbackRequest, FeedImpressionsRequest, Goog
 Cohesion: 0.31
 Nodes (7): formatTime(), SPEED_OPTIONS, VideoControls(), VideoControlsProps, formatTime(), VideoProgressBar(), VideoProgressBarProps
 
-### Community 26 - "Engine"
-Cohesion: 0.31
-Nodes (7): DiversityReranker, FeedOptions, FeedResult, CandidateProvider, Engine, Context, NewEngine()
-
-### Community 27 - ".GetActiveSubscription"
+### Community 26 - ".GetActiveSubscription"
 Cohesion: 0.22
 Nodes (3): Entitlements, Subscription, UserMembership
 
-### Community 32 - "NewPostgresRepository"
+### Community 31 - "NewPostgresRepository"
 Cohesion: 0.29
 Nodes (3): categorizeTopic(), NewPostgresRepository(), TrendingTopic
 
-### Community 33 - "UserNameWithRole.tsx"
+### Community 32 - "UserNameWithRole.tsx"
 Cohesion: 0.47
 Nodes (3): UserNameWithRoleProps, getRoleBadge(), getRoleNameClass()
 
-### Community 34 - "route.ts"
+### Community 33 - "route.ts"
 Cohesion: 0.60
 Nodes (3): getDynamicAuthOptions(), handler(), authOptions
 
 ## Knowledge Gaps
 - **127 isolated node(s):** `name`, `version`, `private`, `dev`, `build` (+122 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **105 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **106 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_

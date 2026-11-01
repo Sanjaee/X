@@ -277,6 +277,73 @@
       "verificationapplication"
     ],
     "3": [
+      "b",
+      "diversityreranker",
+      "domain_rankingweights",
+      "feedoptions",
+      "feedresult",
+      "recommendation_candidate",
+      "recommendation_candidateprovider",
+      "recommendation_candidatesource",
+      "recommendation_candidatesource_has",
+      "recommendation_diversityreranker",
+      "recommendation_diversityreranker_rerank",
+      "recommendation_engine",
+      "recommendation_engine_generatefeed",
+      "recommendation_features",
+      "recommendation_feedcursor",
+      "recommendation_feedmetrics",
+      "recommendation_feedoptions",
+      "recommendation_feedresult",
+      "recommendation_mockcandidateprovider",
+      "recommendation_mockcandidateprovider_getactiveweights",
+      "recommendation_mockcandidateprovider_getexplorationcandidates",
+      "recommendation_mockcandidateprovider_getfollowingcandidates",
+      "recommendation_mockcandidateprovider_getfollowingposts",
+      "recommendation_mockcandidateprovider_getfreshcandidates",
+      "recommendation_mockcandidateprovider_getsocialengagementcandidates",
+      "recommendation_mockcandidateprovider_gettopiccandidates",
+      "recommendation_mockcandidateprovider_gettrendingcandidates",
+      "recommendation_mockcandidateprovider_getviewerinteractions",
+      "services_api_internal_domain_models_defaultrankingweights",
+      "services_api_internal_recommendation_cursor",
+      "services_api_internal_recommendation_cursor_decodecursor",
+      "services_api_internal_recommendation_cursor_encodecursor",
+      "services_api_internal_recommendation_cursor_go_time",
+      "services_api_internal_recommendation_cursor_go_uuid",
+      "services_api_internal_recommendation_diversity",
+      "services_api_internal_recommendation_diversity_newdiversityreranker",
+      "services_api_internal_recommendation_engine",
+      "services_api_internal_recommendation_engine_go_context",
+      "services_api_internal_recommendation_engine_newengine",
+      "services_api_internal_recommendation_engine_test",
+      "services_api_internal_recommendation_engine_test_benchmarkdiversityreranker",
+      "services_api_internal_recommendation_engine_test_benchmarkscoringengine",
+      "services_api_internal_recommendation_engine_test_go_context",
+      "services_api_internal_recommendation_engine_test_go_post",
+      "services_api_internal_recommendation_engine_test_go_t",
+      "services_api_internal_recommendation_engine_test_go_uuid",
+      "services_api_internal_recommendation_engine_test_testcursorroundtrip",
+      "services_api_internal_recommendation_engine_test_testdiversityreranking",
+      "services_api_internal_recommendation_engine_test_testfeedevaluator",
+      "services_api_internal_recommendation_engine_test_testfreshnessdecay",
+      "services_api_internal_recommendation_evaluator",
+      "services_api_internal_recommendation_evaluator_evaluatefeed",
+      "services_api_internal_recommendation_evaluator_go_post",
+      "services_api_internal_recommendation_evaluator_go_time",
+      "services_api_internal_recommendation_scoring",
+      "services_api_internal_recommendation_scoring_calculateengagementvelocity",
+      "services_api_internal_recommendation_scoring_calculateexplorationscore",
+      "services_api_internal_recommendation_scoring_calculatefreshness",
+      "services_api_internal_recommendation_scoring_calculatelinearscore",
+      "services_api_internal_recommendation_scoring_calculatequalityscore",
+      "services_api_internal_recommendation_scoring_go_time",
+      "services_api_internal_recommendation_types",
+      "services_api_internal_recommendation_types_go_post",
+      "services_api_internal_recommendation_types_go_time",
+      "services_api_internal_recommendation_types_go_uuid"
+    ],
+    "4": [
       "domain_adminoverview",
       "domain_adminpostfilter",
       "domain_auditlog",
@@ -306,7 +373,6 @@
       "domain_post",
       "domain_postfeatures",
       "domain_rankingexperiment",
-      "domain_rankingweights",
       "domain_recentsearch",
       "domain_redishealth",
       "domain_role",
@@ -331,7 +397,6 @@
       "domain_verificationapplication",
       "domain_verificationbadge",
       "services_api_internal_domain_models",
-      "services_api_internal_domain_models_defaultrankingweights",
       "services_api_internal_domain_models_go_time",
       "services_api_internal_domain_models_go_uuid",
       "services_api_internal_search_parser",
@@ -340,7 +405,7 @@
       "services_api_internal_search_parser_test_go_t",
       "services_api_internal_search_parser_test_testparsequery"
     ],
-    "4": [
+    "5": [
       "repository_memoryrepository_addrecentsearch",
       "repository_memoryrepository_admindeletepost",
       "repository_memoryrepository_assignroletouser",
@@ -398,62 +463,6 @@
       "services_api_internal_repository_memory_go_socialrelationship",
       "services_api_internal_repository_memory_go_userrecommendation",
       "services_api_internal_repository_memory_go_uuid"
-    ],
-    "5": [
-      "b",
-      "recommendation_candidate",
-      "recommendation_candidatesource",
-      "recommendation_candidatesource_has",
-      "recommendation_diversityreranker",
-      "recommendation_diversityreranker_rerank",
-      "recommendation_features",
-      "recommendation_feedcursor",
-      "recommendation_feedmetrics",
-      "recommendation_feedoptions",
-      "recommendation_feedresult",
-      "recommendation_mockcandidateprovider",
-      "recommendation_mockcandidateprovider_getactiveweights",
-      "recommendation_mockcandidateprovider_getexplorationcandidates",
-      "recommendation_mockcandidateprovider_getfollowingcandidates",
-      "recommendation_mockcandidateprovider_getfollowingposts",
-      "recommendation_mockcandidateprovider_getfreshcandidates",
-      "recommendation_mockcandidateprovider_getsocialengagementcandidates",
-      "recommendation_mockcandidateprovider_gettopiccandidates",
-      "recommendation_mockcandidateprovider_gettrendingcandidates",
-      "recommendation_mockcandidateprovider_getviewerinteractions",
-      "services_api_internal_recommendation_cursor",
-      "services_api_internal_recommendation_cursor_decodecursor",
-      "services_api_internal_recommendation_cursor_encodecursor",
-      "services_api_internal_recommendation_cursor_go_time",
-      "services_api_internal_recommendation_cursor_go_uuid",
-      "services_api_internal_recommendation_diversity",
-      "services_api_internal_recommendation_diversity_newdiversityreranker",
-      "services_api_internal_recommendation_engine_test",
-      "services_api_internal_recommendation_engine_test_benchmarkdiversityreranker",
-      "services_api_internal_recommendation_engine_test_benchmarkscoringengine",
-      "services_api_internal_recommendation_engine_test_go_context",
-      "services_api_internal_recommendation_engine_test_go_post",
-      "services_api_internal_recommendation_engine_test_go_t",
-      "services_api_internal_recommendation_engine_test_go_uuid",
-      "services_api_internal_recommendation_engine_test_testcursorroundtrip",
-      "services_api_internal_recommendation_engine_test_testdiversityreranking",
-      "services_api_internal_recommendation_engine_test_testfeedevaluator",
-      "services_api_internal_recommendation_engine_test_testfreshnessdecay",
-      "services_api_internal_recommendation_evaluator",
-      "services_api_internal_recommendation_evaluator_evaluatefeed",
-      "services_api_internal_recommendation_evaluator_go_post",
-      "services_api_internal_recommendation_evaluator_go_time",
-      "services_api_internal_recommendation_scoring",
-      "services_api_internal_recommendation_scoring_calculateengagementvelocity",
-      "services_api_internal_recommendation_scoring_calculateexplorationscore",
-      "services_api_internal_recommendation_scoring_calculatefreshness",
-      "services_api_internal_recommendation_scoring_calculatelinearscore",
-      "services_api_internal_recommendation_scoring_calculatequalityscore",
-      "services_api_internal_recommendation_scoring_go_time",
-      "services_api_internal_recommendation_types",
-      "services_api_internal_recommendation_types_go_post",
-      "services_api_internal_recommendation_types_go_time",
-      "services_api_internal_recommendation_types_go_uuid"
     ],
     "6": [
       "permission",
@@ -733,46 +742,6 @@
       "apps_web_src_lib_userealtime_userealtime"
     ],
     "12": [
-      "client",
-      "config",
-      "handler_checkoutrequest",
-      "handler_handler_buildorderstatus",
-      "handler_handler_checkoutsubscription",
-      "handler_handler_closeorder",
-      "handler_handler_getactivesubscriptionorder",
-      "handler_handler_getsubscriptionorder",
-      "handler_handler_handlecryptowebhook",
-      "handler_handler_plandisplayname",
-      "handler_handler_settleorder",
-      "payment_cryptocurrency",
-      "payment_cryptogateway",
-      "payment_cryptogateway_createinvoice",
-      "payment_cryptogateway_createsimulatedinvoice",
-      "payment_cryptogateway_fetchcurrencies",
-      "payment_cryptogateway_getoperation",
-      "payment_cryptogateway_isconfigured",
-      "payment_cryptogateway_issupportedcurrency",
-      "payment_cryptogateway_request",
-      "payment_cryptogateway_verifywebhook",
-      "payment_cryptoinvoice",
-      "payment_cryptooperation",
-      "payment_webhookpayload",
-      "services_api_internal_handler_payments",
-      "services_api_internal_handler_payments_expired",
-      "services_api_internal_handler_payments_go_uuid",
-      "services_api_internal_handler_payments_invoicefrommetadata",
-      "services_api_internal_handler_payments_lockorder",
-      "services_api_internal_handler_payments_tounix",
-      "services_api_internal_payment_gateway",
-      "services_api_internal_payment_gateway_firstnonempty",
-      "services_api_internal_payment_gateway_gatewayerrormessage",
-      "services_api_internal_payment_gateway_go_uuid",
-      "services_api_internal_payment_gateway_istruthy",
-      "services_api_internal_payment_gateway_newcryptogateway",
-      "time",
-      "values"
-    ],
-    "13": [
       "apps_web_src_app_admin_page",
       "apps_web_src_app_admin_page_admindashboardpage",
       "apps_web_src_app_admin_page_admintab",
@@ -810,6 +779,45 @@
       "apps_web_src_types_index_usermembership",
       "apps_web_src_types_index_userrecommendation",
       "apps_web_src_types_index_verificationbadge"
+    ],
+    "13": [
+      "client",
+      "config",
+      "handler_checkoutrequest",
+      "handler_handler_buildorderstatus",
+      "handler_handler_checkoutsubscription",
+      "handler_handler_closeorder",
+      "handler_handler_getactivesubscriptionorder",
+      "handler_handler_getsubscriptionorder",
+      "handler_handler_handlecryptowebhook",
+      "handler_handler_plandisplayname",
+      "handler_handler_settleorder",
+      "payment_cryptocurrency",
+      "payment_cryptogateway",
+      "payment_cryptogateway_createinvoice",
+      "payment_cryptogateway_createsimulatedinvoice",
+      "payment_cryptogateway_fetchcurrencies",
+      "payment_cryptogateway_getoperation",
+      "payment_cryptogateway_isconfigured",
+      "payment_cryptogateway_issupportedcurrency",
+      "payment_cryptogateway_request",
+      "payment_cryptogateway_verifywebhook",
+      "payment_cryptoinvoice",
+      "payment_cryptooperation",
+      "payment_webhookpayload",
+      "services_api_internal_handler_payments",
+      "services_api_internal_handler_payments_expired",
+      "services_api_internal_handler_payments_go_uuid",
+      "services_api_internal_handler_payments_invoicefrommetadata",
+      "services_api_internal_handler_payments_lockorder",
+      "services_api_internal_handler_payments_tounix",
+      "services_api_internal_payment_gateway",
+      "services_api_internal_payment_gateway_firstnonempty",
+      "services_api_internal_payment_gateway_gatewayerrormessage",
+      "services_api_internal_payment_gateway_istruthy",
+      "services_api_internal_payment_gateway_newcryptogateway",
+      "time",
+      "values"
     ],
     "14": [
       "apps_web_src_app_layout",
@@ -1069,17 +1077,6 @@
       "apps_web_src_components_media_videoprogressbar_videoprogressbarprops"
     ],
     "26": [
-      "diversityreranker",
-      "feedoptions",
-      "feedresult",
-      "recommendation_candidateprovider",
-      "recommendation_engine",
-      "recommendation_engine_generatefeed",
-      "services_api_internal_recommendation_engine",
-      "services_api_internal_recommendation_engine_go_context",
-      "services_api_internal_recommendation_engine_newengine"
-    ],
-    "27": [
       "repository_memoryrepository_assignusermembership",
       "repository_memoryrepository_createsubscription",
       "repository_memoryrepository_getactivesubscription",
@@ -1090,7 +1087,7 @@
       "services_api_internal_repository_memory_go_subscription",
       "usermembership"
     ],
-    "28": [
+    "27": [
       "repository_memoryrepository_createrole",
       "repository_memoryrepository_getallroles",
       "repository_memoryrepository_getrolebyid",
@@ -1101,7 +1098,7 @@
       "repository_memoryrepository_updaterole",
       "role"
     ],
-    "29": [
+    "28": [
       "invoice",
       "paymentorder",
       "repository_postgresrepository_createinvoice",
@@ -1110,7 +1107,7 @@
       "repository_postgresrepository_getbillinghistory",
       "repository_postgresrepository_getpaymentorderbyid"
     ],
-    "30": [
+    "29": [
       "membershipentitlement",
       "membershipplan",
       "repository_memoryrepository_getallmembershipplans",
@@ -1119,7 +1116,7 @@
       "repository_memoryrepository_setplanentitlements",
       "repository_memoryrepository_updatemembershipplan"
     ],
-    "31": [
+    "30": [
       "repository_memoryrepository_createinvoice",
       "repository_memoryrepository_createpaymentorder",
       "repository_memoryrepository_getactivepaymentorder",
@@ -1128,7 +1125,7 @@
       "services_api_internal_repository_memory_go_invoice",
       "services_api_internal_repository_memory_go_paymentorder"
     ],
-    "32": [
+    "31": [
       "repository_postgresrepository_ensureoutboxschema",
       "repository_postgresrepository_ensuresearchschema",
       "repository_postgresrepository_gettrendingtopics",
@@ -1137,7 +1134,7 @@
       "services_api_internal_repository_postgres_newpostgresrepository",
       "trendingtopic"
     ],
-    "33": [
+    "32": [
       "apps_web_src_components_ui_usernamewithrole",
       "apps_web_src_components_ui_usernamewithrole_usernamewithroleprops",
       "apps_web_src_utils_rolestyles",
@@ -1145,253 +1142,256 @@
       "apps_web_src_utils_rolestyles_getroledisplayname",
       "apps_web_src_utils_rolestyles_getrolenameclass"
     ],
-    "34": [
+    "33": [
       "apps_web_src_app_api_auth_nextauth_route",
       "apps_web_src_app_api_auth_nextauth_route_getdynamicauthoptions",
       "apps_web_src_app_api_auth_nextauth_route_handler",
       "apps_web_src_lib_auth",
       "apps_web_src_lib_auth_authoptions"
     ],
-    "35": [
+    "34": [
       "apps_web_src_components_layout_toploadingbar",
       "apps_web_src_components_layout_toploadingbar_routespinner",
       "apps_web_src_components_layout_toploadingbar_routespinnerprops",
       "apps_web_src_components_layout_toploadingbar_toploadingbar",
       "apps_web_src_components_layout_toploadingbar_toploadingbarinner"
     ],
-    "36": [
+    "35": [
       "entitlements",
       "repository_postgresrepository_createsubscription",
       "repository_postgresrepository_getactivesubscription",
       "repository_postgresrepository_getuserentitlements",
       "subscription"
     ],
-    "37": [
+    "36": [
       "services_api_internal_middleware_concurrency",
       "services_api_internal_middleware_concurrency_concurrencylimiter",
       "services_api_internal_middleware_concurrency_getactiverequests",
       "services_api_internal_middleware_concurrency_maxbodysizemiddleware",
       "services_api_internal_middleware_concurrency_requesttimeoutmiddleware"
     ],
-    "38": [
+    "37": [
       "auditlog",
       "repository_memoryrepository_createauditlog",
       "repository_memoryrepository_getauditlogs",
       "repository_memoryrepository_getsecurityauditlogs"
     ],
-    "39": [
+    "38": [
       "apps_web_src_middleware",
       "apps_web_src_middleware_config",
       "apps_web_src_middleware_middleware"
     ],
-    "40": [
+    "39": [
       "duration",
       "repository_postgresrepository_cleanupoldoutboxevents",
       "repository_postgresrepository_dismissuserrecommendation"
     ],
-    "41": [
+    "40": [
       "message",
       "repository_postgresrepository_createmessage",
       "repository_postgresrepository_getmessages"
     ],
-    "42": [
+    "41": [
       "outboxevent",
       "repository_postgresrepository_createoutboxevent",
       "repository_postgresrepository_getpendingoutboxevents"
     ],
-    "43": [
+    "42": [
       "repository_memoryrepository_cleanupoldoutboxevents",
       "repository_memoryrepository_dismissuserrecommendation",
       "services_api_internal_repository_memory_go_duration"
     ],
-    "44": [
+    "43": [
       "repository_memoryrepository_createmediaobject",
       "repository_memoryrepository_getmediaobjectbyid",
       "services_api_internal_repository_memory_go_mediaobject"
     ],
-    "45": [
+    "44": [
       "repository_memoryrepository_createmessage",
       "repository_memoryrepository_getmessages",
       "services_api_internal_repository_memory_go_message"
     ],
-    "46": [
+    "45": [
       "repository_memoryrepository_createverificationapplication",
       "repository_memoryrepository_getverificationapplication",
       "services_api_internal_repository_memory_go_verificationapplication"
     ],
-    "47": [
+    "46": [
       "repository_memoryrepository_getusertopicpreferences",
       "repository_memoryrepository_updateusertopicpreference",
       "services_api_internal_repository_memory_go_usertopicpreference"
     ],
-    "48": [
+    "47": [
       "repository_postgresrepository_assignverificationbadge",
       "repository_postgresrepository_getuserbadges",
       "verificationbadge"
     ],
-    "49": [
+    "48": [
       "repository_postgresrepository_createsession",
       "repository_postgresrepository_getsessionbytokenhash",
       "session"
     ],
-    "50": [
+    "49": [
       "repository_postgresrepository_getadminposts",
       "services_api_internal_repository_postgres_rbac_go_adminpostfilter",
       "services_api_internal_repository_postgres_rbac_go_post"
     ],
-    "51": [
+    "50": [
       "repository_postgresrepository_getsubscriptionplanbyid",
       "repository_postgresrepository_getsubscriptionplans",
       "subscriptionplan"
     ],
-    "52": [
+    "51": [
       "scripts_test_all_apis",
       "scripts_test_all_apis_call_api",
       "scripts_test_all_apis_run"
     ],
-    "53": [
+    "52": [
       "adminoverview",
       "repository_memoryrepository_getadminoverview"
     ],
-    "54": [
+    "53": [
       "apps_web_next_config",
       "apps_web_next_config_nextconfig"
     ],
-    "55": [
+    "54": [
       "apps_web_next_env_d",
       "apps_web_next_env_d_rationale_4"
     ],
-    "56": [
+    "55": [
       "apps_web_tailwind_config",
       "apps_web_tailwind_config_config"
     ],
-    "57": [
+    "56": [
       "counterreconciliationresult",
       "repository_postgresrepository_reconcilecounters"
     ],
-    "58": [
+    "57": [
       "feedfeedback",
       "repository_postgresrepository_recordfeedfeedback"
     ],
-    "59": [
+    "58": [
       "feedimpression",
       "repository_postgresrepository_recordfeedimpressions"
     ],
-    "60": [
+    "59": [
       "rankingweights",
       "repository_postgresrepository_getactiveweights"
     ],
-    "61": [
+    "60": [
       "repository_memoryrepository_reconcilecounters",
       "services_api_internal_repository_memory_go_counterreconciliationresult"
     ],
-    "62": [
+    "61": [
       "scripts_backup_db",
       "scripts_backup_db_sh__entry"
     ],
-    "63": [
+    "62": [
       "scripts_benchmark_search",
       "scripts_benchmark_search_measure_endpoint"
     ],
-    "64": [
+    "63": [
       "scripts_monitoring",
       "scripts_monitoring_sh__entry"
     ],
-    "65": [
+    "64": [
       "apps_web_postcss_config"
     ],
-    "66": [
+    "65": [
       "cryptoinvoice"
     ],
-    "67": [
+    "66": [
       "cryptooperation"
     ],
-    "68": [
+    "67": [
       "pkg_github_com_x_reconstruction_api"
     ],
-    "69": [
+    "68": [
       "plisioservice"
     ],
-    "70": [
+    "69": [
       "repository"
     ],
-    "71": [
+    "70": [
       "scripts_dev"
     ],
-    "72": [
+    "71": [
       "scripts_load_test_spike"
     ],
-    "73": [
+    "72": [
       "scripts_test"
     ],
-    "74": [
+    "73": [
       "scripts_test_auth"
     ],
-    "75": [
+    "74": [
       "scripts_test_auth_flow"
     ],
-    "76": [
+    "75": [
       "scripts_test_media_viewer"
     ],
-    "77": [
+    "76": [
       "services_api_internal_domain_models_go_membershipentitlement"
     ],
-    "78": [
+    "77": [
       "services_api_internal_domain_models_go_message"
     ],
-    "79": [
+    "78": [
       "services_api_internal_handler_admin_go_request"
     ],
-    "80": [
+    "79": [
       "services_api_internal_handler_admin_go_responsewriter"
     ],
-    "81": [
+    "80": [
       "services_api_internal_handler_handler_go_mediaobject"
     ],
-    "82": [
+    "81": [
       "services_api_internal_handler_handler_go_paymentorder"
     ],
-    "83": [
+    "82": [
       "services_api_internal_handler_handler_go_request"
     ],
-    "84": [
+    "83": [
       "services_api_internal_handler_handler_go_subscription"
     ],
-    "85": [
+    "84": [
       "services_api_internal_handler_payments_go_paymentorder"
     ],
-    "86": [
+    "85": [
       "services_api_internal_handler_payments_go_request"
     ],
-    "87": [
+    "86": [
       "services_api_internal_handler_payments_go_responsewriter"
     ],
-    "88": [
+    "87": [
       "services_api_internal_handler_recommendation_test_go_mux"
     ],
-    "89": [
+    "88": [
       "services_api_internal_handler_recommendation_test_go_t"
     ],
-    "90": [
+    "89": [
       "services_api_internal_media_media_go_mediaobject"
     ],
-    "91": [
+    "90": [
       "services_api_internal_middleware_authorization_go_handler"
     ],
-    "92": [
+    "91": [
       "services_api_internal_middleware_middleware_go_conn"
     ],
-    "93": [
+    "92": [
       "services_api_internal_middleware_middleware_go_user"
     ],
-    "94": [
+    "93": [
       "services_api_internal_payment_gateway_go_client"
     ],
-    "95": [
+    "94": [
       "services_api_internal_payment_gateway_go_context"
     ],
-    "96": [
+    "95": [
       "services_api_internal_payment_gateway_go_time"
+    ],
+    "96": [
+      "services_api_internal_payment_gateway_go_uuid"
     ],
     "97": [
       "services_api_internal_payment_plisio_go_client"
@@ -1545,17 +1545,17 @@
     "0": 0.08870523415977961,
     "1": 0.06486486486486487,
     "2": 0.053313587560162905,
-    "3": 0.08249603384452671,
-    "4": 0.06766917293233082,
-    "5": 0.061495457721872815,
+    "3": 0.05048076923076923,
+    "4": 0.08587570621468926,
+    "5": 0.06766917293233082,
     "6": 0.07312925170068027,
     "7": 0.11100832562442182,
     "8": 0.06956521739130435,
     "9": 0.046511627906976744,
     "10": 0.10452961672473868,
     "11": 0.1166429587482219,
-    "12": 0.10526315789473684,
-    "13": 0.07057057057057058,
+    "12": 0.07057057057057058,
+    "13": 0.10960960960960961,
     "14": 0.08522727272727272,
     "15": 0.07407407407407407,
     "16": 0.16615384615384615,
@@ -1568,19 +1568,19 @@
     "23": 0.22727272727272727,
     "24": 0.21818181818181817,
     "25": 0.3055555555555556,
-    "26": 0.3055555555555556,
-    "27": 0.2222222222222222,
-    "28": 0.25,
-    "29": 0.2857142857142857,
-    "30": 0.3333333333333333,
+    "26": 0.2222222222222222,
+    "27": 0.25,
+    "28": 0.2857142857142857,
+    "29": 0.3333333333333333,
+    "30": 0.2857142857142857,
     "31": 0.2857142857142857,
-    "32": 0.2857142857142857,
-    "33": 0.4666666666666667,
-    "34": 0.6,
+    "32": 0.4666666666666667,
+    "33": 0.6,
+    "34": 0.4,
     "35": 0.4,
     "36": 0.4,
-    "37": 0.4,
-    "38": 0.5,
+    "37": 0.5,
+    "38": 0.6666666666666666,
     "39": 0.6666666666666666,
     "40": 0.6666666666666666,
     "41": 0.6666666666666666,
@@ -1593,7 +1593,7 @@
     "48": 0.6666666666666666,
     "49": 0.6666666666666666,
     "50": 0.6666666666666666,
-    "51": 0.6666666666666666,
+    "51": 1.0,
     "52": 1.0,
     "53": 1.0,
     "54": 1.0,
@@ -1787,11 +1787,11 @@
       "why": "inferred connection - not explicitly stated in source; bridges separate communities"
     },
     {
-      "source": "BenchmarkScoringEngine()",
-      "target": "DefaultRankingWeights()",
+      "source": "main()",
+      "target": "Handler",
       "source_files": [
-        "services/api/internal/recommendation/engine_test.go",
-        "services/api/internal/domain/models.go"
+        "services/api/cmd/server/main.go",
+        "services/api/internal/handler/handler.go"
       ],
       "confidence": "INFERRED",
       "relation": "calls",
