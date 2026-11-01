@@ -22,7 +22,7 @@ import { MobileDrawer } from "@/components/layout/MobileDrawer";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { MobileComposerModal } from "@/components/composer/MobileComposerModal";
 import { AuthModal } from "@/components/auth/AuthModal";
-import { VerifiedBadge } from "@/components/common/VerifiedBadge";
+import { UserNameWithRole } from "@/components/ui/UserNameWithRole";
 import { Conversation, Message, User } from "@/types";
 import { apiRequest } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -566,10 +566,10 @@ function MessagesContent() {
                               hasUnread ? "font-black text-foreground" : "font-bold text-foreground"
                             )}
                           >
-                            <span>{other?.display_name || other?.username || "Conversation"}</span>
-                            {other?.is_verified && (
-                              <VerifiedBadge type={other.verified_type} />
-                            )}
+                            <UserNameWithRole
+                              displayName={other?.display_name || other?.username || "Conversation"}
+                              role={other?.role}
+                            />
                           </span>
                           {hasUnread && (
                             <span className="w-2.5 h-2.5 bg-brand rounded-full shrink-0" />
@@ -628,15 +628,14 @@ function MessagesContent() {
                         href={`/${activeConv.other_member?.username || ""}`}
                         className="font-bold text-[16px] hover:underline flex items-center gap-1 leading-tight"
                       >
-                        <span>
-                          {activeConv.other_member?.display_name ||
-                            activeConv.other_member?.username}
-                        </span>
-                        {activeConv.other_member?.is_verified && (
-                          <VerifiedBadge
-                            type={activeConv.other_member.verified_type}
-                          />
-                        )}
+                        <UserNameWithRole
+                          displayName={
+                            activeConv.other_member?.display_name ||
+                            activeConv.other_member?.username ||
+                            "User"
+                          }
+                          role={activeConv.other_member?.role}
+                        />
                       </Link>
                       <span className="text-[12px] text-muted">
                         @{activeConv.other_member?.username}
@@ -829,10 +828,10 @@ function MessagesContent() {
                       />
                       <div className="flex-1 min-w-0">
                         <div className="font-bold text-sm truncate flex items-center gap-1">
-                          <span>{u.display_name}</span>
-                          {u.is_verified && (
-                            <VerifiedBadge type={u.verified_type} />
-                          )}
+                          <UserNameWithRole
+                            displayName={u.display_name || u.username}
+                            role={u.role}
+                          />
                         </div>
                         <div className="text-xs text-muted truncate">@{u.username}</div>
                       </div>

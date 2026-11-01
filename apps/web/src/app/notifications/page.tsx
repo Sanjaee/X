@@ -20,6 +20,7 @@ import { MobileDrawer } from "@/components/layout/MobileDrawer";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { MobileComposerModal } from "@/components/composer/MobileComposerModal";
 import { AuthModal } from "@/components/auth/AuthModal";
+import { UserNameWithRole } from "@/components/ui/UserNameWithRole";
 import { Notification, User, FollowRequest } from "@/types";
 import { apiRequest } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -306,21 +307,28 @@ export default function NotificationsPage() {
                           className="w-8 h-8 rounded-full object-cover border border-border"
                         />
                       </Link>
-                      <p className="text-[15px] leading-5 text-foreground">
+                      <div className="text-[15px] leading-5 text-foreground flex flex-wrap items-center gap-1">
                         <Link
                           href={`/${n.actor?.username || "user"}`}
-                          className="font-bold hover:underline"
+                          className="hover:underline inline-flex items-center"
                         >
-                          {n.actor?.display_name || n.actor?.username}
-                        </Link>{" "}
-                        {n.type === "like" && "liked your post"}
-                        {n.type === "repost" && "reposted your post"}
-                        {n.type === "reply" && "replied to your post"}
-                        {n.type === "follow" && "followed you"}
-                        {n.type === "follow_request" && "requested to follow you"}
-                        {n.type === "follow_accept" && "accepted your follow request"}
-                        {n.type === "dm" && "sent you a direct message"}
-                      </p>
+                          <UserNameWithRole
+                            displayName={n.actor?.display_name || n.actor?.username || "User"}
+                            role={n.actor?.role}
+                          />
+                        </Link>
+                        <span>
+                          {n.type === "like" && "liked your post"}
+                          {n.type === "repost" && "reposted your post"}
+                          {n.type === "reply" && "replied to your post"}
+                          {n.type === "quote" && "quoted your post"}
+                          {n.type === "mention" && "mentioned you in a post"}
+                          {n.type === "follow" && "followed you"}
+                          {n.type === "follow_request" && "requested to follow you"}
+                          {n.type === "follow_accept" && "accepted your follow request"}
+                          {n.type === "dm" && "sent you a direct message"}
+                        </span>
+                      </div>
 
                       {/* Follow Request Action Buttons */}
                       {n.type === "follow_request" && (
@@ -373,10 +381,15 @@ export default function NotificationsPage() {
                       )}
 
                       {/* Post Snippet */}
-                      {n.post && (
-                        <p className="text-[14px] text-muted mt-1.5 line-clamp-2 bg-subtle/30 p-2.5 rounded-xl border border-border/50">
-                          {n.post.content}
-                        </p>
+                      {(n.post || n.post_id) && (
+                        <Link
+                          href={`/${n.actor?.username || "i"}/status/${n.post_id || n.post?.id}`}
+                          className="block mt-1.5"
+                        >
+                          <p className="text-[14px] text-muted line-clamp-2 bg-subtle/30 hover:bg-subtle/60 p-2.5 rounded-xl border border-border/50 transition-colors">
+                            {n.post?.content || "View post →"}
+                          </p>
+                        </Link>
                       )}
                     </div>
                   </div>

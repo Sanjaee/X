@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   Image as ImageIcon,
@@ -17,7 +18,7 @@ import {
   X_ALLOWED_MEDIA_ACCEPT,
   filterValidMediaFiles,
 } from "@/lib/mediaValidation";
-import { VerifiedBadge } from "@/components/common/VerifiedBadge";
+import { UserNameWithRole } from "@/components/ui/UserNameWithRole";
 import { formatRelativeTime } from "@/lib/utils";
 
 interface PostModalProps {
@@ -77,7 +78,7 @@ export function PostModal({
     };
   }, [stagedFiles]);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawFiles = Array.from(e.target.files || []);
@@ -178,16 +179,22 @@ export function PostModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-12 sm:pt-16 p-4">
+  return createPortal(
+    <div
+      onClick={(e) => e.stopPropagation()}
+      className="fixed inset-0 z-[100] flex items-start justify-center pt-12 sm:pt-16 p-4"
+    >
       {/* Dimmed Backdrop */}
       <div
         onClick={onClose}
-        className="fixed inset-0 bg-[#5b7083]/40 dark:bg-black/60 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-[#5b7083]/40 dark:bg-black/65 backdrop-blur-sm transition-opacity"
       />
 
       {/* Modal Dialog Card */}
-      <div className="relative w-full max-w-[600px] bg-background border border-border rounded-2xl shadow-2xl z-10 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div
+        style={{ backgroundColor: "var(--background, #000000)" }}
+        className="relative w-full max-w-[600px] bg-[#ffffff] dark:bg-[#000000] bg-background border border-border rounded-2xl shadow-2xl z-10 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+      >
         {/* Header: Close Button & Drafts Button (Screenshot) */}
         <div className="flex items-center justify-between px-4 py-3">
           <button
@@ -227,12 +234,10 @@ export function PostModal({
               {/* Right Column: Author info, text snippet, and Replying to tag */}
               <div className="flex-1 min-w-0 pb-3">
                 <div className="flex items-center gap-1.5 flex-wrap text-[15px] leading-5">
-                  <span className="font-bold text-foreground">
-                    {replyToPost.author?.display_name || replyToPost.author?.username || "User"}
-                  </span>
-                  {replyToPost.author?.is_verified && (
-                    <span className="text-brand">●</span>
-                  )}
+                  <UserNameWithRole
+                    displayName={replyToPost.author?.display_name || replyToPost.author?.username || "User"}
+                    role={replyToPost.author?.role}
+                  />
                   <span className="text-muted">@{replyToPost.author?.username || "user"}</span>
                 </div>
                 {replyToPost.content && (
@@ -325,12 +330,11 @@ export function PostModal({
                         alt={quotedPost.author?.display_name || "User"}
                         className="w-5 h-5 rounded-full object-cover shrink-0"
                       />
-                      <span className="font-bold text-foreground truncate">
-                        {quotedPost.author?.display_name || quotedPost.author?.username || "User"}
-                      </span>
-                      {quotedPost.author?.is_verified && (
-                        <VerifiedBadge type={quotedPost.author.verified_type} />
-                      )}
+                      <UserNameWithRole
+                        displayName={quotedPost.author?.display_name || quotedPost.author?.username || "User"}
+                        role={quotedPost.author?.role}
+                        className="truncate"
+                      />
                       <span className="text-muted font-normal truncate">
                         @{quotedPost.author?.username || "user"}
                       </span>
@@ -486,6 +490,7 @@ export function PostModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

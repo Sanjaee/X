@@ -19,12 +19,26 @@ export default function ExplorePage() {
   const [trendingTopics, setTrendingTopics] = useState<Array<{ category: string; topic: string; posts_count: number }>>([]);
 
   React.useEffect(() => {
-    apiRequest<{ trending: Array<{ category: string; topic: string; posts_count: number }> }>("/explore/trending")
-      .then((res) => {
-        setTrendingTopics(res.trending || []);
-      })
-      .catch((e) => console.error("Failed to load trending topics", e));
+    const loadTrends = () => {
+      apiRequest<{ trending: Array<{ category: string; topic: string; posts_count: number }> }>("/explore/trending?limit=20")
+        .then((res) => {
+          setTrendingTopics(res.trending || []);
+        })
+        .catch((e) => console.error("Failed to load trending topics", e));
+    };
+    loadTrends();
+    window.addEventListener("x_feed_post_created", loadTrends);
+    return () => window.removeEventListener("x_feed_post_created", loadTrends);
   }, []);
+
+  const filteredTopics = React.useMemo(() => {
+    if (activeTab === "for_you" || activeTab === "trending") {
+      return trendingTopics;
+    }
+    return trendingTopics.filter((t) =>
+      (t.category || "").toLowerCase().includes(activeTab.toLowerCase())
+    );
+  }, [trendingTopics, activeTab]);
 
   const handleSearch = async (e?: React.FormEvent, customQuery?: string) => {
     if (e) e.preventDefault();
@@ -98,9 +112,16 @@ export default function ExplorePage() {
                 <PostCard key={post.id} post={post} />
               ))}
             </div>
+          ) : filteredTopics.length === 0 ? (
+            <div className="text-center py-20 px-6">
+              <h3 className="font-bold text-[20px] mb-2">Nothing trending right now</h3>
+              <p className="text-muted text-[15px] max-w-sm mx-auto">
+                Create a post with hashtags or keywords to start a trend.
+              </p>
+            </div>
           ) : (
             <div className="flex flex-col divide-y divide-border">
-              {trendingTopics.map((t) => (
+              {filteredTopics.map((t) => (
                 <div
                   key={t.topic}
                   onClick={() => {

@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { Post, User } from "@/types";
 import { formatRelativeTime, formatNumber, cn } from "@/lib/utils";
-import { VerifiedBadge } from "@/components/common/VerifiedBadge";
+import { UserNameWithRole } from "@/components/ui/UserNameWithRole";
 import { useMediaViewer } from "@/components/media/MediaViewerContext";
 import { VideoPlayer } from "@/components/media/VideoPlayer";
 import { apiRequest } from "@/lib/api";
@@ -60,11 +60,33 @@ export function PostCard({
   const [likesCount, setLikesCount] = useState(post.likes_count);
   const [isReposted, setIsReposted] = useState(post.is_reposted);
   const [repostsCount, setRepostsCount] = useState(post.reposts_count);
+  const [repliesCount, setRepliesCount] = useState(post.replies_count);
   const [isBookmarked, setIsBookmarked] = useState(post.is_bookmarked);
   const [menuOpen, setMenuOpen] = useState(false);
   const [repostMenuOpen, setRepostMenuOpen] = useState(false);
   const [quoteModalOpen, setQuoteModalOpen] = useState(false);
   const [replyModalOpen, setReplyModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleEngagementUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<{
+        post_id: string;
+        likes_count?: number;
+        reposts_count?: number;
+        replies_count?: number;
+      }>;
+      const data = customEvent.detail;
+      if (!data || data.post_id !== post.id) return;
+      if (typeof data.likes_count === "number") setLikesCount(data.likes_count);
+      if (typeof data.reposts_count === "number") setRepostsCount(data.reposts_count);
+      if (typeof data.replies_count === "number") setRepliesCount(data.replies_count);
+    };
+
+    window.addEventListener("x_post_engagement_updated", handleEngagementUpdated);
+    return () => {
+      window.removeEventListener("x_post_engagement_updated", handleEngagementUpdated);
+    };
+  }, [post.id]);
 
   // Edit & Delete State
   const [isEditing, setIsEditing] = useState(false);
@@ -252,17 +274,17 @@ export function PostCard({
       <div className="flex-1 min-w-0">
         {/* Author Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 flex-wrap text-[15px] leading-5">
+          <div className="flex items-baseline gap-1.5 flex-wrap text-[15px] leading-5">
             <Link
               href={`/${post.author?.username || "user"}`}
               onClick={(e) => e.stopPropagation()}
-              className="font-bold text-foreground hover:underline line-clamp-1"
+              className="hover:underline inline-flex items-baseline min-w-0 max-w-full"
             >
-              {post.author?.display_name || post.author?.username || "User"}
+              <UserNameWithRole
+                displayName={post.author?.display_name || post.author?.username || "User"}
+                role={post.author?.role}
+              />
             </Link>
-            {post.author?.is_verified && (
-              <VerifiedBadge type={post.author.verified_type} />
-            )}
 
             <span className="text-muted">@{post.author?.username || "user"}</span>
             <span className="text-muted">·</span>
@@ -289,7 +311,10 @@ export function PostCard({
                     setMenuOpen(false);
                   }}
                 />
-                <div className="absolute right-0 top-7 w-52 bg-background border border-border shadow-xl rounded-xl py-1.5 z-40 text-[14px]">
+                <div
+                  style={{ backgroundColor: "var(--background, #000000)" }}
+                  className="absolute right-0 top-7 w-52 bg-[#ffffff] dark:bg-[#000000] bg-background border border-border shadow-xl rounded-xl py-1.5 z-40 text-[14px]"
+                >
                   {isAuthor && (
                     <button
                       onClick={(e) => {
@@ -476,12 +501,11 @@ export function PostCard({
                   alt={post.quote_post.author?.display_name || "User"}
                   className="w-5 h-5 rounded-full object-cover shrink-0"
                 />
-                <span className="font-bold text-foreground hover:underline truncate">
-                  {post.quote_post.author?.display_name || post.quote_post.author?.username || "User"}
-                </span>
-                {post.quote_post.author?.is_verified && (
-                  <VerifiedBadge type={post.quote_post.author.verified_type} />
-                )}
+                <UserNameWithRole
+                  displayName={post.quote_post.author?.display_name || post.quote_post.author?.username || "User"}
+                  role={post.quote_post.author?.role}
+                  className="hover:underline truncate"
+                />
                 <span className="text-muted truncate">@{post.quote_post.author?.username || "user"}</span>
                 <span className="text-muted">·</span>
                 <span className="text-muted hover:underline text-xs shrink-0">{formatRelativeTime(post.quote_post.created_at)}</span>
@@ -548,7 +572,7 @@ export function PostCard({
             <div className="p-2 rounded-full group-hover:bg-brand/10 transition-colors">
               <MessageCircle className="w-4 h-4" />
             </div>
-            <span>{post.replies_count > 0 ? formatNumber(post.replies_count) : ""}</span>
+            <span>{repliesCount > 0 ? formatNumber(repliesCount) : ""}</span>
           </button>
 
           {/* Repost Popover */}
@@ -582,7 +606,10 @@ export function PostCard({
                     setRepostMenuOpen(false);
                   }}
                 />
-                <div className="absolute left-0 bottom-9 w-44 bg-background border border-border shadow-2xl rounded-2xl py-1.5 z-40 text-[14px] font-bold">
+                <div
+                  style={{ backgroundColor: "var(--background, #000000)" }}
+                  className="absolute left-0 bottom-9 w-44 bg-[#ffffff] dark:bg-[#000000] bg-background border border-border shadow-2xl rounded-2xl py-1.5 z-40 text-[14px] font-bold"
+                >
                   <button
                     onClick={handleToggleRepost}
                     className="w-full text-left px-4 py-3 hover:bg-subtle flex items-center gap-3 text-foreground transition-colors"

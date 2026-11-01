@@ -1,109 +1,81 @@
-# Graph Report - .  (2026-10-24)
+# Graph Report - .  (2026-11-01)
 
 ## Corpus Check
 - cluster-only mode — file stats not available
 
 ## Summary
-- 1196 nodes · 3153 edges · 131 communities (38 shown, 93 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 40 edges (avg confidence: 0.8)
+- 1214 nodes · 3171 edges · 139 communities (37 shown, 102 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 41 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `feb831a4`
+- Built from commit: `1a6e327c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - Handler
+- PostgresRepository
 - T
-- Context
 - models.go
+- MemoryRepository
 - MockCandidateProvider
 - Context
-- MemoryRepository
 - Hub
-- PostgresRepository
-- apiRequest
+- Context
+- api.ts
 - dependencies
+- app/page.tsx
 - [postId]/page.tsx
-- PlisioService
 - index.ts
 - compilerOptions
+- PlisioService
 - Post
 - Post
-- utils.ts
+- MediaService
 - User
 - FeedSkeleton.tsx
-- PostModal.tsx
+- ComposerContext.tsx
+- search/page.tsx
 - admin.go
 - handler.go
 - OtherSkeletons.tsx
-- search/page.tsx
+- User
 - VideoControls.tsx
 - Engine
+- PostComposer.tsx
 - .GetActiveSubscription
 - .GetPlanEntitlements
-- Role
 - NewPostgresRepository
-- .GetBillingHistory
-- .GetBillingHistory
+- Invoice
 - TopLoadingBar.tsx
 - .GetActiveSubscription
 - route.ts
-- AuditLog
-- .GetNotifications
+- Notification
+- VerifiedBadge.tsx
 - middleware.ts
-- .GetAdminPosts
-- .DismissUserRecommendation
-- .GetFollowRequests
-- .GetMediaObjectByID
-- .GetUserBadges
-- .DismissUserRecommendation
-- .GetMessages
-- .CreateOutboxEvent
-- .CreateSession
-- .GetVerificationApplication
-- .GetSubscriptionPlanByID
-- .GetUserTopicPreferences
 - test_all_apis.py
-- .GetAdminOverview
 - next.config.js
 - next-env.d.ts
 - tailwind.config.ts
-- .GetRecentSearches
-- .ReconcileCounters
-- .GetActiveWeights
-- .ReconcileCounters
-- .RecordFeedFeedback
-- .RecordFeedImpressions
 - backup-db.sh
 - monitoring.sh
-- Config
+- AdminOverview
+- AdminPostFilter
+- AuditLog
+- Client
 - Context
-- Conversation
-- CounterReconciliationResult
-- Entitlements
-- FeedCursor
-- FeedFeedback
-- FeedImpression
-- FollowRequest
-- Invoice
 - MediaObject
-- Message
-- Notification
-- OutboxEvent
-- PaymentOrder
+- MembershipEntitlement
+- MembershipPlan
+- Permission
 - github.com/x-reconstruction/api
-- Post
-- RankingWeights
-- RecentSearch
-- Repository
-- SearchFilterParams
+- PlisioService
+- Role
 - MembershipEntitlement
 - Message
 - Request
 - ResponseWriter
-- Client
 - Request
 - ResponseWriter
 - Mux
@@ -112,42 +84,78 @@
 - Handler
 - Conn
 - User
+- RawMessage
 - Conn
 - RawMessage
 - RWMutex
-- AdminOverview
-- AuditLog
-- MembershipEntitlement
-- MembershipPlan
-- Permission
-- Role
+- Conversation
+- CounterReconciliationResult
+- Duration
+- Entitlements
+- FeedCursor
+- FeedFeedback
+- FeedImpression
+- FollowRequest
+- Invoice
+- Message
+- Notification
+- OutboxEvent
+- RankingWeights
+- RecentSearch
 - RWMutex
-- UserMembership
+- SearchFilterParams
+- Session
+- SocialRelationship
+- SubscriptionPlan
+- Time
+- TrendingTopic
+- UserRecommendation
+- UserTopicPreference
+- VerificationApplication
+- VerificationBadge
+- Conversation
+- CounterReconciliationResult
+- Duration
+- Entitlements
+- FeedCursor
+- FeedFeedback
+- FeedImpression
+- FollowRequest
+- Invoice
+- Message
+- Notification
+- OutboxEvent
+- PaymentOrder
+- Post
+- RankingWeights
+- RecentSearch
+- SearchFilterParams
 - Session
 - SocialRelationship
 - Subscription
 - SubscriptionPlan
-- SystemHealth
 - Time
 - TrendingTopic
 - User
 - UserRecommendation
 - UserTopicPreference
-- UUID
 - VerificationApplication
 - VerificationBadge
+- SystemHealth
+- UserMembership
+- UUID
 
 ## God Nodes (most connected - your core abstractions)
 1. `MemoryRepository` - 172 edges
 2. `PostgresRepository` - 146 edges
-3. `Handler` - 129 edges
+3. `Handler` - 131 edges
 4. `writeJSON()` - 82 edges
 5. `writeError()` - 79 edges
-6. `apiRequest()` - 39 edges
-7. `User` - 30 edges
-8. `useCurrentUser()` - 27 edges
-9. `cn()` - 23 edges
-10. `Post` - 18 edges
+6. `apiRequest()` - 34 edges
+7. `User` - 28 edges
+8. `cn()` - 23 edges
+9. `useCurrentUser()` - 22 edges
+10. `UserNameWithRole()` - 20 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `setupTestRouter()` --calls--> `AuthMiddleware()`  [INFERRED]
@@ -164,143 +172,139 @@
 ## Import Cycles
 - None detected.
 
-## Communities (131 total, 93 thin omitted)
+## Communities (139 total, 102 thin omitted)
 
 ### Community 0 - "Handler"
 Cohesion: 0.08
-Nodes (8): Handler, Request, ResponseWriter, Context, writeError(), writeJSON(), ConcurrencyLimiter(), RequestTimeoutMiddleware()
+Nodes (11): Handler, Request, ResponseWriter, Context, PaymentOrder, Subscription, writeError(), writeJSON() (+3 more)
 
-### Community 1 - "T"
-Cohesion: 0.07
-Nodes (62): Client, Hub, MediaService, Mux, PlisioService, Repository, main(), setupTestFullAdminRouter() (+54 more)
-
-### Community 2 - "Context"
+### Community 1 - "PostgresRepository"
 Cohesion: 0.06
-Nodes (11): Context, Conversation, FollowRequest, MediaObject, Notification, RecentSearch, SocialRelationship, Time (+3 more)
+Nodes (10): CounterReconciliationResult, DB, Duration, PaymentOrder, PostgresRepository, Context, MediaObject, UUID (+2 more)
+
+### Community 2 - "T"
+Cohesion: 0.07
+Nodes (61): Hub, MediaService, Mux, Repository, Repository, setupTestFullAdminRouter(), TestAdminPostModerationAndAuditLogging(), TestOwnerAdminOverviewSecurity() (+53 more)
 
 ### Community 3 - "models.go"
 Cohesion: 0.08
-Nodes (58): AdminOverview, AuditLog, Conversation, CounterMismatchDetail, CounterReconciliationResult, DatabaseHealth, Entitlements, FeedFeedback (+50 more)
+Nodes (59): AdminOverview, AdminPostFilter, AuditLog, Conversation, CounterMismatchDetail, CounterReconciliationResult, DatabaseHealth, Entitlements (+51 more)
 
-### Community 4 - "MockCandidateProvider"
+### Community 4 - "MemoryRepository"
+Cohesion: 0.06
+Nodes (19): FeedFeedback, FeedImpression, FollowRequest, Message, OutboxEvent, RankingWeights, RecentSearch, MemoryRepository (+11 more)
+
+### Community 5 - "MockCandidateProvider"
 Cohesion: 0.06
 Nodes (34): B, Candidate, CandidateSource, DiversityReranker, Features, FeedCursor, FeedMetrics, FeedOptions (+26 more)
 
-### Community 5 - "Context"
+### Community 6 - "Context"
 Cohesion: 0.07
-Nodes (5): Context, Conversation, SocialRelationship, UserRecommendation, UUID
-
-### Community 6 - "MemoryRepository"
-Cohesion: 0.07
-Nodes (15): Permission, MemoryRepository, FeedFeedback, FeedImpression, Message, OutboxEvent, RankingWeights, Session (+7 more)
+Nodes (3): Conversation, Context, UUID
 
 ### Community 7 - "Hub"
 Cohesion: 0.06
-Nodes (32): Conn, Duration, Logger, contextKey, memoryLimiter, responseWriterWrapper, Mutex, RawMessage (+24 more)
+Nodes (31): Conn, Logger, contextKey, memoryLimiter, responseWriterWrapper, Mutex, ReadWriter, Client (+23 more)
 
-### Community 8 - "PostgresRepository"
-Cohesion: 0.11
-Nodes (12): DB, PostgresRepository, AdminOverview, AuditLog, Context, MembershipEntitlement, MembershipPlan, Permission (+4 more)
+### Community 8 - "Context"
+Cohesion: 0.08
+Nodes (12): AdminOverview, AdminPostFilter, AuditLog, Context, MembershipEntitlement, MembershipPlan, Permission, Post (+4 more)
 
-### Community 9 - "apiRequest"
-Cohesion: 0.16
-Nodes (27): ExplorePage(), encodeFeedCursor(), FeedResponse, HomePage(), PremiumPage(), SettingsSection, FollowersPage(), FollowingPage() (+19 more)
+### Community 9 - "api.ts"
+Cohesion: 0.13
+Nodes (24): WhiteLabelInvoice, AuthModalProps, RightSidebar(), RightSidebarProps, EditProfileModal(), EditProfileModalProps, RecentSearchItem, SearchBarDropdown() (+16 more)
 
 ### Community 10 - "dependencies"
 Cohesion: 0.05
 Nodes (42): dependencies, clsx, lucide-react, next, next-auth, react, react-dom, tailwind-merge (+34 more)
 
-### Community 11 - "[postId]/page.tsx"
-Cohesion: 0.10
-Nodes (24): StagedFile, ConfirmModal(), ConfirmModalProps, PostCard(), PostCardProps, MediaDetailSidebar(), MediaDetailSidebarProps, MediaViewerContext (+16 more)
+### Community 11 - "app/page.tsx"
+Cohesion: 0.12
+Nodes (24): encodeFeedCursor(), FeedResponse, HomePage(), SettingsSection, AuthModal(), MobileComposerModal(), MobileComposerModalProps, StagedAttachment (+16 more)
 
-### Community 12 - "PlisioService"
-Cohesion: 0.09
-Nodes (24): Config, Image, MediaService, PlisioCryptoInfo, PlisioInvoiceResponse, PlisioOperationsResponse, PlisioService, PlisioWebhookPayload (+16 more)
+### Community 12 - "[postId]/page.tsx"
+Cohesion: 0.11
+Nodes (23): StagedFile, PostModal(), PostModalProps, StagedAttachment, PostCard(), PostCardProps, MediaDetailSidebar(), MediaDetailSidebarProps (+15 more)
 
 ### Community 13 - "index.ts"
 Cohesion: 0.09
-Nodes (26): AdminTab, TIER_PRESENTATION, TierBadge(), TierBadgeProps, TierKey, RealtimeContext, RealtimeContextType, ToastNotification (+18 more)
+Nodes (26): AdminTab, CryptoCurrencyOption, PURCHASABLE_KEYS, ROLE_TIER_DEFAULTS, ConfirmModal(), ConfirmModalProps, TIER_PRESENTATION, TierBadge() (+18 more)
 
 ### Community 14 - "compilerOptions"
 Cohesion: 0.07
 Nodes (26): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+18 more)
 
-### Community 15 - "Post"
+### Community 15 - "PlisioService"
 Cohesion: 0.16
-Nodes (4): Rows, FeedCursor, Post, SearchFilterParams
+Nodes (14): Config, PlisioCryptoInfo, PlisioInvoiceResponse, PlisioOperationsResponse, PlisioService, PlisioWebhookPayload, PlisioWhiteLabelInvoice, RawMessage (+6 more)
 
 ### Community 16 - "Post"
 Cohesion: 0.16
-Nodes (4): AdminPostFilter, FeedCursor, Post, SearchFilterParams
+Nodes (4): FeedCursor, SearchFilterParams, AdminPostFilter, Post
 
-### Community 17 - "utils.ts"
-Cohesion: 0.14
-Nodes (14): metadata, ComposerContext, ComposerContextValue, ComposerProvider(), useComposer(), PostModal(), AppShell(), LeftNavRailProps (+6 more)
+### Community 18 - "MediaService"
+Cohesion: 0.18
+Nodes (12): Config, Image, MediaService, Reader, getEnv(), getEnvInt(), Load(), Client (+4 more)
 
-### Community 18 - "User"
-Cohesion: 0.14
-Nodes (12): WhiteLabelInvoice, VerifiedBadge(), VerifiedBadgeProps, EditProfileModal(), EditProfileModalProps, RecentSearchItem, SearchBarDropdownProps, SuggestionData (+4 more)
-
-### Community 19 - "FeedSkeleton.tsx"
+### Community 20 - "FeedSkeleton.tsx"
 Cohesion: 0.19
 Nodes (4): FeedSkeleton(), PostCardSkeleton(), PostDetailSkeleton(), ProfileSkeleton()
 
-### Community 20 - "PostModal.tsx"
-Cohesion: 0.21
-Nodes (11): MobileComposerModalProps, StagedAttachment, PostComposer(), PostComposerProps, StagedAttachment, PostModalProps, StagedAttachment, filterValidMediaFiles() (+3 more)
+### Community 21 - "ComposerContext.tsx"
+Cohesion: 0.15
+Nodes (10): metadata, ComposerContext, ComposerContextValue, ComposerProvider(), useComposer(), AppShell(), MediaViewerProvider(), PhotoViewerModal() (+2 more)
 
-### Community 21 - "admin.go"
+### Community 22 - "search/page.tsx"
+Cohesion: 0.18
+Nodes (10): ExploreCategory, SearchPageContent(), SearchPostsResponse, SearchTab, SearchUsersResponse, VirtualizedFeed(), VirtualizedFeedProps, feedKeys (+2 more)
+
+### Community 23 - "admin.go"
 Cohesion: 0.16
 Nodes (13): AdminDeletePostRequest, AssignMembershipRequest, CreateRoleRequest, SetPermissionsRequest, SetPlanEntitlementsRequest, UpdatePlanRequest, UpdatePostModerationRequest, UpdateRoleRequest (+5 more)
 
-### Community 22 - "handler.go"
+### Community 24 - "handler.go"
 Cohesion: 0.18
 Nodes (12): CheckoutRequest, CreatePostRequest, FeedFeedbackRequest, FeedImpressionsRequest, GoogleAuthRequest, LoginRequest, RegisterRequest, SimulatePaymentRequest (+4 more)
 
-### Community 23 - "OtherSkeletons.tsx"
+### Community 25 - "OtherSkeletons.tsx"
 Cohesion: 0.23
 Nodes (3): ExploreSkeleton(), MessagesSkeleton(), NotificationsSkeleton()
 
-### Community 24 - "search/page.tsx"
-Cohesion: 0.22
-Nodes (8): ExploreCategory, SearchPageContent(), SearchPostsResponse, SearchTab, SearchUsersResponse, SearchBarDropdown(), feedKeys, searchKeys
-
-### Community 25 - "VideoControls.tsx"
+### Community 27 - "VideoControls.tsx"
 Cohesion: 0.31
 Nodes (7): formatTime(), SPEED_OPTIONS, VideoControls(), VideoControlsProps, formatTime(), VideoProgressBar(), VideoProgressBarProps
 
-### Community 26 - "Engine"
+### Community 28 - "Engine"
 Cohesion: 0.31
 Nodes (7): DiversityReranker, FeedOptions, FeedResult, CandidateProvider, Engine, Context, NewEngine()
 
-### Community 27 - ".GetActiveSubscription"
-Cohesion: 0.22
-Nodes (3): Entitlements, Subscription, UserMembership
+### Community 29 - "PostComposer.tsx"
+Cohesion: 0.36
+Nodes (6): PostComposer(), PostComposerProps, StagedAttachment, filterValidMediaFiles(), isValidMediaFile(), X_ALLOWED_MEDIA_EXTENSIONS
 
-### Community 30 - "NewPostgresRepository"
+### Community 32 - "NewPostgresRepository"
 Cohesion: 0.29
-Nodes (3): categorizeTopic(), TrendingTopic, NewPostgresRepository()
+Nodes (3): categorizeTopic(), NewPostgresRepository(), TrendingTopic
 
 ## Knowledge Gaps
-- **118 isolated node(s):** `name`, `version`, `private`, `dev`, `build` (+113 more)
+- **124 isolated node(s):** `name`, `version`, `private`, `dev`, `build` (+119 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **93 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **102 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `PostgresRepository` connect `PostgresRepository` to `.GetBillingHistory`, `Context`, `.GetActiveSubscription`, `.GetAdminPosts`, `.GetUserBadges`, `.DismissUserRecommendation`, `.GetMessages`, `.CreateOutboxEvent`, `Post`, `.CreateSession`, `.GetVerificationApplication`, `.GetSubscriptionPlanByID`, `.GetUserTopicPreferences`, `.RecordFeedImpressions`, `.GetActiveWeights`, `.ReconcileCounters`, `.RecordFeedFeedback`, `NewPostgresRepository`?**
-  _High betweenness centrality (0.191) - this node is a cross-community bridge._
-- **Why does `Handler` connect `Handler` to `T`, `handler.go`, `Hub`?**
-  _High betweenness centrality (0.151) - this node is a cross-community bridge._
-- **Why does `main()` connect `T` to `Handler`, `NewPostgresRepository`?**
-  _High betweenness centrality (0.123) - this node is a cross-community bridge._
+- **Why does `GetUserFromContext()` connect `Hub` to `models.go`?**
+  _High betweenness centrality (0.152) - this node is a cross-community bridge._
+- **Why does `User` connect `models.go` to `Hub`?**
+  _High betweenness centrality (0.148) - this node is a cross-community bridge._
+- **Why does `MemoryRepository` connect `MemoryRepository` to `Invoice`, `T`, `Notification`, `Context`, `Hub`, `Post`, `User`, `.GetActiveSubscription`, `.GetPlanEntitlements`?**
+  _High betweenness centrality (0.130) - this node is a cross-community bridge._
 - **What connects `name`, `version`, `private` to the rest of the system?**
-  _118 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _124 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Handler` be split into smaller, more focused modules?**
-  _Cohesion score 0.08484848484848485 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08090322580645161 - nodes in this community are weakly interconnected._
+- **Should `PostgresRepository` be split into smaller, more focused modules?**
+  _Cohesion score 0.06361570918532944 - nodes in this community are weakly interconnected._
 - **Should `T` be split into smaller, more focused modules?**
-  _Cohesion score 0.0670122176971492 - nodes in this community are weakly interconnected._
-- **Should `Context` be split into smaller, more focused modules?**
-  _Cohesion score 0.05924920850293985 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06924882629107981 - nodes in this community are weakly interconnected._

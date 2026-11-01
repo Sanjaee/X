@@ -41,7 +41,7 @@ import {
   filterValidMediaFiles,
 } from "@/lib/mediaValidation";
 import { useCurrentUser } from "@/lib/useCurrentUser";
-import { VerifiedBadge } from "@/components/common/VerifiedBadge";
+import { UserNameWithRole } from "@/components/ui/UserNameWithRole";
 
 interface StagedFile {
   id: string;
@@ -132,6 +132,55 @@ export default function PostDetailPage() {
       .finally(() => {
         setLoading(false);
       });
+  }, [postId]);
+
+  // Listen for live real-time replies and engagement updates on this post thread
+  useEffect(() => {
+    if (!postId) return;
+
+    const handleLivePostCreated = (e: Event) => {
+      const customEvent = e as CustomEvent<Post>;
+      const newPost = customEvent.detail;
+      if (!newPost || newPost.reply_to_id !== postId) return;
+
+      setReplies((prev) => {
+        if (prev.some((r) => r.id === newPost.id)) return prev;
+        return [newPost, ...prev];
+      });
+      setPost((prev) =>
+        prev ? { ...prev, replies_count: (prev.replies_count || 0) + 1 } : prev
+      );
+    };
+
+    const handleEngagementUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<{
+        post_id: string;
+        likes_count?: number;
+        reposts_count?: number;
+        replies_count?: number;
+      }>;
+      const data = customEvent.detail;
+      if (!data || data.post_id !== postId) return;
+
+      if (typeof data.likes_count === "number") {
+        setLikesCount(data.likes_count);
+      }
+      if (typeof data.reposts_count === "number") {
+        setRepostsCount(data.reposts_count);
+      }
+      if (typeof data.replies_count === "number") {
+        setPost((prev) =>
+          prev ? { ...prev, replies_count: data.replies_count! } : prev
+        );
+      }
+    };
+
+    window.addEventListener("x_feed_post_created", handleLivePostCreated);
+    window.addEventListener("x_post_engagement_updated", handleEngagementUpdated);
+    return () => {
+      window.removeEventListener("x_feed_post_created", handleLivePostCreated);
+      window.removeEventListener("x_post_engagement_updated", handleEngagementUpdated);
+    };
   }, [postId]);
 
   // Re-fetch replies when sort changes
@@ -381,11 +430,10 @@ export default function PostDetailPage() {
                     />
                     <div className="flex flex-col">
                       <div className="flex items-center gap-1 font-bold text-[15px] leading-5 group-hover:underline">
-                        <span>{post.author?.display_name || "User"}</span>
-                        {post.author?.is_verified && (
-                          <CheckCircle2 className="w-4 h-4 fill-amber-400 text-black inline" />
-                        )}
-                        <span className="text-[12px] px-1 py-0.2 bg-muted/30 rounded font-black">𝕏</span>
+                        <UserNameWithRole
+                          displayName={post.author?.display_name || post.author?.username || "User"}
+                          role={post.author?.role}
+                        />
                       </div>
                       <span className="text-[14px] text-muted leading-4">
                         @{post.author?.username || "user"}
@@ -487,12 +535,11 @@ export default function PostDetailPage() {
                           alt="Author"
                           className="w-5 h-5 rounded-full object-cover shrink-0"
                         />
-                        <span className="font-bold text-foreground truncate">
-                          {post.quote_post.author?.display_name || post.quote_post.author?.username || "User"}
-                        </span>
-                        {post.quote_post.author?.is_verified && (
-                          <VerifiedBadge type={post.quote_post.author.verified_type} />
-                        )}
+                        <UserNameWithRole
+                          displayName={post.quote_post.author?.display_name || post.quote_post.author?.username || "User"}
+                          role={post.quote_post.author?.role}
+                          className="truncate"
+                        />
                         <span className="text-muted truncate">
                           @{post.quote_post.author?.username || "user"}
                         </span>

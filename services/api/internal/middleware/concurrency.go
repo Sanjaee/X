@@ -88,3 +88,22 @@ func RequestTimeoutMiddleware(defaultTimeoutSec int) func(http.Handler) http.Han
 		})
 	}
 }
+
+// MaxBodySizeMiddleware caps HTTP request body size to prevent memory exhaustion (DDoS / large payload attacks).
+func MaxBodySizeMiddleware(defaultMaxBytes int64) func(http.Handler) http.Handler {
+	if defaultMaxBytes <= 0 {
+		defaultMaxBytes = 1 << 20 // 1 MiB default for JSON endpoints
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Body != nil {
+				limit := defaultMaxBytes
+				if strings.HasSuffix(r.URL.Path, "/media/upload") {
+					limit = 50 << 20 // 50 MiB for media uploads
+				}
+				r.Body = http.MaxBytesReader(w, r.Body, limit)
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}

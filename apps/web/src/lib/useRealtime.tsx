@@ -156,115 +156,137 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       };
 
       ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          const type = data.event_type || data.type;
-          const payload = data.payload || data;
+        const rawLines = String(event.data || "")
+          .split("\n")
+          .map((s) => s.trim())
+          .filter(Boolean);
 
-          if (type === "message.created") {
-            const msg = payload as Message;
-            setLastMessage(msg);
+        for (const rawLine of rawLines) {
+          try {
+            const data = JSON.parse(rawLine);
+            const type = data.event_type || data.type;
+            const payload = data.payload || data;
 
-            // Always dispatch window event for active message views
-            if (typeof window !== "undefined") {
-              window.dispatchEvent(new CustomEvent("x_new_message", { detail: msg }));
-            }
+            if (type === "message.created") {
+              const msg = payload as Message;
+              setLastMessage(msg);
 
-            // Deduplicate toast and badge count increment
-            if (msg.id && !seenMessageIdsRef.current.has(msg.id)) {
-              seenMessageIdsRef.current.add(msg.id);
-              // Only increment badge & show toast if message is from another user
-              if (!currentUserIdRef.current || msg.sender_id !== currentUserIdRef.current) {
-                setUnreadMessageCount((prev) => prev + 1);
-                addToast({
-                  type: "message",
-                  title: msg.sender?.display_name || (msg.sender?.username ? `@${msg.sender.username}` : "New Message"),
-                  message: msg.content || "Sent an attachment",
-                  avatar: msg.sender?.avatar_url,
-                  link: msg.conversation_id ? `/messages/${msg.conversation_id}` : "/messages",
-                });
+              // Always dispatch window event for active message views
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("x_new_message", { detail: msg }));
+              }
+
+              // Deduplicate toast and badge count increment
+              if (msg.id && !seenMessageIdsRef.current.has(msg.id)) {
+                seenMessageIdsRef.current.add(msg.id);
+                // Only increment badge & show toast if message is from another user
+                if (!currentUserIdRef.current || msg.sender_id !== currentUserIdRef.current) {
+                  setUnreadMessageCount((prev) => prev + 1);
+                  addToast({
+                    type: "message",
+                    title: msg.sender?.display_name || (msg.sender?.username ? `@${msg.sender.username}` : "New Message"),
+                    message: msg.content || "Sent an attachment",
+                    avatar: msg.sender?.avatar_url,
+                    link: msg.conversation_id ? `/messages/${msg.conversation_id}` : "/messages",
+                  });
+                }
+              }
+            } else if (type === "typing.updated") {
+              const typingData = payload as TypingEvent;
+              setTypingUsers((prev) => ({
+                ...prev,
+                [typingData.conversation_id]: typingData.is_typing,
+              }));
+            } else if (type === "notification.created") {
+              setUnreadNotifCount((prev) => prev + 1);
+              refreshCounts();
+
+              const notifType = payload.type;
+              const actorUsername = payload.actor_username || payload.follower_username || payload.requester_username || payload.sender_username || payload.actor?.username;
+              const actorLabel = payload.actor_name || (actorUsername ? `@${actorUsername}` : "Someone");
+              const postLink = payload.post_id
+                ? `/${actorUsername || "i"}/status/${payload.post_id}`
+                : "/notifications";
+
+              let toastTitle = "New Notification";
+              let toastMsg = "You have a new alert";
+              let toastLink = "/notifications";
+              let toastType: ToastNotification["type"] = "system";
+
+              if (notifType === "follow") {
+                toastType = "follow";
+                toastTitle = "New Follower";
+                toastMsg = actorUsername ? `@${actorUsername} followed you` : `${actorLabel} followed you`;
+                toastLink = actorUsername ? `/${actorUsername}` : "/notifications";
+              } else if (notifType === "follow_request") {
+                toastType = "follow_request";
+                toastTitle = "Follow Request";
+                toastMsg = actorUsername ? `@${actorUsername} requested to follow you` : `${actorLabel} requested to follow you`;
+                toastLink = "/notifications";
+              } else if (notifType === "follow_accept") {
+                toastType = "follow";
+                toastTitle = "Follow Request Accepted";
+                toastMsg = actorUsername ? `@${actorUsername} accepted your follow request` : "Your follow request was accepted";
+                toastLink = actorUsername ? `/${actorUsername}` : "/notifications";
+              } else if (notifType === "dm") {
+                toastType = "message";
+                toastTitle = payload.sender_name || (actorUsername ? `@${actorUsername}` : "Direct Message");
+                toastMsg = payload.content || "Sent you a direct message";
+                toastLink = payload.conversation_id ? `/messages/${payload.conversation_id}` : "/messages";
+              } else if (notifType === "like") {
+                toastType = "like";
+                toastTitle = actorUsername ? `@${actorUsername} liked your post` : "New Like";
+                toastMsg = payload.content ? `"${payload.content}"` : `${actorLabel} liked your post`;
+                toastLink = postLink;
+              } else if (notifType === "repost") {
+                toastType = "repost";
+                toastTitle = actorUsername ? `@${actorUsername} reposted your post` : "New Repost";
+                toastMsg = payload.content ? `"${payload.content}"` : `${actorLabel} reposted your post`;
+                toastLink = postLink;
+              } else if (notifType === "reply") {
+                toastType = "reply";
+                toastTitle = actorUsername ? `@${actorUsername} replied to your post` : "New Reply";
+                toastMsg = payload.content ? `"${payload.content}"` : `${actorLabel} replied to your post`;
+                toastLink = postLink;
+              } else if (notifType === "quote") {
+                toastType = "repost";
+                toastTitle = actorUsername ? `@${actorUsername} quoted your post` : "New Quote";
+                toastMsg = payload.content ? `"${payload.content}"` : `${actorLabel} quoted your post`;
+                toastLink = postLink;
+              } else if (notifType === "mention") {
+                toastType = "reply";
+                toastTitle = actorUsername ? `@${actorUsername} mentioned you` : "New Mention";
+                toastMsg = payload.content ? `"${payload.content}"` : `${actorLabel} mentioned you in a post`;
+                toastLink = postLink;
+              }
+
+              addToast({
+                type: toastType,
+                title: toastTitle,
+                message: toastMsg,
+                avatar: payload.actor_avatar || payload.follower_avatar || payload.requester_avatar || payload.sender_avatar || payload.actor?.avatar_url,
+                link: toastLink,
+              });
+
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("x_new_notification", { detail: payload }));
+              }
+            } else if (type === "feed.post_created") {
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("x_feed_post_created", { detail: payload }));
+              }
+            } else if (type === "post.engagement.updated") {
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("x_post_engagement_updated", { detail: payload }));
+              }
+            } else if (type === "notification.count.updated") {
+              if (typeof payload?.unread_count === "number") {
+                setUnreadNotifCount(payload.unread_count);
               }
             }
-          } else if (type === "typing.updated") {
-            const typingData = payload as TypingEvent;
-            setTypingUsers((prev) => ({
-              ...prev,
-              [typingData.conversation_id]: typingData.is_typing,
-            }));
-          } else if (type === "notification.created") {
-            setUnreadNotifCount((prev) => prev + 1);
-            refreshCounts();
-
-            const notifType = payload.type;
-            let toastTitle = "New Notification";
-            let toastMsg = "You have a new alert";
-            let toastLink = "/notifications";
-            let toastType: ToastNotification["type"] = "system";
-
-            if (notifType === "follow") {
-              toastType = "follow";
-              toastTitle = "New Follower";
-              toastMsg = payload.follower_username ? `@${payload.follower_username} followed you` : "Someone followed you";
-              toastLink = payload.follower_username ? `/${payload.follower_username}` : "/notifications";
-            } else if (notifType === "follow_request") {
-              toastType = "follow_request";
-              toastTitle = "Follow Request";
-              toastMsg = payload.requester_username ? `@${payload.requester_username} requested to follow you` : "Someone requested to follow you";
-              toastLink = "/notifications";
-            } else if (notifType === "follow_accept") {
-              toastType = "follow";
-              toastTitle = "Follow Request Accepted";
-              toastMsg = "Your follow request was accepted";
-              toastLink = "/notifications";
-            } else if (notifType === "dm") {
-              toastType = "message";
-              toastTitle = payload.sender_name || (payload.sender_username ? `@${payload.sender_username}` : "Direct Message");
-              toastMsg = payload.content || "Sent you a direct message";
-              toastLink = payload.conversation_id ? `/messages/${payload.conversation_id}` : "/messages";
-            } else if (notifType === "like") {
-              toastType = "like";
-              toastTitle = "New Like";
-              toastMsg = "Someone liked your post";
-              toastLink = "/notifications";
-            } else if (notifType === "repost") {
-              toastType = "repost";
-              toastTitle = "New Repost";
-              toastMsg = "Someone reposted your post";
-              toastLink = "/notifications";
-            } else if (notifType === "reply") {
-              toastType = "reply";
-              toastTitle = "New Reply";
-              toastMsg = payload.content ? `"${payload.content}"` : "Someone replied to your post";
-              toastLink = "/notifications";
-            } else if (notifType === "quote") {
-              toastType = "repost";
-              toastTitle = "New Quote";
-              toastMsg = payload.content ? `"${payload.content}"` : "Someone quoted your post";
-              toastLink = "/notifications";
-            }
-
-            addToast({
-              type: toastType,
-              title: toastTitle,
-              message: toastMsg,
-              avatar: payload.follower_avatar || payload.requester_avatar || payload.sender_avatar,
-              link: toastLink,
-            });
-
-            if (typeof window !== "undefined") {
-              window.dispatchEvent(new CustomEvent("x_new_notification", { detail: payload }));
-            }
-          } else if (type === "feed.post_created") {
-            if (typeof window !== "undefined") {
-              window.dispatchEvent(new CustomEvent("x_feed_post_created", { detail: payload }));
-            }
-          } else if (type === "notification.count.updated") {
-            if (typeof payload?.unread_count === "number") {
-              setUnreadNotifCount(payload.unread_count);
-            }
+          } catch (e) {
+            console.error("Failed to parse websocket message", e);
           }
-        } catch (e) {
-          console.error("Failed to parse websocket message", e);
         }
       };
 

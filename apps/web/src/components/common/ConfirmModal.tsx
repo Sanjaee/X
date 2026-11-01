@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Loader2 } from "lucide-react";
 
 interface ConfirmModalProps {
@@ -36,19 +37,20 @@ export function ConfirmModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, isLoading, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <div
       onClick={(e) => {
         e.stopPropagation();
         if (!isLoading) onClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150 select-none"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 backdrop-blur-sm p-4 animate-in fade-in duration-150 select-none"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-[320px] bg-background border border-border rounded-2xl shadow-2xl p-6 sm:p-8 flex flex-col animate-in zoom-in-95 duration-150"
+        style={{ backgroundColor: "var(--background, #000000)" }}
+        className="relative w-full max-w-[320px] bg-[#ffffff] dark:bg-[#000000] bg-background border border-border rounded-2xl shadow-2xl p-6 sm:p-8 flex flex-col animate-in zoom-in-95 duration-150"
       >
         <h2 className="text-[20px] font-extrabold text-foreground mb-2 leading-tight">
           {title}
@@ -89,6 +91,7 @@ export function ConfirmModal({
           {cancelText}
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -209,6 +209,7 @@ export function VirtualizedFeed({
               data-index={virtualRow.index}
               data-post-id={post.id}
               ref={virtualizer.measureElement}
+              className="focus-within:z-30 hover:z-20"
               style={{
                 position: "absolute",
                 top: 0,

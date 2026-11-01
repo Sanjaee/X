@@ -1,52 +1,123 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-
 import {
   Check,
   Zap,
-  ShieldCheck,
+  Shield,
   Sparkles,
-  ArrowRight,
-  ExternalLink,
+  Star,
   Loader2,
-  Clock,
   FileText,
-  AlertCircle,
-  HelpCircle,
+  Search,
+  X,
 } from 'lucide-react';
-import { LeftNavRail } from '@/components/layout/LeftNavRail';
 import { RightSidebar } from '@/components/layout/RightSidebar';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { ConfirmModal } from '@/components/common/ConfirmModal';
-import { VerifiedBadge } from '@/components/common/VerifiedBadge';
-import { User, Subscription, Entitlements } from '@/types';
+import { UserNameWithRole } from '@/components/ui/UserNameWithRole';
+import { Subscription, Entitlements, MembershipPlan } from '@/types';
 import { apiRequest } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/lib/useCurrentUser';
+
+interface CryptoCurrencyOption {
+  cid: string;
+  currency: string;
+  name: string;
+  network?: string;
+  icon: string;
+  price_usd?: string;
+  priceUsd?: string;
+}
+
+const ROLE_TIER_DEFAULTS: Record<
+  string,
+  {
+    role: string;
+    name: string;
+    defaultPriceCents: number;
+    icon: React.ReactNode;
+    highlights: string[];
+  }
+> = {
+  vip: {
+    role: 'vip',
+    name: 'VIP Member',
+    defaultPriceCents: 100,
+    icon: <Star className="w-5 h-5 text-blue-400" />,
+    highlights: ['VIP Role Badge & Styled Username', 'Basic analytics', 'Custom profile colors'],
+  },
+  mvp: {
+    role: 'mvp',
+    name: 'MVP',
+    defaultPriceCents: 100,
+    icon: <Zap className="w-5 h-5 text-yellow-400" />,
+    highlights: ['Everything in VIP', 'Animated MVP Role Badge', 'Increased upload limits'],
+  },
+  mod: {
+    role: 'mod',
+    name: 'Moderator',
+    defaultPriceCents: 100,
+    icon: <Shield className="w-5 h-5 text-green-400" />,
+    highlights: ['Everything in MVP', 'Moderator Role Badge & Tools', 'Content management'],
+  },
+  god: {
+    role: 'god',
+    name: 'God',
+    defaultPriceCents: 100,
+    icon: <Sparkles className="w-5 h-5 text-purple-400" />,
+    highlights: ['Everything in Mod', 'God Mode Role & Privileges', 'Bypass standard limits'],
+  },
+};
+
+const PURCHASABLE_KEYS = ['vip', 'mvp', 'mod', 'god'] as const;
 
 export default function PremiumPage() {
   const router = useRouter();
   const { currentUser, updateUser: setCurrentUser } = useCurrentUser();
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
-  const [selectedTier, setSelectedTier] = useState<'basic' | 'premium' | 'premium_plus'>('premium');
+  const [selectedTier, setSelectedTier] = useState<string>('vip');
   const [loading, setLoading] = useState(false);
+  const [plansLoading, setPlansLoading] = useState(true);
+  const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>([]);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [entitlements, setEntitlements] = useState<Entitlements | null>(null);
-  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'subscribe' | 'history'>('subscribe');
   const [billingOrders, setBillingOrders] = useState<any[]>([]);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
 
+  // Crypto Modal State
+  const [showCryptoModal, setShowCryptoModal] = useState(false);
+  const [currencies, setCurrencies] = useState<CryptoCurrencyOption[]>([]);
+  const [loadingCryptos, setLoadingCryptos] = useState(false);
+  const [creatingInvoice, setCreatingInvoice] = useState(false);
+  const [cryptoSearch, setCryptoSearch] = useState('');
+
   useEffect(() => {
-    loadUserData();
+    loadPlans();
+  }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      loadUserData();
+    }
   }, [currentUser]);
+
+  const loadPlans = async () => {
+    setPlansLoading(true);
+    try {
+      const res = await apiRequest<{ plans: MembershipPlan[] }>('/membership/plans');
+      setMembershipPlans(res.plans || []);
+    } catch (err) {
+      console.error('Failed to load membership plans', err);
+    } finally {
+      setPlansLoading(false);
+    }
+  };
 
   const loadUserData = () => {
     apiRequest<{ subscription: Subscription | null; entitlements: Entitlements }>('/subscriptions/me')
@@ -55,41 +126,104 @@ export default function PremiumPage() {
         setEntitlements(res.entitlements);
       })
       .catch(() => {
-        setCurrentUser(null);
+        // Ignore if not logged in
       });
   };
 
-  const handleCheckout = async (simulate = false) => {
+  const getTierDisplayList = () => {
+    return PURCHASABLE_KEYS.map((key) => {
+      const dbPlan = membershipPlans.find((p) => p.key === key || p.id === key);
+      const defaults = ROLE_TIER_DEFAULTS[key];
+      const priceCents = dbPlan ? dbPlan.price_amount_cents : defaults.defaultPriceCents;
+      const formattedPrice =
+        priceCents % 100 === 0
+          ? `$${(priceCents / 100).toFixed(0)}`
+          : `$${(priceCents / 100).toFixed(2)}`;
+
+      const quotaFeatures: string[] = [];
+      if (dbPlan?.entitlements && dbPlan.entitlements.length > 0) {
+        const entMap: Record<string, number> = {};
+        dbPlan.entitlements.forEach((e) => {
+          entMap[e.entitlement_key] = e.limit_value;
+        });
+        if (entMap['posts_per_day']) {
+          quotaFeatures.push(`${entMap['posts_per_day'].toLocaleString()} posts per day`);
+        }
+        if (entMap['max_post_length']) {
+          quotaFeatures.push(`Up to ${entMap['max_post_length'].toLocaleString()} characters per post`);
+        }
+        if (entMap['max_video_minutes'] && entMap['max_file_size_mb']) {
+          quotaFeatures.push(
+            `${entMap['max_video_minutes']}-min video uploads (up to ${entMap['max_file_size_mb']} MB)`
+          );
+        }
+      }
+
+      return {
+        role: key,
+        name: dbPlan?.name || defaults.name,
+        description: dbPlan?.description || '',
+        priceCents,
+        formattedPrice,
+        icon: defaults.icon,
+        features: [...defaults.highlights, ...quotaFeatures],
+      };
+    });
+  };
+
+  const tiers = getTierDisplayList();
+  const activeTierObj = tiers.find((t) => t.role === selectedTier) || tiers[0];
+
+  const handleOpenCryptoModal = async () => {
     if (!currentUser) {
       setAuthModalOpen(true);
       return;
     }
 
-    setLoading(true);
-    setCheckoutUrl(null);
-    setSuccessMessage(null);
+    setShowCryptoModal(true);
+    setCryptoSearch('');
+    if (currencies.length === 0) {
+      setLoadingCryptos(true);
+      try {
+        const res = await apiRequest<{ cryptocurrencies: CryptoCurrencyOption[] }>('/subscriptions/cryptos');
+        setCurrencies(res.cryptocurrencies || []);
+      } catch (err) {
+        console.error('Failed to load cryptocurrencies', err);
+      } finally {
+        setLoadingCryptos(false);
+      }
+    }
+  };
 
+  const handleSelectCryptoAndCheckout = async (currencyCode: string) => {
+    if (!currentUser) {
+      setAuthModalOpen(true);
+      return;
+    }
+
+    setCreatingInvoice(true);
+    setLoading(true);
     try {
       const res = await apiRequest<{
         order_id: string;
         invoice_url: string;
         amount_cents: number;
         currency: string;
-        white_label?: any;
       }>('/subscriptions/checkout', {
         method: 'POST',
         body: JSON.stringify({
           plan_id: selectedTier,
-          billing_cycle: billingCycle,
-          currency: 'USDT_TRX',
+          billing_cycle: 'monthly',
+          currency: currencyCode,
         }),
       });
 
-      // White-Label checkout: navigate directly to internal payment page without external redirect
-      router.push(`/premium/invoice?order_id=${res.order_id}${simulate ? '&simulated=true' : ''}`);
+      setShowCryptoModal(false);
+      router.push(`/premium/invoice?order_id=${res.order_id}`);
     } catch (err: any) {
-      alert(err.message || 'Failed to initiate checkout');
+      alert(err.message || 'Failed to initiate cryptocurrency checkout');
     } finally {
+      setCreatingInvoice(false);
       setLoading(false);
     }
   };
@@ -122,15 +256,12 @@ export default function PremiumPage() {
     }
   };
 
-  const pricing = {
-    basic: { monthly: 3, annual: 30, discount: 'Save 17%' },
-    premium: { monthly: 8, annual: 84, discount: 'Save 12%' },
-    premium_plus: { monthly: 16, annual: 168, discount: 'Save 12%' },
-  };
+  const previewUserName =
+    currentUser?.display_name || currentUser?.username || 'Username';
 
   return (
     <>
-      <main className="w-full max-w-[600px] border-r border-border min-h-screen pb-16">
+      <main className="w-full max-w-[600px] border-r border-border min-h-screen pb-28">
         {/* Top Header */}
         <div className="sticky top-0 z-20 backdrop-blur-md bg-background/80 border-b border-border px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -141,10 +272,12 @@ export default function PremiumPage() {
               onClick={() => setActiveTab('subscribe')}
               className={cn(
                 'px-3 py-1 rounded-full transition-colors',
-                activeTab === 'subscribe' ? 'bg-background text-foreground shadow-sm' : 'text-muted hover:text-foreground'
+                activeTab === 'subscribe'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted hover:text-foreground'
               )}
             >
-              Plans
+              Role Plans
             </button>
             <button
               onClick={() => {
@@ -153,7 +286,9 @@ export default function PremiumPage() {
               }}
               className={cn(
                 'px-3 py-1 rounded-full transition-colors',
-                activeTab === 'history' ? 'bg-background text-foreground shadow-sm' : 'text-muted hover:text-foreground'
+                activeTab === 'history'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted hover:text-foreground'
               )}
             >
               Billing History
@@ -168,15 +303,18 @@ export default function PremiumPage() {
               <div className="bg-gradient-to-r from-blue-900/40 via-blue-800/20 to-neutral-900 border border-blue-500/40 rounded-2xl p-5 shadow-lg">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[20px] font-bold capitalize">{subscription.plan_id.replace('_', ' ')} Member</span>
-                    <VerifiedBadge type={entitlements?.badge_type || 'blue'} size="md" />
+                    <UserNameWithRole
+                      displayName={previewUserName}
+                      role={currentUser?.role || subscription.plan_id}
+                      className="text-[18px]"
+                    />
                   </div>
                   <span className="text-[12px] bg-blue-500/20 text-[#1d9bf0] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                     Active
                   </span>
                 </div>
                 <p className="text-[14px] text-muted mb-3">
-                  Your subscription renews on {new Date(subscription.current_period_end).toLocaleDateString()}.
+                  Your membership renews on {new Date(subscription.current_period_end).toLocaleDateString()}.
                   {subscription.cancel_at_period_end && ' (Cancels at end of period)'}
                 </p>
                 <div className="flex gap-2">
@@ -193,310 +331,95 @@ export default function PremiumPage() {
             )}
 
             {/* Hero Heading */}
-            <div className="text-center space-y-2 py-2">
-              <h2 className="text-[28px] sm:text-[32px] font-extrabold tracking-tight">
-                Upgrade to Premium
+            <div className="text-center space-y-2 py-1">
+              <h2 className="text-[26px] sm:text-[30px] font-extrabold tracking-tight">
+                Upgrade Your Role
               </h2>
-              <p className="text-muted text-[15px] max-w-[460px] mx-auto leading-relaxed">
-                Enjoy an enhanced experience, verified profile checkmark, creator revenue eligibility, and higher posting limits.
+              <p className="text-muted text-[14px] max-w-[460px] mx-auto leading-relaxed">
+                Unlock exclusive role badges, styled display names, higher daily post quotas, and enhanced media uploads.
               </p>
             </div>
 
-            {/* Monthly / Annual Toggle */}
-            <div className="flex justify-center">
-              <div className="bg-subtle p-1 rounded-full flex items-center border border-border">
-                <button
-                  type="button"
-                  onClick={() => setBillingCycle('annual')}
-                  className={cn(
-                    'px-4 py-1.5 rounded-full text-[14px] font-bold transition-all flex items-center gap-1.5',
-                    billingCycle === 'annual'
-                      ? 'bg-foreground text-background shadow-md'
-                      : 'text-muted hover:text-foreground'
-                  )}
-                >
-                  Annual
-                  <span className="text-[11px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full font-extrabold">
-                    SAVE 12%
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBillingCycle('monthly')}
-                  className={cn(
-                    'px-4 py-1.5 rounded-full text-[14px] font-bold transition-all',
-                    billingCycle === 'monthly'
-                      ? 'bg-foreground text-background shadow-md'
-                      : 'text-muted hover:text-foreground'
-                  )}
-                >
-                  Monthly
-                </button>
+            {/* Role Tier Cards Grid (2x2 on sm+, 1 col on mobile) */}
+            {plansLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-[#1d9bf0]" />
               </div>
-            </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {tiers.map((tier) => (
+                  <div
+                    key={tier.role}
+                    onClick={() => setSelectedTier(tier.role)}
+                    className={cn(
+                      'bg-[#16181c] rounded-2xl p-5 flex flex-col relative border-2 cursor-pointer transition-all',
+                      selectedTier === tier.role
+                        ? 'border-[#1d9bf0] shadow-[0_0_20px_rgba(29,155,240,0.3)] scale-[1.01]'
+                        : 'border-border/70 hover:border-[#333c45]'
+                    )}
+                  >
+                    <div className="mb-4 border-b border-[#2f3336] pb-4">
+                      <div className="flex items-center gap-2 mb-2.5">
+                        {tier.icon}
+                        <h3 className="text-[19px] font-bold text-white">{tier.name}</h3>
+                      </div>
 
-            {/* Plan Cards Grid */}
-            <div className="grid grid-cols-1 gap-4">
-              {/* Basic Plan */}
-              <div
-                onClick={() => setSelectedTier('basic')}
-                className={cn(
-                  'border rounded-2xl p-5 cursor-pointer transition-all relative',
-                  selectedTier === 'basic'
-                    ? 'border-[#1d9bf0] bg-[#1d9bf0]/5 shadow-[0_0_20px_rgba(29,155,240,0.15)]'
-                    : 'border-border hover:border-neutral-700 bg-subtle/30'
-                )}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h3 className="text-[19px] font-bold">Basic</h3>
-                    <p className="text-[13px] text-muted">Essential enhancement tools</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[22px] font-extrabold">
-                      ${billingCycle === 'annual' ? pricing.basic.annual : pricing.basic.monthly}
-                    </span>
-                    <span className="text-muted text-[13px]">
-                      /{billingCycle === 'annual' ? 'year' : 'month'}
-                    </span>
-                  </div>
-                </div>
-                <ul className="space-y-2 mt-4 text-[14px] text-neutral-300">
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-[#1d9bf0]" />
-                    Edit posts within 1 hour
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-[#1d9bf0]" />
-                    Post up to 1,000 characters
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-[#1d9bf0]" />
-                    10-minute 1080p video uploads
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-[#1d9bf0]" />
-                    Bookmark folders & Undo send
-                  </li>
-                </ul>
-              </div>
+                      <div className="text-xs text-gray-400 mb-3.5 bg-black/50 px-3 py-2 rounded-lg border border-white/5 flex items-center gap-1.5 min-w-0">
+                        <span className="shrink-0">Preview:</span>
+                        <UserNameWithRole
+                          displayName={previewUserName}
+                          role={tier.role}
+                          className="text-sm"
+                        />
+                      </div>
 
-              {/* Premium Plan (Most Popular) */}
-              <div
-                onClick={() => setSelectedTier('premium')}
-                className={cn(
-                  'border-2 rounded-2xl p-5 cursor-pointer transition-all relative overflow-hidden',
-                  selectedTier === 'premium'
-                    ? 'border-[#1d9bf0] bg-[#1d9bf0]/10 shadow-[0_0_25px_rgba(29,155,240,0.25)]'
-                    : 'border-border hover:border-neutral-700 bg-subtle/40'
-                )}
-              >
-                <div className="absolute top-0 right-0 bg-[#1d9bf0] text-white text-[11px] font-extrabold px-3 py-0.5 rounded-bl-xl uppercase tracking-wider">
-                  Most Popular
-                </div>
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <h3 className="text-[20px] font-bold">Premium</h3>
-                      <VerifiedBadge type="blue" size="md" showPopover={false} />
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-3xl font-extrabold text-white">
+                          {tier.formattedPrice}
+                        </span>
+                        <span className="text-[#71767b] text-sm font-medium">/ mo</span>
+                      </div>
                     </div>
-                    <p className="text-[13px] text-muted">The signature X verified experience</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[24px] font-extrabold">
-                      ${billingCycle === 'annual' ? pricing.premium.annual : pricing.premium.monthly}
-                    </span>
-                    <span className="text-muted text-[13px]">
-                      /{billingCycle === 'annual' ? 'year' : 'month'}
-                    </span>
-                  </div>
-                </div>
-                <ul className="space-y-2.5 mt-4 text-[14px]">
-                  <li className="flex items-center gap-2 font-semibold text-white">
-                    <Check className="w-4 h-4 text-[#1d9bf0]" />
-                    <span>Blue Verified Badge on profile and replies</span>
-                  </li>
-                  <li className="flex items-center gap-2 text-neutral-200">
-                    <Check className="w-4 h-4 text-[#1d9bf0]" />
-                    <span>50% fewer ads in For You and Following</span>
-                  </li>
-                  <li className="flex items-center gap-2 text-neutral-200">
-                    <Check className="w-4 h-4 text-[#1d9bf0]" />
-                    <span>Post longer content up to 4,000 characters</span>
-                  </li>
-                  <li className="flex items-center gap-2 text-neutral-200">
-                    <Check className="w-4 h-4 text-[#1d9bf0]" />
-                    <span>60-minute 1080p video uploads to Cloudflare R2</span>
-                  </li>
-                  <li className="flex items-center gap-2 text-neutral-200">
-                    <Check className="w-4 h-4 text-[#1d9bf0]" />
-                    <span>Prioritized rankings in conversations</span>
-                  </li>
-                  <li className="flex items-center gap-2 text-neutral-200">
-                    <Check className="w-4 h-4 text-[#1d9bf0]" />
-                    <span>Creator analytics & revenue sharing eligibility</span>
-                  </li>
-                </ul>
-              </div>
 
-              {/* Premium+ Plan */}
-              <div
-                onClick={() => setSelectedTier('premium_plus')}
-                className={cn(
-                  'border rounded-2xl p-5 cursor-pointer transition-all relative',
-                  selectedTier === 'premium_plus'
-                    ? 'border-[#1d9bf0] bg-[#1d9bf0]/5 shadow-[0_0_20px_rgba(29,155,240,0.15)]'
-                    : 'border-border hover:border-neutral-700 bg-subtle/30'
-                )}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h3 className="text-[19px] font-bold">Premium+</h3>
-                    <p className="text-[13px] text-muted">The ultimate ad-free experience</p>
+                    <ul className="flex flex-col gap-2.5 text-[13px] font-medium mt-auto">
+                      {tier.features.map((feat, i) => (
+                        <li key={i} className="flex items-start gap-2.5">
+                          <Check className="text-[#1d9bf0] w-4 h-4 shrink-0 mt-0.5" />
+                          <span className="text-gray-300 leading-snug">{feat}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <div className="text-right">
-                    <span className="text-[22px] font-extrabold">
-                      ${billingCycle === 'annual' ? pricing.premium_plus.annual : pricing.premium_plus.monthly}
-                    </span>
-                    <span className="text-muted text-[13px]">
-                      /{billingCycle === 'annual' ? 'year' : 'month'}
-                    </span>
-                  </div>
-                </div>
-                <ul className="space-y-2 mt-4 text-[14px] text-neutral-300">
-                  <li className="flex items-center gap-2 font-semibold text-white">
-                    <Check className="w-4 h-4 text-[#1d9bf0]" />
-                    Zero ads in For You and Following
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-[#1d9bf0]" />
-                    Largest reply ranking boost
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-[#1d9bf0]" />
-                    Write articles & post up to 10,000 characters
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-[#1d9bf0]" />
-                    3-hour video uploads
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Success notification */}
-            {successMessage && (
-              <div className="bg-green-500/10 border border-green-500/40 rounded-xl p-4 text-green-400 text-[14px] flex items-center gap-3">
-                <Check className="w-5 h-5 shrink-0" />
-                <span>{successMessage}</span>
+                ))}
               </div>
             )}
 
-            {/* Plisio Invoice Redirection Banner */}
-            {checkoutUrl && (
-              <div className="bg-[#1d9bf0]/10 border border-[#1d9bf0]/40 rounded-xl p-4 text-[14px] flex flex-col gap-2">
-                <span className="font-bold text-white flex items-center gap-2">
-                  <ExternalLink className="w-4 h-4 text-[#1d9bf0]" />
-                  Plisio Cryptocurrency Invoice Created
-                </span>
-                <p className="text-muted text-[13px]">
-                  Your invoice has been generated with Plisio gateway. Complete the payment in cryptocurrency (BTC, USDT, ETH, etc.) to activate your subscription.
-                </p>
-                <a
-                  href={checkoutUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold py-2 px-4 rounded-full text-center transition-colors inline-block mt-1"
+            {/* Subscribe Action Bar */}
+            {activeTierObj && (
+              <div className="bg-[#16181c] border border-[#2f3336] rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+                <div className="flex flex-col text-center sm:text-left">
+                  <div className="flex items-center justify-center sm:justify-start gap-2">
+                    <span className="font-bold text-base text-white">{activeTierObj.name} Tier</span>
+                  </div>
+                  <span className="text-[#71767b] text-xs mt-0.5">
+                    {activeTierObj.formattedPrice} / month · Instant role activation via Plisio Crypto
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleOpenCryptoModal}
+                  disabled={loading}
+                  className="w-full sm:w-auto min-w-[220px] flex items-center justify-center gap-2 bg-white hover:bg-gray-200 text-black font-bold py-3 px-6 rounded-full text-[15px] transition-colors disabled:opacity-70"
                 >
-                  Open Plisio Invoice
-                </a>
+                  {loading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    `Subscribe to ${activeTierObj.name}`
+                  )}
+                </button>
               </div>
             )}
-
-            {/* Checkout Actions */}
-            <div className="space-y-3 pt-2">
-              <button
-                type="button"
-                onClick={() => handleCheckout(false)}
-                disabled={loading}
-                className="w-full bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-extrabold text-[16px] py-3.5 px-6 rounded-full shadow-lg transition-all flex items-center justify-center gap-2 active:scale-98"
-              >
-                {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <>
-                    <span>Subscribe with Crypto (Plisio)</span>
-                    <ArrowRight className="w-5 h-5" />
-                  </>
-                )}
-              </button>
-
-              {/* Dev Simulation Button */}
-              <button
-                type="button"
-                onClick={() => handleCheckout(true)}
-                disabled={loading}
-                className="w-full bg-subtle hover:bg-neutral-800 border border-border text-neutral-300 font-semibold text-[14px] py-2.5 px-4 rounded-full transition-colors flex items-center justify-center gap-2"
-              >
-                <Zap className="w-4 h-4 text-yellow-400" />
-                <span>Simulate Instant Payment (Dev Mode)</span>
-              </button>
-            </div>
-
-            {/* Feature Comparison Matrix */}
-            <div className="mt-8 border-t border-border pt-6">
-              <h3 className="font-bold text-[18px] mb-4">Compare all features</h3>
-              <div className="border border-border rounded-xl overflow-hidden text-[13px]">
-                <table className="w-full text-left">
-                  <thead className="bg-subtle/50 border-b border-border text-muted">
-                    <tr>
-                      <th className="p-3">Feature</th>
-                      <th className="p-3 text-center">Free</th>
-                      <th className="p-3 text-center">Basic</th>
-                      <th className="p-3 text-center text-[#1d9bf0]">Premium</th>
-                      <th className="p-3 text-center">Premium+</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    <tr>
-                      <td className="p-3 font-medium">Post Length</td>
-                      <td className="p-3 text-center text-muted">280</td>
-                      <td className="p-3 text-center font-medium">1,000</td>
-                      <td className="p-3 text-center font-bold text-[#1d9bf0]">4,000</td>
-                      <td className="p-3 text-center font-bold">10,000</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-medium">Verified Blue Checkmark</td>
-                      <td className="p-3 text-center text-muted">-</td>
-                      <td className="p-3 text-center text-muted">-</td>
-                      <td className="p-3 text-center text-[#1d9bf0]">✔</td>
-                      <td className="p-3 text-center text-[#1d9bf0]">✔</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-medium">Ad Reduction</td>
-                      <td className="p-3 text-center text-muted">None</td>
-                      <td className="p-3 text-center text-muted">None</td>
-                      <td className="p-3 text-center font-medium">50% Less</td>
-                      <td className="p-3 text-center font-bold text-green-400">100% Ad-Free</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-medium">Video Upload Length</td>
-                      <td className="p-3 text-center text-muted">2 min</td>
-                      <td className="p-3 text-center font-medium">10 min</td>
-                      <td className="p-3 text-center font-bold">60 min</td>
-                      <td className="p-3 text-center font-bold">3 hours</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-medium">Edit Post Window</td>
-                      <td className="p-3 text-center text-muted">-</td>
-                      <td className="p-3 text-center">1 Hour</td>
-                      <td className="p-3 text-center">1 Hour</td>
-                      <td className="p-3 text-center">1 Hour</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
           </div>
         ) : (
           /* Billing History Tab */
@@ -512,13 +435,19 @@ export default function PremiumPage() {
                 {billingOrders.map((order) => (
                   <div
                     key={order.id}
-                    className="border border-border rounded-xl p-4 flex items-center justify-between bg-subtle/20"
+                    onClick={() => router.push(`/premium/invoice?order_id=${order.id}`)}
+                    className="border border-border rounded-xl p-4 flex items-center justify-between bg-subtle/20 hover:bg-subtle/40 cursor-pointer transition-colors"
                   >
                     <div>
-                      <div className="font-bold capitalize text-[15px]">
-                        {order.plan_id.replace('_', ' ')} Plan ({order.billing_cycle})
+                      <div className="font-bold uppercase text-[14px] flex items-center gap-2">
+                        <span>{order.plan_id} Role Plan</span>
+                        <UserNameWithRole
+                          displayName={previewUserName}
+                          role={order.plan_id}
+                          className="text-xs"
+                        />
                       </div>
-                      <div className="text-[13px] text-muted">
+                      <div className="text-[13px] text-muted mt-0.5">
                         {new Date(order.created_at).toLocaleDateString()} · Plisio Crypto
                       </div>
                     </div>
@@ -549,6 +478,98 @@ export default function PremiumPage() {
 
       <RightSidebar />
 
+      {/* Crypto Selection Modal */}
+      {showCryptoModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-[#16181c] border border-[#333] rounded-2xl w-full max-w-md p-6 relative shadow-2xl">
+            <button
+              onClick={() => !creatingInvoice && setShowCryptoModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white p-1"
+              disabled={creatingInvoice}
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h2 className="text-xl font-bold text-white mb-1">Select Crypto</h2>
+            <p className="text-gray-400 text-xs mb-4">
+              Choose your preferred cryptocurrency to complete the{' '}
+              <span className="text-white font-semibold">{activeTierObj?.formattedPrice}</span> payment for the{' '}
+              <span className="text-white font-semibold">{activeTierObj?.name}</span> role.
+            </p>
+
+            {currencies.length > 0 && (
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <input
+                    type="text"
+                    placeholder="Search cryptocurrency..."
+                    value={cryptoSearch}
+                    onChange={(e) => setCryptoSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2.5 bg-[#202327] border border-[#333] rounded-xl text-sm outline-none focus:border-[#1d9bf0] transition-colors text-white"
+                  />
+                </div>
+              </div>
+            )}
+
+            {loadingCryptos && !currencies.length ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="w-8 h-8 animate-spin text-[#1d9bf0]" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 max-h-[320px] overflow-y-auto pr-1">
+                {currencies
+                  .filter(
+                    (c) =>
+                      c.name.toLowerCase().includes(cryptoSearch.toLowerCase()) ||
+                      c.currency.toLowerCase().includes(cryptoSearch.toLowerCase())
+                  )
+                  .map((c) => {
+                    const usdRate = c.price_usd || c.priceUsd;
+                    return (
+                      <button
+                        key={c.cid || c.currency}
+                        onClick={() => handleSelectCryptoAndCheckout(c.currency)}
+                        disabled={creatingInvoice}
+                        className="flex flex-col items-center justify-center gap-1.5 p-3.5 rounded-xl border border-[#333] hover:border-[#1d9bf0] hover:bg-[#1d9bf0]/10 transition-all disabled:opacity-50"
+                      >
+                        <img
+                          src={c.icon || `/crypto-icons/${c.currency}.svg`}
+                          alt={c.name}
+                          className="w-8 h-8 object-contain"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = '/crypto-icons/USDT.svg';
+                          }}
+                        />
+                        <span className="text-xs font-semibold text-white text-center line-clamp-1">
+                          {c.name}
+                        </span>
+                        <span className="text-[11px] text-gray-400 font-mono">{c.currency}</span>
+                        {usdRate && (
+                          <span className="text-[11px] font-medium text-emerald-400">
+                            $
+                            {parseFloat(usdRate).toLocaleString('en-US', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 6,
+                            })}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+              </div>
+            )}
+
+            {creatingInvoice && (
+              <div className="absolute inset-0 bg-[#16181c]/85 flex flex-col items-center justify-center rounded-2xl">
+                <Loader2 className="w-9 h-9 animate-spin text-[#1d9bf0] mb-3" />
+                <span className="font-semibold text-sm text-white">Preparing Plisio invoice...</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
@@ -563,7 +584,7 @@ export default function PremiumPage() {
         onClose={() => setCancelModalOpen(false)}
         onConfirm={handleConfirmCancel}
         title="Cancel subscription?"
-        description="Your subscription renewal will be canceled and verification benefits will end at the end of the current billing period."
+        description="Your subscription renewal will be canceled and role benefits will end at the end of the current billing period."
         confirmText="Cancel subscription"
         cancelText="Keep subscription"
         variant="destructive"

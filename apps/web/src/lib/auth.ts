@@ -36,7 +36,10 @@ export const authOptions: NextAuthOptions = {
                 : `${baseUrl}/api/v1/auth/google`;
               const res = await fetch(url, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-Internal-Auth-Secret": process.env.NEXTAUTH_SECRET || "",
+                },
                 body: JSON.stringify({
                   email: user.email,
                   display_name: user.name || user.email.split("@")[0],
@@ -87,7 +90,10 @@ export const authOptions: NextAuthOptions = {
                 : `${baseUrl}/api/v1/auth/google`;
               const res = await fetch(url, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-Internal-Auth-Secret": process.env.NEXTAUTH_SECRET || "",
+                },
                 body: JSON.stringify({
                   email: token.email,
                   display_name: token.name || (token.email as string).split("@")[0],

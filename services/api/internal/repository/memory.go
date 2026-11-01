@@ -191,13 +191,17 @@ func (r *MemoryRepository) seedInitialData() {
 	}
 
 	// Seed Membership Plans & Entitlements
-	r.memPlans["free"] = &domain.MembershipPlan{ID: "free", Key: "free", Name: "Member", PriceAmountCents: 0, IsActive: true}
-	r.memPlans["vip"] = &domain.MembershipPlan{ID: "vip", Key: "vip", Name: "VIP Member", PriceAmountCents: 100, IsActive: true}
-	r.memPlans["mvp"] = &domain.MembershipPlan{ID: "mvp", Key: "mvp", Name: "MVP", PriceAmountCents: 100, IsActive: true}
+	r.memPlans["free"] = &domain.MembershipPlan{ID: "free", Key: "free", Name: "Member", Description: "Free tier for standard community use", PriceAmountCents: 0, Currency: "USD", BillingInterval: "monthly", IsActive: true}
+	r.memPlans["vip"] = &domain.MembershipPlan{ID: "vip", Key: "vip", Name: "VIP Member", Description: "Enhanced posting limit, video uploads, and verified VIP badge", PriceAmountCents: 100, Currency: "USD", BillingInterval: "monthly", IsActive: true}
+	r.memPlans["mvp"] = &domain.MembershipPlan{ID: "mvp", Key: "mvp", Name: "MVP", Description: "Maximum limits, highest upload quota, and top tier benefits", PriceAmountCents: 100, Currency: "USD", BillingInterval: "monthly", IsActive: true}
+	r.memPlans["mod"] = &domain.MembershipPlan{ID: "mod", Key: "mod", Name: "Moderator", Description: "Everything in MVP plus Moderator tools access and content management", PriceAmountCents: 100, Currency: "USD", BillingInterval: "monthly", IsActive: true}
+	r.memPlans["god"] = &domain.MembershipPlan{ID: "god", Key: "god", Name: "God", Description: "Everything in Moderator plus God Mode privileges and maximum platform limits", PriceAmountCents: 100, Currency: "USD", BillingInterval: "monthly", IsActive: true}
 
 	r.memEntitlements["free"] = map[string]int64{"posts_per_day": 2, "max_images_per_post": 2, "max_videos_per_post": 0, "max_post_length": 280, "max_file_size_mb": 5}
 	r.memEntitlements["vip"] = map[string]int64{"posts_per_day": 10, "max_images_per_post": 4, "max_videos_per_post": 1, "max_post_length": 4000, "max_file_size_mb": 50, "can_view_analytics": 1}
 	r.memEntitlements["mvp"] = map[string]int64{"posts_per_day": 30, "max_images_per_post": 4, "max_videos_per_post": 1, "max_post_length": 10000, "max_file_size_mb": 200, "can_view_analytics": 1}
+	r.memEntitlements["mod"] = map[string]int64{"posts_per_day": 50, "max_images_per_post": 4, "max_videos_per_post": 2, "max_post_length": 10000, "max_file_size_mb": 300, "can_view_analytics": 1}
+	r.memEntitlements["god"] = map[string]int64{"posts_per_day": 100, "max_images_per_post": 4, "max_videos_per_post": 4, "max_post_length": 10000, "max_file_size_mb": 500, "can_view_analytics": 1}
 
 	// Create sample official NASA account
 	nasaID := uuid.MustParse("11111111-1111-1111-1111-111111111111")

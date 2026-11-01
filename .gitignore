@@ -2,6 +2,8 @@
 .env
 .env*.local
 *.env
+deploy/nginx/certs/
+*.tsbuildinfo
 
 # Dependencies
 node_modules/

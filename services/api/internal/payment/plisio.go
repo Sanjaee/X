@@ -113,18 +113,88 @@ type PlisioCryptoInfo struct {
 	Name     string `json:"name"`
 	Network  string `json:"network"`
 	Icon     string `json:"icon"`
+	PriceUsd string `json:"priceUsd,omitempty"`
 }
 
 // GetSupportedCryptos returns recommended cryptocurrencies for White-Label payment
 func GetSupportedCryptos() []PlisioCryptoInfo {
 	return []PlisioCryptoInfo{
-		{CID: "USDT_TRX", Currency: "USDT_TRX", Name: "Tether (TRC-20)", Network: "TRON", Icon: "usdt"},
-		{CID: "BTC", Currency: "BTC", Name: "Bitcoin", Network: "Bitcoin", Icon: "btc"},
-		{CID: "ETH", Currency: "ETH", Name: "Ethereum", Network: "Ethereum", Icon: "eth"},
-		{CID: "LTC", Currency: "LTC", Name: "Litecoin", Network: "Litecoin", Icon: "ltc"},
-		{CID: "SOL", Currency: "SOL", Name: "Solana", Network: "Solana", Icon: "sol"},
-		{CID: "DOGE", Currency: "DOGE", Name: "Dogecoin", Network: "Dogecoin", Icon: "doge"},
+		{CID: "USDT_TRX", Currency: "USDT_TRX", Name: "Tether (TRC-20)", Network: "TRON", Icon: "/crypto-icons/USDT_TRX.svg", PriceUsd: "1.00"},
+		{CID: "BTC", Currency: "BTC", Name: "Bitcoin", Network: "Bitcoin", Icon: "/crypto-icons/BTC.svg"},
+		{CID: "ETH", Currency: "ETH", Name: "Ethereum", Network: "Ethereum", Icon: "/crypto-icons/ETH.svg"},
+		{CID: "LTC", Currency: "LTC", Name: "Litecoin", Network: "Litecoin", Icon: "/crypto-icons/LTC.svg"},
+		{CID: "SOL", Currency: "SOL", Name: "Solana", Network: "Solana", Icon: "/crypto-icons/SOL.svg"},
+		{CID: "DOGE", Currency: "DOGE", Name: "Dogecoin", Network: "Dogecoin", Icon: "/crypto-icons/DOGE.svg"},
+		{CID: "TRX", Currency: "TRX", Name: "TRON", Network: "TRON", Icon: "/crypto-icons/TRX.svg"},
+		{CID: "BNB", Currency: "BNB", Name: "BNB Chain", Network: "BSC", Icon: "/crypto-icons/BNB.svg"},
+		{CID: "TON", Currency: "TON", Name: "Toncoin", Network: "TON", Icon: "/crypto-icons/TON.svg"},
+		{CID: "XMR", Currency: "XMR", Name: "Monero", Network: "Monero", Icon: "/crypto-icons/XMR.svg"},
 	}
+}
+
+// FetchCurrencies queries live supported cryptocurrencies and rates from Plisio
+func (s *PlisioService) FetchCurrencies(ctx context.Context) []PlisioCryptoInfo {
+	if s.PLISIO_API_KEY == "" {
+		return GetSupportedCryptos()
+	}
+	u := fmt.Sprintf("https://api.plisio.net/api/v1/currencies?api_key=%s", url.QueryEscape(s.PLISIO_API_KEY))
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return GetSupportedCryptos()
+	}
+	req.Header.Set("Accept", "application/json")
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return GetSupportedCryptos()
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return GetSupportedCryptos()
+	}
+	var wrap struct {
+		Status string `json:"status"`
+		Data   []struct {
+			Name        string      `json:"name"`
+			Cid         string      `json:"cid"`
+			Currency    string      `json:"currency"`
+			PriceUsd    interface{} `json:"price_usd"`
+			Hidden      interface{} `json:"hidden"`
+			Maintenance bool        `json:"maintenance"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &wrap); err != nil || wrap.Status != "success" || len(wrap.Data) == 0 {
+		return GetSupportedCryptos()
+	}
+	var out []PlisioCryptoInfo
+	for _, c := range wrap.Data {
+		if c.Maintenance {
+			continue
+		}
+		if h, ok := c.Hidden.(float64); ok && h != 0 {
+			continue
+		}
+		cid := c.Cid
+		if cid == "" {
+			cid = c.Currency
+		}
+		priceStr := ""
+		if c.PriceUsd != nil {
+			priceStr = fmt.Sprintf("%v", c.PriceUsd)
+		}
+		out = append(out, PlisioCryptoInfo{
+			CID:      cid,
+			Currency: c.Currency,
+			Name:     c.Name,
+			Network:  c.Currency,
+			Icon:     fmt.Sprintf("/crypto-icons/%s.svg", c.Currency),
+			PriceUsd: priceStr,
+		})
+	}
+	if len(out) == 0 {
+		return GetSupportedCryptos()
+	}
+	return out
 }
 
 // CreateWhiteLabelInvoice requests a White-Label invoice from Plisio

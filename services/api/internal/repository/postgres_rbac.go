@@ -111,6 +111,74 @@ func (r *PostgresRepository) ensureRBACSchema(ctx context.Context) {
 		);`,
 		`ALTER TABLE posts ADD COLUMN IF NOT EXISTS visibility VARCHAR(20) NOT NULL DEFAULT 'public';`,
 		`ALTER TABLE posts ADD COLUMN IF NOT EXISTS moderation_status VARCHAR(20) NOT NULL DEFAULT 'active';`,
+		`ALTER TABLE payment_orders DROP CONSTRAINT IF EXISTS payment_orders_plan_id_fkey;`,
+		`ALTER TABLE subscriptions DROP CONSTRAINT IF EXISTS subscriptions_plan_id_fkey;`,
+		`INSERT INTO roles (key, name, description, is_system, is_active) VALUES
+			('member', 'Member', 'Default standard role for all registered users', TRUE, TRUE),
+			('vip', 'VIP Member', 'Special membership role with enhanced limits and benefits', TRUE, TRUE),
+			('mvp', 'MVP', 'High tier membership role with top limits and creator tools', TRUE, TRUE),
+			('mod', 'Moderator', 'Content moderation and report management', TRUE, TRUE),
+			('god', 'God', 'High-level platform administrator with explicit administrative controls', TRUE, TRUE),
+			('owner', 'Owner', 'Platform Owner with full governance and security oversight', TRUE, TRUE)
+		ON CONFLICT (key) DO NOTHING;`,
+		`INSERT INTO membership_plans (id, key, name, description, price_amount_cents, currency, billing_interval, is_active) VALUES
+			('free', 'free', 'Member', 'Free tier for standard community use', 0, 'USD', 'monthly', TRUE),
+			('vip', 'vip', 'VIP Member', 'Enhanced posting limit, video uploads, and verified VIP badge', 100, 'USD', 'monthly', TRUE),
+			('mvp', 'mvp', 'MVP', 'Maximum limits, highest upload quota, and top tier benefits', 100, 'USD', 'monthly', TRUE),
+			('mod', 'mod', 'Moderator', 'Everything in MVP plus Moderator tools access and content management', 100, 'USD', 'monthly', TRUE),
+			('god', 'god', 'God', 'Everything in Moderator plus God Mode privileges and maximum platform limits', 100, 'USD', 'monthly', TRUE)
+		ON CONFLICT (id) DO NOTHING;`,
+		`INSERT INTO membership_entitlements (plan_id, entitlement_key, limit_value, unit) VALUES
+			('free', 'posts_per_day', 2, 'count'),
+			('free', 'max_images_per_post', 2, 'count'),
+			('free', 'max_videos_per_post', 0, 'count'),
+			('free', 'max_file_size_mb', 5, 'megabytes'),
+			('free', 'max_post_length', 280, 'characters'),
+			('free', 'max_video_minutes', 0, 'minutes'),
+			('free', 'can_view_analytics', 0, 'boolean'),
+			('free', 'can_manage_colors', 0, 'boolean'),
+			('vip', 'posts_per_day', 10, 'count'),
+			('vip', 'max_images_per_post', 4, 'count'),
+			('vip', 'max_videos_per_post', 1, 'count'),
+			('vip', 'max_file_size_mb', 50, 'megabytes'),
+			('vip', 'max_post_length', 4000, 'characters'),
+			('vip', 'max_video_minutes', 10, 'minutes'),
+			('vip', 'can_view_analytics', 1, 'boolean'),
+			('vip', 'can_manage_colors', 1, 'boolean'),
+			('mvp', 'posts_per_day', 30, 'count'),
+			('mvp', 'max_images_per_post', 4, 'count'),
+			('mvp', 'max_videos_per_post', 1, 'count'),
+			('mvp', 'max_file_size_mb', 200, 'megabytes'),
+			('mvp', 'max_post_length', 10000, 'characters'),
+			('mvp', 'max_video_minutes', 60, 'minutes'),
+			('mvp', 'can_view_analytics', 1, 'boolean'),
+			('mvp', 'can_manage_colors', 1, 'boolean'),
+			('mod', 'posts_per_day', 50, 'count'),
+			('mod', 'max_images_per_post', 4, 'count'),
+			('mod', 'max_videos_per_post', 2, 'count'),
+			('mod', 'max_file_size_mb', 300, 'megabytes'),
+			('mod', 'max_post_length', 10000, 'characters'),
+			('mod', 'max_video_minutes', 120, 'minutes'),
+			('mod', 'can_view_analytics', 1, 'boolean'),
+			('mod', 'can_manage_colors', 1, 'boolean'),
+			('god', 'posts_per_day', 100, 'count'),
+			('god', 'max_images_per_post', 4, 'count'),
+			('god', 'max_videos_per_post', 4, 'count'),
+			('god', 'max_file_size_mb', 500, 'megabytes'),
+			('god', 'max_post_length', 10000, 'characters'),
+			('god', 'max_video_minutes', 180, 'minutes'),
+			('god', 'can_view_analytics', 1, 'boolean'),
+			('god', 'can_manage_colors', 1, 'boolean')
+		ON CONFLICT (plan_id, entitlement_key) DO NOTHING;`,
+		`INSERT INTO subscription_plans (id, name, description, monthly_price_cents, annual_price_cents, currency, max_post_length, can_get_verified_badge, can_edit_posts, can_undo_posts, max_video_minutes, max_media_count, reduced_ads, is_active)
+		SELECT id, name, description, price_amount_cents, price_amount_cents * 12, currency, 4000, (id != 'free'), (id != 'free'), (id != 'free'), 60, 4, (id != 'free'), is_active
+		FROM membership_plans
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name,
+			description = EXCLUDED.description,
+			monthly_price_cents = EXCLUDED.monthly_price_cents,
+			annual_price_cents = EXCLUDED.annual_price_cents,
+			is_active = EXCLUDED.is_active;`,
 	}
 
 	for _, stmt := range stmts {
@@ -317,10 +385,14 @@ func (r *PostgresRepository) AssignRoleToUser(ctx context.Context, userID, roleI
 		return fmt.Errorf("failed to assign role: %w", err)
 	}
 
-	// Sync legacy role column in users table
+	// Sync legacy role column in users table (preserve 'owner' if user is already owner unless assigning owner)
 	var roleKey string
 	if err := r.db.QueryRowContext(ctx, "SELECT key FROM roles WHERE id = $1", roleID).Scan(&roleKey); err == nil {
-		_, _ = r.db.ExecContext(ctx, "UPDATE users SET role = $1 WHERE id = $2", roleKey, userID)
+		if roleKey == "owner" {
+			_, _ = r.db.ExecContext(ctx, "UPDATE users SET role = $1 WHERE id = $2", roleKey, userID)
+		} else {
+			_, _ = r.db.ExecContext(ctx, "UPDATE users SET role = $1 WHERE id = $2 AND COALESCE(role, '') != 'owner'", roleKey, userID)
+		}
 	}
 
 	return nil
@@ -527,7 +599,17 @@ func (r *PostgresRepository) GetAllMembershipPlans(ctx context.Context) ([]domai
 	query := `
 		SELECT id, key, name, description, price_amount_cents, currency, billing_interval, is_active, created_at, updated_at
 		FROM membership_plans
-		ORDER BY price_amount_cents ASC, created_at ASC;
+		ORDER BY 
+			CASE key
+				WHEN 'free' THEN 1
+				WHEN 'vip' THEN 2
+				WHEN 'mvp' THEN 3
+				WHEN 'mod' THEN 4
+				WHEN 'god' THEN 5
+				ELSE 6
+			END,
+			price_amount_cents ASC,
+			created_at ASC;
 	`
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
@@ -587,6 +669,19 @@ func (r *PostgresRepository) UpdateMembershipPlan(ctx context.Context, plan *dom
 	if rows == 0 {
 		return ErrNotFound
 	}
+	// Keep subscription_plans synced for unified checkout and entitlements
+	_, _ = r.db.ExecContext(ctx, `
+		INSERT INTO subscription_plans (id, name, description, monthly_price_cents, annual_price_cents, currency, max_post_length, can_get_verified_badge, can_edit_posts, can_undo_posts, max_video_minutes, max_media_count, reduced_ads, is_active, updated_at)
+		VALUES ($1, $2, $3, $4, $4 * 12, $5, 4000, ($1 != 'free'), ($1 != 'free'), ($1 != 'free'), 60, 4, ($1 != 'free'), $6, NOW())
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name,
+			description = EXCLUDED.description,
+			monthly_price_cents = EXCLUDED.monthly_price_cents,
+			annual_price_cents = EXCLUDED.annual_price_cents,
+			currency = EXCLUDED.currency,
+			is_active = EXCLUDED.is_active,
+			updated_at = NOW();
+	`, plan.ID, plan.Name, plan.Description, plan.PriceAmountCents, plan.Currency, plan.IsActive)
 	return nil
 }
 
@@ -652,7 +747,15 @@ func (r *PostgresRepository) GetUserMembership(ctx context.Context, userID uuid.
 		FROM user_memberships um
 		JOIN membership_plans mp ON um.plan_id = mp.id
 		WHERE um.user_id = $1 AND um.status = 'active' AND (um.expires_at IS NULL OR um.expires_at > NOW())
-		ORDER BY mp.price_amount_cents DESC
+		ORDER BY 
+			CASE mp.key
+				WHEN 'god' THEN 5
+				WHEN 'mod' THEN 4
+				WHEN 'mvp' THEN 3
+				WHEN 'vip' THEN 2
+				ELSE 1
+			END DESC,
+			mp.price_amount_cents DESC
 		LIMIT 1;
 	`
 	var um domain.UserMembership
@@ -1164,9 +1267,10 @@ func (r *PostgresRepository) GetAdminPosts(ctx context.Context, filter domain.Ad
 	selectQuery := fmt.Sprintf(`
 		SELECT p.id, p.author_id, p.content, p.visibility, COALESCE(p.moderation_status, 'normal'),
 		       p.created_at, p.updated_at, p.deleted_at,
-		       u.username, u.display_name, COALESCE(u.avatar_url, ''), COALESCE(u.role, 'member'), u.is_verified
+		       COALESCE(u.username, ''), COALESCE(pr.display_name, u.username, ''), COALESCE(pr.avatar_url, ''), COALESCE(u.role, 'member'), COALESCE(u.is_verified, false)
 		FROM posts p
 		LEFT JOIN users u ON p.author_id = u.id
+		LEFT JOIN user_profiles pr ON pr.user_id = u.id
 		%s
 		ORDER BY p.created_at DESC
 		LIMIT $%d OFFSET $%d;

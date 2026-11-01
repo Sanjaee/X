@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   Image as ImageIcon,
@@ -65,7 +66,7 @@ export function MobileComposerModal({
     };
   }, [stagedFiles]);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawFiles = Array.from(e.target.files || []);
@@ -155,14 +156,17 @@ export function MobileComposerModal({
       onPostSuccess(completePost);
       onClose();
     } catch (err: any) {
-      alert(err.message || "Gagal memposting");
+      alert(err.message || "Failed to post");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 bg-background text-foreground flex flex-col sm:hidden animate-in slide-in-from-bottom duration-200">
+  return createPortal(
+    <div
+      style={{ backgroundColor: "var(--background, #000000)" }}
+      className="fixed inset-0 z-[100] bg-[#ffffff] dark:bg-[#000000] bg-background text-foreground flex flex-col sm:hidden animate-in slide-in-from-bottom duration-200"
+    >
       {/* Top Header Bar */}
       <header className="flex items-center justify-between px-4 h-[53px] border-b border-border">
         <button
@@ -264,25 +268,25 @@ export function MobileComposerModal({
           <button
             onClick={() => fileInputRef.current?.click()}
             className="p-2 hover:bg-brand/10 rounded-full transition-colors"
-            title="Tambah foto atau video"
+            title="Add photos or video"
           >
             <ImageIcon className="w-5 h-5" />
           </button>
           <button
             className="p-2 hover:bg-brand/10 rounded-full transition-colors"
-            title="Tambah GIF"
+            title="Add GIF"
           >
             <Smile className="w-5 h-5" />
           </button>
           <button
             className="p-2 hover:bg-brand/10 rounded-full transition-colors"
-            title="Jadwalkan"
+            title="Schedule"
           >
             <Calendar className="w-5 h-5" />
           </button>
           <button
             className="p-2 hover:bg-brand/10 rounded-full transition-colors"
-            title="Lokasi"
+            title="Location"
           >
             <MapPin className="w-5 h-5" />
           </button>
@@ -292,6 +296,7 @@ export function MobileComposerModal({
           {currentUser?.is_verified ? "4000" : "280"}
         </div>
       </footer>
-    </div>
+    </div>,
+    document.body
   );
 }

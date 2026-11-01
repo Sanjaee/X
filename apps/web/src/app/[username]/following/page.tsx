@@ -7,7 +7,7 @@ import { ArrowLeft, Loader2, Users } from "lucide-react";
 import { LeftNavRail } from "@/components/layout/LeftNavRail";
 import { RightSidebar } from "@/components/layout/RightSidebar";
 import { AuthModal } from "@/components/auth/AuthModal";
-import { VerifiedBadge } from "@/components/common/VerifiedBadge";
+import { UserNameWithRole } from "@/components/ui/UserNameWithRole";
 import { User } from "@/types";
 import { apiRequest } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -93,10 +93,10 @@ export default function FollowingPage() {
             </button>
             <div className="flex flex-col">
               <h1 className="font-extrabold text-[18px] sm:text-[20px] leading-tight flex items-center gap-1">
-                <span>{targetUser?.display_name || username}</span>
-                {targetUser?.is_verified && (
-                  <VerifiedBadge type={targetUser.verified_type} />
-                )}
+                <UserNameWithRole
+                  displayName={targetUser?.display_name || username}
+                  role={targetUser?.role}
+                />
               </h1>
               <span className="text-muted text-[13px]">@{username}</span>
             </div>
@@ -161,13 +161,13 @@ export default function FollowingPage() {
                         <div className="flex items-center gap-1 flex-wrap">
                           <Link
                             href={`/${fUser.username}`}
-                            className="font-bold text-[15px] hover:underline truncate"
+                            className="text-[15px] hover:underline truncate"
                           >
-                            {fUser.display_name}
+                            <UserNameWithRole
+                              displayName={fUser.display_name || fUser.username}
+                              role={fUser.role}
+                            />
                           </Link>
-                          {fUser.is_verified && (
-                            <VerifiedBadge type={fUser.verified_type} />
-                          )}
                         </div>
                         <div className="flex items-center gap-1.5 text-[14px] text-muted">
                           <span>@{fUser.username}</span>

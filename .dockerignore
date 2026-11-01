@@ -8,3 +8,4 @@ node_modules
 **/.gemini
 data/uploads
 *.log
+apps/web/.env.local

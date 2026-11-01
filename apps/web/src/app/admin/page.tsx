@@ -44,6 +44,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { TierBadge, TIER_PRESENTATION } from '@/components/common/TierPresentation';
+import { UserNameWithRole } from '@/components/ui/UserNameWithRole';
 import {
   User,
   Role,
@@ -117,6 +118,11 @@ export default function AdminDashboardPage() {
   const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
   const [planEntitlementsModal, setPlanEntitlementsModal] = useState(false);
   const [entitlementsFormData, setEntitlementsFormData] = useState<Record<string, number>>({});
+  const [planPriceForm, setPlanPriceForm] = useState<{
+    name: string;
+    description: string;
+    price_usd: string;
+  }>({ name: '', description: '', price_usd: '1.00' });
 
   // Users state
   const [adminUsers, setAdminUsers] = useState<User[]>([]);
@@ -456,6 +462,11 @@ export default function AdminDashboardPage() {
   // Handlers for Memberships & Entitlements
   const handleOpenPlanEntitlements = (plan: MembershipPlan) => {
     setSelectedPlan(plan);
+    setPlanPriceForm({
+      name: plan.name,
+      description: plan.description,
+      price_usd: (plan.price_amount_cents / 100).toFixed(2),
+    });
     const formVals: Record<string, number> = {};
     if (plan.entitlements) {
       plan.entitlements.forEach((e) => {
@@ -469,21 +480,54 @@ export default function AdminDashboardPage() {
   const handleSavePlanEntitlements = async () => {
     if (!selectedPlan) return;
     try {
+      const priceCents =
+        selectedPlan.key === 'free'
+          ? 0
+          : Math.max(0, Math.round(parseFloat(planPriceForm.price_usd || '0') * 100));
+
+      await apiRequest(`/admin/memberships/${selectedPlan.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: planPriceForm.name || selectedPlan.name,
+          description: planPriceForm.description || selectedPlan.description,
+          price_amount_cents: priceCents,
+          currency: selectedPlan.currency || 'USD',
+          billing_interval: selectedPlan.billing_interval || 'monthly',
+          is_active: true,
+        }),
+      });
+
+      const unitMap: Record<string, string> = {
+        posts_per_day: 'count',
+        max_post_length: 'characters',
+        max_images_per_post: 'count',
+        max_videos_per_post: 'count',
+        max_video_minutes: 'minutes',
+        max_file_size_mb: 'megabytes',
+        can_manage_colors: 'boolean',
+        can_view_analytics: 'boolean',
+      };
+      if (selectedPlan.entitlements) {
+        selectedPlan.entitlements.forEach((e) => {
+          unitMap[e.entitlement_key] = e.unit;
+        });
+      }
+
       const entitlements = Object.entries(entitlementsFormData).map(([key, value]) => ({
         entitlement_key: key,
         limit_value: Number(value),
-        unit: 'count',
+        unit: unitMap[key] || 'count',
       }));
 
       await apiRequest(`/admin/plans/${selectedPlan.id}/entitlements`, {
         method: 'PUT',
         body: JSON.stringify({ entitlements }),
       });
-      showStatus('success', `Updated entitlements for ${selectedPlan.name}`);
+      showStatus('success', `Updated price and quotas for ${planPriceForm.name || selectedPlan.name}`);
       setPlanEntitlementsModal(false);
       fetchPlans();
     } catch (err: any) {
-      showStatus('error', err.message || 'Failed to update plan entitlements');
+      showStatus('error', err.message || 'Failed to update plan price and entitlements');
     }
   };
 
@@ -1299,13 +1343,29 @@ export default function AdminDashboardPage() {
                         <h3 className="text-xl font-black mt-2">{plan.name}</h3>
                         <p className="text-xs text-muted mt-1">{plan.description}</p>
 
-                        <div className="mt-4 p-3 bg-subtle rounded-xl">
-                          <span className="text-2xl font-black">
-                            ${(plan.price_amount_cents / 100).toFixed(2)}
-                          </span>
-                          <span className="text-xs text-muted font-semibold ml-1">
-                            / {plan.billing_interval}
-                          </span>
+                        <div className="mt-3 px-3 py-2 bg-black/40 rounded-xl border border-border/60 flex items-center gap-2 text-xs text-muted">
+                          <span>Preview:</span>
+                          <UserNameWithRole
+                            displayName={currentUser?.display_name || currentUser?.username || plan.name}
+                            role={plan.key === 'free' ? 'member' : plan.key}
+                            className="text-sm"
+                          />
+                        </div>
+
+                        <div className="mt-4 p-3 bg-subtle rounded-xl flex items-center justify-between">
+                          <div>
+                            <span className="text-2xl font-black">
+                              ${(plan.price_amount_cents / 100).toFixed(2)}
+                            </span>
+                            <span className="text-xs text-muted font-semibold ml-1">
+                              / {plan.billing_interval}
+                            </span>
+                          </div>
+                          {plan.key !== 'free' && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-brand/15 text-brand">
+                              Live on /premium
+                            </span>
+                          )}
                         </div>
 
                         <div className="mt-4 space-y-2 text-xs">
@@ -1326,7 +1386,7 @@ export default function AdminDashboardPage() {
                           className="w-full py-2 px-4 rounded-xl border border-border hover:bg-subtle text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
                         >
                           <Sliders className="w-3.5 h-3.5 text-brand" />
-                          <span>Configure Quotas & Limits</span>
+                          <span>Configure Price & Quotas</span>
                         </button>
                       </div>
                     </div>
@@ -1735,15 +1795,15 @@ export default function AdminDashboardPage() {
       )}
 
       {/* ============================================================ */}
-      {/* MODAL: CONFIGURE PLAN ENTITLEMENTS */}
+      {/* MODAL: CONFIGURE PLAN PRICE & ENTITLEMENTS */}
       {/* ============================================================ */}
       {planEntitlementsModal && selectedPlan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-md bg-background border border-border rounded-2xl shadow-2xl p-6">
+          <div className="w-full max-w-lg bg-background border border-border rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-border">
               <h3 className="font-bold text-base flex items-center gap-2">
                 <Sliders className="w-4 h-4 text-brand" />
-                <span>Quotas for {selectedPlan.name}</span>
+                <span>Configure Price & Quotas for {selectedPlan.name}</span>
               </h3>
               <button onClick={() => setPlanEntitlementsModal(false)} className="p-1 hover:opacity-70">
                 <X className="w-5 h-5" />
@@ -1751,52 +1811,144 @@ export default function AdminDashboardPage() {
             </div>
 
             <div className="mt-4 space-y-4 text-xs">
-              <div>
-                <label className="font-bold block mb-1">Daily Posts Limit</label>
-                <input
-                  type="number"
-                  value={entitlementsFormData['daily_posts_limit'] ?? 2}
-                  onChange={(e) =>
-                    setEntitlementsFormData({
-                      ...entitlementsFormData,
-                      daily_posts_limit: Number(e.target.value),
-                    })
-                  }
-                  className="w-full px-3 py-2 bg-subtle border border-border rounded-xl font-mono text-sm"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold block mb-1">Display Name</label>
+                  <input
+                    type="text"
+                    value={planPriceForm.name}
+                    onChange={(e) =>
+                      setPlanPriceForm({ ...planPriceForm, name: e.target.value })
+                    }
+                    className="w-full px-3 py-2 bg-subtle border border-border rounded-xl text-sm font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold block mb-1">Monthly Price (USD $)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    disabled={selectedPlan.key === 'free'}
+                    value={planPriceForm.price_usd}
+                    onChange={(e) =>
+                      setPlanPriceForm({ ...planPriceForm, price_usd: e.target.value })
+                    }
+                    className="w-full px-3 py-2 bg-subtle border border-border rounded-xl font-mono text-sm disabled:opacity-50"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="font-bold block mb-1">Max Images per Post</label>
+                <label className="font-bold block mb-1">Description</label>
                 <input
-                  type="number"
-                  value={entitlementsFormData['max_images_per_post'] ?? 2}
+                  type="text"
+                  value={planPriceForm.description}
                   onChange={(e) =>
-                    setEntitlementsFormData({
-                      ...entitlementsFormData,
-                      max_images_per_post: Number(e.target.value),
-                    })
+                    setPlanPriceForm({ ...planPriceForm, description: e.target.value })
                   }
-                  className="w-full px-3 py-2 bg-subtle border border-border rounded-xl font-mono text-sm"
+                  className="w-full px-3 py-2 bg-subtle border border-border rounded-xl text-sm"
                 />
               </div>
 
-              <div>
-                <label className="font-bold block mb-1">Max Videos per Post</label>
-                <input
-                  type="number"
-                  value={entitlementsFormData['max_videos_per_post'] ?? 0}
-                  onChange={(e) =>
-                    setEntitlementsFormData({
-                      ...entitlementsFormData,
-                      max_videos_per_post: Number(e.target.value),
-                    })
-                  }
-                  className="w-full px-3 py-2 bg-subtle border border-border rounded-xl font-mono text-sm"
-                />
+              <div className="pt-2 border-t border-border">
+                <p className="font-bold text-muted uppercase tracking-wider text-[11px] mb-3">
+                  Quota Entitlements
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold block mb-1">Daily Posts Limit (posts_per_day)</label>
+                    <input
+                      type="number"
+                      value={entitlementsFormData['posts_per_day'] ?? 2}
+                      onChange={(e) =>
+                        setEntitlementsFormData({
+                          ...entitlementsFormData,
+                          posts_per_day: Number(e.target.value),
+                        })
+                      }
+                      className="w-full px-3 py-2 bg-subtle border border-border rounded-xl font-mono text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold block mb-1">Max Post Length (characters)</label>
+                    <input
+                      type="number"
+                      value={entitlementsFormData['max_post_length'] ?? 280}
+                      onChange={(e) =>
+                        setEntitlementsFormData({
+                          ...entitlementsFormData,
+                          max_post_length: Number(e.target.value),
+                        })
+                      }
+                      className="w-full px-3 py-2 bg-subtle border border-border rounded-xl font-mono text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold block mb-1">Max Images per Post</label>
+                    <input
+                      type="number"
+                      value={entitlementsFormData['max_images_per_post'] ?? 2}
+                      onChange={(e) =>
+                        setEntitlementsFormData({
+                          ...entitlementsFormData,
+                          max_images_per_post: Number(e.target.value),
+                        })
+                      }
+                      className="w-full px-3 py-2 bg-subtle border border-border rounded-xl font-mono text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold block mb-1">Max Videos per Post</label>
+                    <input
+                      type="number"
+                      value={entitlementsFormData['max_videos_per_post'] ?? 0}
+                      onChange={(e) =>
+                        setEntitlementsFormData({
+                          ...entitlementsFormData,
+                          max_videos_per_post: Number(e.target.value),
+                        })
+                      }
+                      className="w-full px-3 py-2 bg-subtle border border-border rounded-xl font-mono text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold block mb-1">Max Video Length (minutes)</label>
+                    <input
+                      type="number"
+                      value={entitlementsFormData['max_video_minutes'] ?? 0}
+                      onChange={(e) =>
+                        setEntitlementsFormData({
+                          ...entitlementsFormData,
+                          max_video_minutes: Number(e.target.value),
+                        })
+                      }
+                      className="w-full px-3 py-2 bg-subtle border border-border rounded-xl font-mono text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold block mb-1">Max File Size (MB)</label>
+                    <input
+                      type="number"
+                      value={entitlementsFormData['max_file_size_mb'] ?? 5}
+                      onChange={(e) =>
+                        setEntitlementsFormData({
+                          ...entitlementsFormData,
+                          max_file_size_mb: Number(e.target.value),
+                        })
+                      }
+                      className="w-full px-3 py-2 bg-subtle border border-border rounded-xl font-mono text-sm"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-3 border-t border-border">
                 <button
                   onClick={() => setPlanEntitlementsModal(false)}
                   className="px-4 py-2 rounded-xl border border-border text-xs font-semibold hover:bg-subtle"
@@ -1807,7 +1959,7 @@ export default function AdminDashboardPage() {
                   onClick={handleSavePlanEntitlements}
                   className="px-4 py-2 rounded-xl bg-brand text-white text-xs font-bold hover:bg-brand/90"
                 >
-                  Save Entitlements
+                  Save Price & Quotas
                 </button>
               </div>
             </div>

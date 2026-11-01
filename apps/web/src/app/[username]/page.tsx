@@ -20,7 +20,7 @@ import { RightSidebar } from "@/components/layout/RightSidebar";
 import { PostCard } from "@/components/feed/PostCard";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { EditProfileModal } from "@/components/profile/EditProfileModal";
-import { VerifiedBadge } from "@/components/common/VerifiedBadge";
+import { UserNameWithRole } from "@/components/ui/UserNameWithRole";
 import { User, Post, SocialRelationship } from "@/types";
 import { apiRequest } from "@/lib/api";
 import { formatNumber, cn } from "@/lib/utils";
@@ -254,10 +254,10 @@ export default function UserProfilePage() {
             </button>
             <div className="flex flex-col">
               <h1 className="font-extrabold text-[19px] leading-tight flex items-center gap-1.5">
-                <span>{profileUser?.display_name || username}</span>
-                {profileUser?.is_verified && (
-                  <VerifiedBadge type={profileUser.verified_type} size="sm" />
-                )}
+                <UserNameWithRole
+                  displayName={profileUser?.display_name || username}
+                  role={profileUser?.role}
+                />
               </h1>
               <span className="text-xs text-muted">
                 {profileUser ? `${formatNumber(profileUser.posts_count || 0)} posts` : ""}
@@ -383,10 +383,10 @@ export default function UserProfilePage() {
 
                 {/* Display Name and Handle */}
                 <div className="flex items-center gap-1.5 font-extrabold text-[20px] leading-6">
-                  <span>{profileUser.display_name}</span>
-                  {profileUser.is_verified && (
-                    <VerifiedBadge type={profileUser.verified_type} size="md" />
-                  )}
+                  <UserNameWithRole
+                    displayName={profileUser.display_name || profileUser.username}
+                    role={profileUser.role}
+                  />
                 </div>
 
                 <div className="flex items-center gap-2 mb-3">

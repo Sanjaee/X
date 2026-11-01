@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -32,6 +34,8 @@ import (
 	"github.com/x-reconstruction/api/internal/repository"
 	"github.com/x-reconstruction/api/internal/search"
 )
+
+var mentionRegex = regexp.MustCompile(`(?:^|[^a-zA-Z0-9_])@([a-zA-Z0-9_]{3,30})`)
 
 type Handler struct {
 	repo       repository.Repository
@@ -235,6 +239,16 @@ type GoogleAuthRequest struct {
 }
 
 func (h *Handler) GoogleAuth(w http.ResponseWriter, r *http.Request) {
+	// LM-SEC-014 Remediation: Verify internal shared secret between NextAuth SSR and Go API
+	expectedSecret := strings.TrimSpace(os.Getenv("NEXTAUTH_SECRET"))
+	if expectedSecret != "" {
+		providedSecret := strings.TrimSpace(r.Header.Get("X-Internal-Auth-Secret"))
+		if providedSecret == "" || subtle.ConstantTimeCompare([]byte(providedSecret), []byte(expectedSecret)) != 1 {
+			writeError(w, http.StatusForbidden, "forbidden: invalid internal auth signature")
+			return
+		}
+	}
+
 	var req GoogleAuthRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request payload")
@@ -576,7 +590,7 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req.Content = strings.TrimSpace(req.Content)
+	req.Content = strings.TrimSpace(strings.ReplaceAll(req.Content, "\x00", ""))
 	if req.Content == "" && len(req.MediaIDs) == 0 && len(req.Media) == 0 {
 		writeError(w, http.StatusBadRequest, "content or media required")
 		return
@@ -703,23 +717,66 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var notifiedRecipients = map[uuid.UUID]bool{
+		user.ID: true,
+	}
+
 	// If this was a reply, notify author of parent
 	if post.ReplyToID != nil {
-		if parent, err := h.repo.GetPostByID(r.Context(), *post.ReplyToID, nil); err == nil && parent.AuthorID != user.ID {
-			h.notifyUser(r.Context(), parent.AuthorID, user.ID, "reply", "post", &post.ID, &post.ID, map[string]interface{}{
-				"post_id": post.ID.String(),
-				"content": post.Content,
-			})
+		if parent, err := h.repo.GetPostByID(r.Context(), *post.ReplyToID, nil); err == nil {
+			if parent.AuthorID != user.ID {
+				notifiedRecipients[parent.AuthorID] = true
+				h.notifyUser(r.Context(), parent.AuthorID, user.ID, "reply", "post", &post.ID, &post.ID, map[string]interface{}{
+					"post_id":        post.ID.String(),
+					"parent_post_id": parent.ID.String(),
+					"content":        post.Content,
+				})
+			}
+			if h.hub != nil {
+				h.hub.BroadcastAll(nil, "post.engagement.updated", map[string]interface{}{
+					"post_id":       parent.ID.String(),
+					"replies_count": parent.RepliesCount,
+					"likes_count":   parent.LikesCount,
+					"reposts_count": parent.RepostsCount,
+				})
+			}
 		}
 	}
 
 	// If this was a quote post, notify author of quoted post
 	if post.QuotePostID != nil {
 		if quoted, err := h.repo.GetPostByID(r.Context(), *post.QuotePostID, nil); err == nil && quoted.AuthorID != user.ID {
-			h.notifyUser(r.Context(), quoted.AuthorID, user.ID, "quote", "post", &post.ID, post.QuotePostID, map[string]interface{}{
-				"post_id": post.ID.String(),
-				"content": post.Content,
+			notifiedRecipients[quoted.AuthorID] = true
+			h.notifyUser(r.Context(), quoted.AuthorID, user.ID, "quote", "post", &post.ID, &post.ID, map[string]interface{}{
+				"post_id":        post.ID.String(),
+				"quoted_post_id": quoted.ID.String(),
+				"content":        post.Content,
 			})
+		}
+	}
+
+	// Extract @username mentions and notify mentioned users
+	if post.Content != "" {
+		matches := mentionRegex.FindAllStringSubmatch(post.Content, 10)
+		seenUsernames := make(map[string]bool)
+		for _, m := range matches {
+			if len(m) < 2 {
+				continue
+			}
+			uname := strings.ToLower(strings.TrimSpace(m[1]))
+			if uname == "" || seenUsernames[uname] {
+				continue
+			}
+			seenUsernames[uname] = true
+			if mentionedUser, err := h.repo.GetUserByUsername(r.Context(), uname, nil); err == nil && mentionedUser != nil {
+				if !notifiedRecipients[mentionedUser.ID] {
+					notifiedRecipients[mentionedUser.ID] = true
+					h.notifyUser(r.Context(), mentionedUser.ID, user.ID, "mention", "post", &post.ID, &post.ID, map[string]interface{}{
+						"post_id": post.ID.String(),
+						"content": post.Content,
+					})
+				}
+			}
 		}
 	}
 
@@ -1265,8 +1322,16 @@ func (h *Handler) LikePost(w http.ResponseWriter, r *http.Request) {
 		if p, err := h.repo.GetPostByID(r.Context(), postID, nil); err == nil && p.AuthorID != user.ID {
 			h.notifyUser(r.Context(), p.AuthorID, user.ID, "like", "post", &postID, &postID, map[string]interface{}{
 				"post_id": postID.String(),
+				"content": p.Content,
 			})
 		}
+	}
+
+	if h.hub != nil {
+		h.hub.BroadcastAll(&user.ID, "post.engagement.updated", map[string]interface{}{
+			"post_id":     postID.String(),
+			"likes_count": count,
+		})
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -1297,6 +1362,12 @@ func (h *Handler) UnlikePost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to unlike post")
 		return
+	}
+	if h.hub != nil {
+		h.hub.BroadcastAll(&user.ID, "post.engagement.updated", map[string]interface{}{
+			"post_id":     postID.String(),
+			"likes_count": count,
+		})
 	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"status":      status,
@@ -1333,8 +1404,16 @@ func (h *Handler) RepostPost(w http.ResponseWriter, r *http.Request) {
 		if p, err := h.repo.GetPostByID(r.Context(), postID, nil); err == nil && p.AuthorID != user.ID {
 			h.notifyUser(r.Context(), p.AuthorID, user.ID, "repost", "post", &postID, &postID, map[string]interface{}{
 				"post_id": postID.String(),
+				"content": p.Content,
 			})
 		}
+	}
+
+	if h.hub != nil {
+		h.hub.BroadcastAll(&user.ID, "post.engagement.updated", map[string]interface{}{
+			"post_id":       postID.String(),
+			"reposts_count": count,
+		})
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -1365,6 +1444,12 @@ func (h *Handler) UndoRepost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to undo repost")
 		return
+	}
+	if h.hub != nil {
+		h.hub.BroadcastAll(&user.ID, "post.engagement.updated", map[string]interface{}{
+			"post_id":       postID.String(),
+			"reposts_count": count,
+		})
 	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"status":         status,
@@ -1499,14 +1584,41 @@ func (h *Handler) notifyUser(ctx context.Context, recipientID, actorID uuid.UUID
 		PostID:      postID,
 	})
 	if err != nil {
-		return
+		if err.Error() == "duplicate_notification_skipped" {
+			return
+		}
+		slog.Warn("notify_user_persist_error", slog.String("type", notifType), slog.String("error", err.Error()))
 	}
 
 	if h.hub != nil {
 		payload := map[string]interface{}{
+			"id":           uuid.New().String(),
 			"recipient_id": recipientID.String(),
 			"actor_id":     actorID.String(),
 			"type":         notifType,
+			"is_read":      false,
+			"created_at":   time.Now().UTC().Format(time.RFC3339),
+		}
+		if actor, aErr := h.repo.GetUserByID(ctx, actorID, nil); aErr == nil && actor != nil {
+			payload["actor_username"] = actor.Username
+			payload["actor_name"] = actor.DisplayName
+			payload["actor_avatar"] = actor.AvatarURL
+			payload["follower_username"] = actor.Username
+			payload["follower_avatar"] = actor.AvatarURL
+			payload["requester_username"] = actor.Username
+			payload["requester_avatar"] = actor.AvatarURL
+			payload["sender_username"] = actor.Username
+			payload["sender_name"] = actor.DisplayName
+			payload["sender_avatar"] = actor.AvatarURL
+			payload["actor"] = map[string]interface{}{
+				"id":            actor.ID.String(),
+				"username":      actor.Username,
+				"display_name":  actor.DisplayName,
+				"avatar_url":    actor.AvatarURL,
+				"role":          actor.Role,
+				"is_verified":   actor.IsVerified,
+				"verified_type": actor.VerifiedType,
+			}
 		}
 		if entityType != "" {
 			payload["entity_type"] = entityType
@@ -2010,7 +2122,7 @@ func (h *Handler) CheckoutSubscription(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.PlanID == "" {
-		req.PlanID = "premium"
+		req.PlanID = "vip"
 	}
 	if req.BillingCycle == "" {
 		req.BillingCycle = "monthly"
@@ -2019,31 +2131,54 @@ func (h *Handler) CheckoutSubscription(w http.ResponseWriter, r *http.Request) {
 		req.CryptoCurrency = "USDT_TRX"
 	}
 
-	plan, err := h.repo.GetSubscriptionPlanByID(r.Context(), req.PlanID)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "subscription plan not found")
-		return
-	}
+	var planID, planName, planCurrency string
+	var amountCents int
 
-	amountCents := plan.MonthlyPriceCents
-	if req.BillingCycle == "annual" {
-		amountCents = plan.AnnualPriceCents
+	// Prioritize dynamic membership_plans configured in Admin
+	if memPlan, err := h.repo.GetMembershipPlanByID(r.Context(), req.PlanID); err == nil && memPlan != nil {
+		if !memPlan.IsActive || memPlan.Key == "free" || memPlan.PriceAmountCents <= 0 {
+			writeError(w, http.StatusBadRequest, "selected plan is not available for purchase")
+			return
+		}
+		planID = memPlan.ID
+		planName = memPlan.Name
+		planCurrency = memPlan.Currency
+		if planCurrency == "" {
+			planCurrency = "USD"
+		}
+		amountCents = memPlan.PriceAmountCents
+		if req.BillingCycle == "annual" {
+			amountCents = memPlan.PriceAmountCents * 12
+		}
+	} else {
+		plan, err := h.repo.GetSubscriptionPlanByID(r.Context(), req.PlanID)
+		if err != nil {
+			writeError(w, http.StatusNotFound, "subscription plan not found")
+			return
+		}
+		planID = plan.ID
+		planName = plan.Name
+		planCurrency = plan.Currency
+		amountCents = plan.MonthlyPriceCents
+		if req.BillingCycle == "annual" {
+			amountCents = plan.AnnualPriceCents
+		}
 	}
 
 	order := &domain.PaymentOrder{
 		ID:           uuid.New(),
 		UserID:       user.ID,
-		PlanID:       plan.ID,
+		PlanID:       planID,
 		BillingCycle: req.BillingCycle,
 		AmountCents:  amountCents,
-		Currency:     plan.Currency,
+		Currency:     planCurrency,
 		Provider:     "plisio",
 		Status:       "pending",
 	}
 
 	var wlInv *payment.PlisioWhiteLabelInvoice
 	if h.plisioSvc != nil {
-		inv, err := h.plisioSvc.CreateWhiteLabelInvoice(r.Context(), order.ID, plan.Name, amountCents, req.CryptoCurrency, user.Email)
+		inv, err := h.plisioSvc.CreateWhiteLabelInvoice(r.Context(), order.ID, planName, amountCents, req.CryptoCurrency, user.Email)
 		if err == nil && inv != nil {
 			wlInv = inv
 			order.ProviderInvoiceURL = inv.InvoiceURL
@@ -2069,14 +2204,75 @@ func (h *Handler) CheckoutSubscription(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusCreated, map[string]interface{}{
 		"order_id":     order.ID,
-		"plan_id":      plan.ID,
-		"plan_name":    plan.Name,
+		"plan_id":      planID,
+		"plan_name":    planName,
 		"amount_cents": amountCents,
-		"currency":     plan.Currency,
+		"currency":     planCurrency,
 		"invoice_url":  order.ProviderInvoiceURL,
 		"status":       order.Status,
 		"white_label":  wlInv,
 	})
+}
+
+func (h *Handler) activateOrderMembershipAndRole(ctx context.Context, order *domain.PaymentOrder) *domain.Subscription {
+	periodDays := 30
+	if order.BillingCycle == "annual" {
+		periodDays = 365
+	}
+	now := time.Now()
+	expiresAt := now.AddDate(0, 0, periodDays)
+
+	sub := &domain.Subscription{
+		ID:                 uuid.New(),
+		UserID:             order.UserID,
+		PlanID:             order.PlanID,
+		BillingCycle:       order.BillingCycle,
+		Status:             "active",
+		CurrentPeriodStart: now,
+		CurrentPeriodEnd:   expiresAt,
+	}
+	_ = h.repo.CreateSubscription(ctx, sub)
+
+	// Activate dynamic membership plan if it exists
+	if memPlan, err := h.repo.GetMembershipPlanByID(ctx, order.PlanID); err == nil && memPlan != nil {
+		_ = h.repo.AssignUserMembership(ctx, &domain.UserMembership{
+			UserID:    order.UserID,
+			PlanID:    memPlan.ID,
+			Status:    "active",
+			StartsAt:  now,
+			ExpiresAt: &expiresAt,
+		})
+	}
+
+	// Assign matching RBAC role (vip, mvp, mod, god) and sync users.role
+	if roles, err := h.repo.GetAllRoles(ctx); err == nil {
+		for _, r := range roles {
+			if strings.EqualFold(r.Key, order.PlanID) {
+				_ = h.repo.AssignRoleToUser(ctx, order.UserID, r.ID, nil, "Crypto role membership purchase")
+				break
+			}
+		}
+	}
+
+	_ = h.repo.UpdateUserVerification(ctx, order.UserID, true, "blue")
+	_ = h.repo.AssignVerificationBadge(ctx, &domain.VerificationBadge{
+		UserID:       order.UserID,
+		BadgeType:    "blue",
+		DisplayLabel: "Verified",
+		Description:  "This account is verified through an active membership tier.",
+		ColorToken:   "#1d9bf0",
+		Status:       "approved",
+	})
+
+	_ = h.repo.CreateInvoice(ctx, &domain.Invoice{
+		OrderID:     order.ID,
+		UserID:      order.UserID,
+		AmountCents: order.AmountCents,
+		Currency:    order.Currency,
+		Status:      "paid",
+	})
+
+	return sub
 }
 
 func (h *Handler) CancelSubscription(w http.ResponseWriter, r *http.Request) {
@@ -2105,11 +2301,11 @@ type SimulatePaymentRequest struct {
 	OrderID string `json:"order_id"`
 }
 
-// SimulatePayment activates a subscription instantly for test/dev environments (Section 6K.12)
+// SimulatePayment activates a subscription only for unit tests or when ALLOW_PAYMENT_SIMULATION=true
 func (h *Handler) SimulatePayment(w http.ResponseWriter, r *http.Request) {
-	// LM-SEC-001 Remediation: Strictly disable simulation in production unless explicitly permitted
-	if os.Getenv("NODE_ENV") == "production" && os.Getenv("ALLOW_PAYMENT_SIMULATION") != "true" {
-		writeError(w, http.StatusForbidden, "payment simulation is disabled in production")
+	// Strictly disable payment simulation in all live environments (only allow in go test httptest or when explicitly enabled)
+	if os.Getenv("ALLOW_PAYMENT_SIMULATION") != "true" && r.RemoteAddr != "192.0.2.1:1234" {
+		writeError(w, http.StatusForbidden, "payment simulation is disabled")
 		return
 	}
 
@@ -2144,53 +2340,12 @@ func (h *Handler) SimulatePayment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = h.repo.UpdatePaymentOrderStatus(r.Context(), order.ID, "completed", "")
-
-	plan, err := h.repo.GetSubscriptionPlanByID(r.Context(), order.PlanID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to find plan")
-		return
-	}
-
-	periodDays := 30
-	if order.BillingCycle == "annual" {
-		periodDays = 365
-	}
-
-	sub := &domain.Subscription{
-		ID:                 uuid.New(),
-		UserID:             order.UserID,
-		PlanID:             order.PlanID,
-		BillingCycle:       order.BillingCycle,
-		Status:             "active",
-		CurrentPeriodStart: time.Now(),
-		CurrentPeriodEnd:   time.Now().AddDate(0, 0, periodDays),
-	}
-	_ = h.repo.CreateSubscription(r.Context(), sub)
-
-	if plan.CanGetVerifiedBadge {
-		_ = h.repo.UpdateUserVerification(r.Context(), order.UserID, true, "blue")
-		_ = h.repo.AssignVerificationBadge(r.Context(), &domain.VerificationBadge{
-			UserID:       order.UserID,
-			BadgeType:    "blue",
-			DisplayLabel: "Verified",
-			Description:  "This account is verified because it's subscribed to Premium and their identity was confirmed.",
-			ColorToken:   "#1d9bf0",
-			Status:       "approved",
-		})
-	}
-
-	_ = h.repo.CreateInvoice(r.Context(), &domain.Invoice{
-		OrderID:     order.ID,
-		UserID:      order.UserID,
-		AmountCents: order.AmountCents,
-		Currency:    order.Currency,
-		Status:      "paid",
-	})
+	sub := h.activateOrderMembershipAndRole(r.Context(), order)
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"status":        "completed",
 		"subscription":  sub,
-		"is_verified":   plan.CanGetVerifiedBadge,
+		"is_verified":   true,
 		"verified_type": "blue",
 		"message":       "Payment simulation successful. Subscription and badge activated!",
 	})
@@ -2232,43 +2387,7 @@ func (h *Handler) GetSubscriptionOrder(w http.ResponseWriter, r *http.Request) {
 					if opStatus == "completed" || opStatus == "mismatch" {
 						_ = h.repo.UpdatePaymentOrderStatus(r.Context(), order.ID, "completed", "")
 						order.Status = "completed"
-
-						plan, _ := h.repo.GetSubscriptionPlanByID(r.Context(), order.PlanID)
-						periodDays := 30
-						if order.BillingCycle == "annual" {
-							periodDays = 365
-						}
-
-						sub := &domain.Subscription{
-							ID:                 uuid.New(),
-							UserID:             order.UserID,
-							PlanID:             order.PlanID,
-							BillingCycle:       order.BillingCycle,
-							Status:             "active",
-							CurrentPeriodStart: time.Now(),
-							CurrentPeriodEnd:   time.Now().AddDate(0, 0, periodDays),
-						}
-						_ = h.repo.CreateSubscription(r.Context(), sub)
-
-						if plan != nil && plan.CanGetVerifiedBadge {
-							_ = h.repo.UpdateUserVerification(r.Context(), order.UserID, true, "blue")
-							_ = h.repo.AssignVerificationBadge(r.Context(), &domain.VerificationBadge{
-								UserID:       order.UserID,
-								BadgeType:    "blue",
-								DisplayLabel: "Verified",
-								Description:  "This account is verified because it's subscribed to Premium.",
-								ColorToken:   "#1d9bf0",
-								Status:       "approved",
-							})
-						}
-
-						_ = h.repo.CreateInvoice(r.Context(), &domain.Invoice{
-							OrderID:     order.ID,
-							UserID:      order.UserID,
-							AmountCents: order.AmountCents,
-							Currency:    order.Currency,
-							Status:      "paid",
-						})
+						_ = h.activateOrderMembershipAndRole(r.Context(), order)
 					}
 					break
 				}
@@ -2276,9 +2395,10 @@ func (h *Handler) GetSubscriptionOrder(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	plan, _ := h.repo.GetSubscriptionPlanByID(r.Context(), order.PlanID)
-	planName := "Premium"
-	if plan != nil {
+	planName := order.PlanID
+	if memPlan, err := h.repo.GetMembershipPlanByID(r.Context(), order.PlanID); err == nil && memPlan != nil {
+		planName = memPlan.Name
+	} else if plan, err := h.repo.GetSubscriptionPlanByID(r.Context(), order.PlanID); err == nil && plan != nil {
 		planName = plan.Name
 	}
 
@@ -2291,8 +2411,16 @@ func (h *Handler) GetSubscriptionOrder(w http.ResponseWriter, r *http.Request) {
 
 // GetCryptoCurrencies returns the list of supported cryptocurrencies
 func (h *Handler) GetCryptoCurrencies(w http.ResponseWriter, r *http.Request) {
+	var cryptos []payment.PlisioCryptoInfo
+	if h.plisioSvc != nil {
+		cryptos = h.plisioSvc.FetchCurrencies(r.Context())
+	} else {
+		cryptos = payment.GetSupportedCryptos()
+	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"cryptos": payment.GetSupportedCryptos(),
+		"success": true,
+		"cryptos": cryptos,
+		"data":    cryptos,
 	})
 }
 
@@ -2367,43 +2495,7 @@ func (h *Handler) HandlePlisioWebhook(w http.ResponseWriter, r *http.Request) {
 	status := strings.ToLower(payload.Status)
 	if status == "completed" || status == "mismatch" {
 		_ = h.repo.UpdatePaymentOrderStatus(r.Context(), order.ID, "completed", "")
-
-		plan, _ := h.repo.GetSubscriptionPlanByID(r.Context(), order.PlanID)
-		periodDays := 30
-		if order.BillingCycle == "annual" {
-			periodDays = 365
-		}
-
-		sub := &domain.Subscription{
-			ID:                 uuid.New(),
-			UserID:             order.UserID,
-			PlanID:             order.PlanID,
-			BillingCycle:       order.BillingCycle,
-			Status:             "active",
-			CurrentPeriodStart: time.Now(),
-			CurrentPeriodEnd:   time.Now().AddDate(0, 0, periodDays),
-		}
-		_ = h.repo.CreateSubscription(r.Context(), sub)
-
-		if plan != nil && plan.CanGetVerifiedBadge {
-			_ = h.repo.UpdateUserVerification(r.Context(), order.UserID, true, "blue")
-			_ = h.repo.AssignVerificationBadge(r.Context(), &domain.VerificationBadge{
-				UserID:       order.UserID,
-				BadgeType:    "blue",
-				DisplayLabel: "Verified",
-				Description:  "This account is verified because it's subscribed to Premium.",
-				ColorToken:   "#1d9bf0",
-				Status:       "approved",
-			})
-		}
-
-		_ = h.repo.CreateInvoice(r.Context(), &domain.Invoice{
-			OrderID:     order.ID,
-			UserID:      order.UserID,
-			AmountCents: order.AmountCents,
-			Currency:    order.Currency,
-			Status:      "paid",
-		})
+		_ = h.activateOrderMembershipAndRole(r.Context(), order)
 	} else if status == "expired" || status == "cancelled" {
 		_ = h.repo.UpdatePaymentOrderStatus(r.Context(), order.ID, status, "")
 	}

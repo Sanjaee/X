@@ -1,27 +1,22 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ShieldCheck,
   Check,
   ArrowLeft,
   Clock,
   Loader2,
   Lock,
   Wallet,
-  Zap,
   Copy,
   CheckCircle2,
   RefreshCw,
-  AlertCircle,
-  ExternalLink,
   QrCode,
 } from 'lucide-react';
-import { LeftNavRail } from '@/components/layout/LeftNavRail';
 import { RightSidebar } from '@/components/layout/RightSidebar';
-import { VerifiedBadge } from '@/components/common/VerifiedBadge';
+import { UserNameWithRole } from '@/components/ui/UserNameWithRole';
 import { User } from '@/types';
 import { apiRequest } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -40,22 +35,17 @@ interface WhiteLabelInvoice {
   expire_utc: number | string;
   expected_confirmations: string;
   qr_code: string;
-  is_simulated?: boolean;
 }
 
 function InvoiceContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const orderId = searchParams.get('order_id');
-  const isSimulatedParam = searchParams.get('simulated') === 'true';
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(false);
   const [orderDetails, setOrderDetails] = useState<any>(null);
+  const [planNameFromApi, setPlanNameFromApi] = useState<string>('');
   const [whiteLabel, setWhiteLabel] = useState<WhiteLabelInvoice | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [isAwaitingConfirmation, setIsAwaitingConfirmation] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [copiedAmount, setCopiedAmount] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number>(24 * 3600);
@@ -82,15 +72,18 @@ function InvoiceContent() {
 
       if (res?.order) {
         setOrderDetails(res.order);
+        if (res.plan_name) {
+          setPlanNameFromApi(res.plan_name);
+        }
 
-        // If order already has white_label in response or metadata
         const wl = res.white_label || res.order?.metadata?.white_label;
         if (wl) {
           setWhiteLabel(wl);
           if (wl.expire_utc) {
-            const expSec = typeof wl.expire_utc === 'number' 
-              ? wl.expire_utc - Math.floor(Date.now() / 1000) 
-              : parseInt(String(wl.expire_utc), 10) - Math.floor(Date.now() / 1000);
+            const expSec =
+              typeof wl.expire_utc === 'number'
+                ? wl.expire_utc - Math.floor(Date.now() / 1000)
+                : parseInt(String(wl.expire_utc), 10) - Math.floor(Date.now() / 1000);
             if (!isNaN(expSec) && expSec > 0) {
               setTimeLeft(expSec);
             }
@@ -99,13 +92,6 @@ function InvoiceContent() {
 
         if (res.order.status === 'completed') {
           setIsCompleted(true);
-          setIsAwaitingConfirmation(false);
-        } else if (res.order.status === 'pending') {
-          // Check if partial or received
-          const pendingSum = wl?.pending_amount;
-          if (pendingSum && Number(pendingSum) > 0) {
-            setIsAwaitingConfirmation(true);
-          }
         }
       }
     } catch (e: any) {
@@ -143,7 +129,6 @@ function InvoiceContent() {
     return () => clearInterval(timer);
   }, [isCompleted, timeLeft]);
 
-  // Copy to clipboard helper
   const copyToClipboard = (text: string, type: 'address' | 'amount') => {
     navigator.clipboard.writeText(text);
     if (type === 'address') {
@@ -155,28 +140,6 @@ function InvoiceContent() {
     }
   };
 
-  // Instant simulate payment
-  const handleSimulatePayment = async () => {
-    if (!orderId) return;
-    setLoading(true);
-    setErrorMessage(null);
-
-    try {
-      const res = await apiRequest<{ status: string; message: string }>('/subscriptions/simulate-payment', {
-        method: 'POST',
-        body: JSON.stringify({ order_id: orderId }),
-      });
-
-      if (res.status === 'completed') {
-        setIsCompleted(true);
-      }
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Payment simulation failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const formatTimer = (sec: number) => {
     const h = Math.floor(sec / 3600);
     const m = Math.floor((sec % 3600) / 60);
@@ -184,15 +147,22 @@ function InvoiceContent() {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const planName = orderDetails?.plan_id ? orderDetails.plan_id.replace('_', ' ') : 'Premium';
+  const roleKey = orderDetails?.plan_id || 'vip';
+  const planName = planNameFromApi || (orderDetails?.plan_id ? orderDetails.plan_id.toUpperCase() : 'VIP Member');
   const priceDisplay = orderDetails?.amount_cents
     ? `$${(orderDetails.amount_cents / 100).toFixed(2)}`
-    : '$8.00';
+    : '$1.00';
 
   const cryptoCurrency = whiteLabel?.currency || whiteLabel?.psys_cid || 'USDT_TRX';
-  const cryptoAmount = whiteLabel?.amount || (orderDetails?.amount_cents ? (orderDetails.amount_cents / 100).toFixed(2) : '8.00');
-  const depositAddress = whiteLabel?.wallet_hash || 'TJYg4p5aX9LhL7c8K3W8K5e9m1q9Z99999';
-  const qrCodeImage = whiteLabel?.qr_code || `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(depositAddress)}`;
+  const cryptoAmount =
+    whiteLabel?.amount ||
+    (orderDetails?.amount_cents ? (orderDetails.amount_cents / 100).toFixed(2) : '1.00');
+  const depositAddress = whiteLabel?.wallet_hash || 'Awaiting wallet address...';
+  const qrCodeImage =
+    whiteLabel?.qr_code ||
+    `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(depositAddress)}`;
+
+  const previewUserName = currentUser?.display_name || currentUser?.username || 'User';
 
   return (
     <main className="w-full max-w-[620px] border-r border-border min-h-screen pb-16">
@@ -222,7 +192,7 @@ function InvoiceContent() {
           className="p-2 hover:bg-subtle rounded-full transition-colors text-muted hover:text-foreground"
           title="Refresh status"
         >
-          <RefreshCw className={cn("w-4 h-4", isManualRefreshing && "animate-spin text-[#1d9bf0]")} />
+          <RefreshCw className={cn('w-4 h-4', isManualRefreshing && 'animate-spin text-[#1d9bf0]')} />
         </button>
       </div>
 
@@ -237,20 +207,14 @@ function InvoiceContent() {
             <div className="space-y-1.5">
               <h2 className="text-[26px] font-black tracking-tight text-foreground">Payment Received!</h2>
               <p className="text-muted text-[14px] max-w-sm mx-auto leading-relaxed">
-                Your cryptocurrency payment has confirmed. Your subscription to <strong className="text-foreground capitalize">X {planName}</strong> is now active with authoritative verification.
+                Your cryptocurrency payment has confirmed. Your <strong className="text-foreground">{planName}</strong> role and quotas are now active.
               </p>
             </div>
 
             <div className="bg-subtle/60 rounded-2xl p-4 text-left text-[14px] space-y-2.5 border border-border">
               <div className="flex justify-between items-center">
-                <span className="text-muted">Subscription Plan</span>
-                <span className="font-bold capitalize text-foreground">{planName}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted">Verification Badge</span>
-                <span className="font-bold text-[#1d9bf0] flex items-center gap-1.5">
-                  Verified Active <VerifiedBadge type="blue" size="sm" showPopover={false} />
-                </span>
+                <span className="text-muted">Activated Role</span>
+                <UserNameWithRole displayName={previewUserName} role={roleKey} className="text-sm" />
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-muted">Paid Amount</span>
@@ -269,8 +233,7 @@ function InvoiceContent() {
                 href={`/${currentUser?.username || ''}`}
                 className="flex-1 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-extrabold py-3 px-6 rounded-full transition-all text-center shadow-md flex items-center justify-center gap-2"
               >
-                <span>View Verified Profile</span>
-                <VerifiedBadge type="blue" size="sm" showPopover={false} />
+                <span>View Profile</span>
               </Link>
               <Link
                 href="/"
@@ -286,16 +249,18 @@ function InvoiceContent() {
             <div className="border border-border rounded-2xl p-4 sm:p-5 bg-subtle/30 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-[18px] font-extrabold capitalize">X {planName}</h2>
-                  <VerifiedBadge type="blue" size="sm" showPopover={false} />
+                  <h2 className="text-[18px] font-extrabold">{planName}</h2>
                 </div>
-                <p className="text-[13px] text-muted">
-                  {orderDetails?.billing_cycle === 'annual' ? 'Annual Billing' : 'Monthly Billing'} · Verified Checkmark
-                </p>
+                <div className="mt-1 flex items-center gap-2 text-xs text-muted">
+                  <span>Role Preview:</span>
+                  <UserNameWithRole displayName={previewUserName} role={roleKey} className="text-sm" />
+                </div>
               </div>
               <div className="text-right">
                 <span className="text-[24px] font-black">{priceDisplay}</span>
-                <span className="text-muted text-[12px] block uppercase tracking-wider font-semibold">USD</span>
+                <span className="text-muted text-[12px] block uppercase tracking-wider font-semibold">
+                  USD / mo
+                </span>
               </div>
             </div>
 
@@ -307,8 +272,16 @@ function InvoiceContent() {
               {/* Header with Expiry Countdown */}
               <div className="flex items-center justify-between pb-3 border-b border-white/10">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                    <Wallet className="w-4 h-4 text-[#1d9bf0]" />
+                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
+                    <img
+                      src={`/crypto-icons/${cryptoCurrency}.svg`}
+                      alt={cryptoCurrency}
+                      className="w-5 h-5 object-contain"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                    <Wallet className="w-4 h-4 text-[#1d9bf0] hidden" />
                   </div>
                   <div>
                     <h3 className="text-[14px] font-bold text-white uppercase tracking-wider">
@@ -416,41 +389,10 @@ function InvoiceContent() {
                 <div className="text-[13px] leading-snug">
                   <p className="font-bold text-neutral-200">Listening for transaction on blockchain...</p>
                   <p className="text-neutral-400 text-[12px]">
-                    Once you send funds, this page will automatically confirm and activate your blue badge.
+                    Once you send funds, this page will automatically confirm and activate your {planName} role.
                   </p>
                 </div>
               </div>
-            </div>
-
-            {/* Test Simulation Controls */}
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 sm:p-5 space-y-3">
-              <div className="flex items-center gap-2 text-yellow-400 font-bold text-[14px]">
-                <Zap className="w-4 h-4" />
-                <span>Test Mode / Instant Settlement Simulator</span>
-              </div>
-              <p className="text-[12px] text-neutral-300 leading-relaxed">
-                Evaluating the Plisio White-Label integration? Click below to instantly simulate a verified Plisio webhook callback without spending real crypto.
-              </p>
-
-              {errorMessage && (
-                <p className="text-red-400 text-[12px] font-semibold">{errorMessage}</p>
-              )}
-
-              <button
-                type="button"
-                onClick={handleSimulatePayment}
-                disabled={loading}
-                className="w-full bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-extrabold text-[14px] py-3 px-5 rounded-full shadow-lg transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50"
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    <span>Simulate Instant Blockchain Confirmation</span>
-                    <ShieldCheck className="w-4 h-4" />
-                  </>
-                )}
-              </button>
             </div>
 
             {/* Security Note */}
@@ -466,14 +408,6 @@ function InvoiceContent() {
 }
 
 export default function InvoicePage() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    apiRequest<User>('/me')
-      .then((u) => setCurrentUser(u))
-      .catch(() => setCurrentUser(null));
-  }, []);
-
   return (
     <>
       <Suspense

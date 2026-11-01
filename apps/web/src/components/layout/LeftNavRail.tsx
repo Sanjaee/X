@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { User } from "@/types";
 import { cn } from "@/lib/utils";
-import { VerifiedBadge } from "@/components/common/VerifiedBadge";
+import { UserNameWithRole } from "@/components/ui/UserNameWithRole";
 import { useRealtime } from "@/lib/useRealtime";
 import { useComposer } from "@/components/composer/ComposerContext";
 import { useCurrentUser } from "@/lib/useCurrentUser";
@@ -175,12 +175,12 @@ export function LeftNavRail({
               className="w-10 h-10 rounded-full object-cover border border-border"
             />
             <div className="hidden xl:flex flex-col text-left">
-              <span className="font-bold text-[15px] leading-5 line-clamp-1 flex items-center">
-                {currentUser.display_name}
-                {currentUser.is_verified && (
-                  <VerifiedBadge type={currentUser.verified_type} />
-                )}
-              </span>
+              <div className="text-[15px] leading-5 line-clamp-1 flex items-center">
+                <UserNameWithRole
+                  displayName={currentUser.display_name || currentUser.username}
+                  role={currentUser.role}
+                />
+              </div>
               <span className="text-muted text-[14px] leading-4">@{currentUser.username}</span>
             </div>
 

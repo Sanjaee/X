@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { X, Loader2 } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { apiRequest, setStoredToken, setStoredUser } from "@/lib/api";
@@ -31,7 +32,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = "login" }:
     }
   }, [isOpen, initialMode]);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
 
   const handleGoogleSignIn = async () => {
     try {
@@ -81,9 +82,12 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = "login" }:
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-[440px] bg-background border border-border rounded-2xl shadow-2xl p-6 sm:p-8 flex flex-col items-center">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 backdrop-blur-sm p-4">
+      <div
+        style={{ backgroundColor: "var(--background, #000000)" }}
+        className="relative w-full max-w-[440px] bg-[#ffffff] dark:bg-[#000000] bg-background border border-border rounded-2xl shadow-2xl p-6 sm:p-8 flex flex-col items-center"
+      >
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -265,6 +269,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = "login" }:
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

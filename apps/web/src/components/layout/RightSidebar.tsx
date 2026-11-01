@@ -12,6 +12,7 @@ import { apiRequest, setStoredToken, setStoredUser } from "@/lib/api";
 import { TrendingTopic, UserRecommendation, User, AuthResponse } from "@/types";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { useCurrentUser } from "@/lib/useCurrentUser";
+import { UserNameWithRole } from "@/components/ui/UserNameWithRole";
 
 interface RightSidebarProps {
   onSearch?: (query: string) => void;
@@ -291,12 +292,12 @@ export function RightSidebar({
                   <div className="flex flex-col min-w-0 flex-1">
                     <Link
                       href={`/${focal.username}`}
-                      className="font-bold text-[15px] leading-5 text-foreground hover:underline truncate flex items-center gap-1"
+                      className="text-[15px] leading-5 text-foreground hover:underline truncate flex items-center gap-1"
                     >
-                      <span>{focal.display_name}</span>
-                      {focal.is_verified && (
-                        <CheckCircle2 className="w-4 h-4 fill-amber-400 text-black shrink-0 inline" />
-                      )}
+                      <UserNameWithRole
+                        displayName={focal.display_name || focal.username}
+                        role={focal.role}
+                      />
                     </Link>
                     <span className="text-[14px] text-muted leading-4 truncate">
                       @{focal.username}
@@ -447,12 +448,11 @@ export function RightSidebar({
                       />
                       <div className="flex flex-col min-w-0">
                         <div className="flex items-center gap-1 min-w-0">
-                          <span className="font-bold text-[15px] leading-5 text-foreground hover:underline truncate">
-                            {rec.user.display_name}
-                          </span>
-                          {rec.user.is_verified && (
-                            <CheckCircle2 className="w-4 h-4 fill-brand text-background shrink-0 inline" />
-                          )}
+                          <UserNameWithRole
+                            displayName={rec.user.display_name || rec.user.username}
+                            role={rec.user.role}
+                            className="text-[15px] leading-5 hover:underline truncate"
+                          />
                         </div>
                         <span className="text-[14px] text-muted leading-4 truncate">@{rec.user.username}</span>
                         {rec.reason && (

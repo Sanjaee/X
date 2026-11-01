@@ -14,7 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Post, User } from "@/types";
-import { VerifiedBadge } from "@/components/common/VerifiedBadge";
+import { UserNameWithRole } from "@/components/ui/UserNameWithRole";
 import { formatRelativeTime, formatNumber, cn } from "@/lib/utils";
 import { PostCard } from "@/components/feed/PostCard";
 import { apiRequest } from "@/lib/api";
@@ -135,11 +135,12 @@ export function MediaDetailSidebar({
             className="w-10 h-10 rounded-full object-cover border border-border group-hover:opacity-90 transition-opacity"
           />
           <div className="flex flex-col">
-            <div className="flex items-center gap-1">
-              <span className="font-bold text-[15px] leading-snug group-hover:underline">
-                {author.display_name}
-              </span>
-              {author.is_verified && <VerifiedBadge type={author.verified_type} />}
+            <div className="flex items-center gap-1 group-hover:underline">
+              <UserNameWithRole
+                displayName={author.display_name || author.username}
+                role={author.role}
+                className="text-[15px] leading-snug"
+              />
             </div>
             <span className="text-muted text-[13px] leading-tight">
               @{author.username}

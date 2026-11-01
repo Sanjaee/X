@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   SlidersHorizontal,
@@ -23,9 +23,9 @@ import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { MobileComposerModal } from "@/components/composer/MobileComposerModal";
 import { SearchBarDropdown } from "@/components/search/SearchBarDropdown";
 import { VirtualizedFeed } from "@/components/virtualized-list/VirtualizedFeed";
-import { VerifiedBadge } from "@/components/common/VerifiedBadge";
+import { UserNameWithRole } from "@/components/ui/UserNameWithRole";
 import { AuthModal } from "@/components/auth/AuthModal";
-import { User, Post } from "@/types";
+import { User, Post, TrendingTopic } from "@/types";
 import { apiRequest } from "@/lib/api";
 import { searchKeys } from "@/lib/query-keys";
 import { cn, formatNumber } from "@/lib/utils";
@@ -66,18 +66,37 @@ function SearchPageContent() {
   const [composerModalOpen, setComposerModalOpen] = useState(false);
   const [exploreCategory, setExploreCategory] = useState<ExploreCategory>("explore");
 
-  // Trending data (English standard)
-  const trendingList = [
-    { category: "Technology · Trending", title: "#NextJS15", count: "142K posts" },
-    { category: "Space · Trending", title: "Artemis III", count: "89.4K posts" },
-    { category: "Artificial Intelligence · Trending", title: "DeepSeek", count: "320K posts" },
-    { category: "Software Engineering · Trending", title: "Golang 1.25", count: "45.1K posts" },
-    { category: "Web Development · Trending", title: "Tailwind CSS v4", count: "12.5K posts" },
-    { category: "Trending Worldwide", title: "#WorldCup2026", count: "215K posts" },
-    { category: "Sports · Trending", title: "Champions League", count: "112K posts" },
-    { category: "Entertainment · Trending", title: "Dune Messiah", count: "94K posts" },
-    { category: "Science · Trending", title: "James Webb Telescope", count: "58K posts" },
-  ];
+  // Dynamic Trending Topics from Backend
+  const {
+    data: dynamicTrends = [],
+    isLoading: trendsLoading,
+    refetch: refetchTrends,
+  } = useQuery<TrendingTopic[]>({
+    queryKey: ["explore", "trending_search_page"],
+    queryFn: async () => {
+      const res = await apiRequest<{ trending: TrendingTopic[] }>("/explore/trending?limit=20");
+      return res.trending || [];
+    },
+    staleTime: 30 * 1000,
+  });
+
+  // Live refresh trending topics when new posts are created
+  useEffect(() => {
+    const handleLiveUpdate = () => {
+      refetchTrends();
+    };
+    window.addEventListener("x_feed_post_created", handleLiveUpdate);
+    return () => window.removeEventListener("x_feed_post_created", handleLiveUpdate);
+  }, [refetchTrends]);
+
+  const filteredTrends = useMemo(() => {
+    if (exploreCategory === "explore" || exploreCategory === "trending") {
+      return dynamicTrends;
+    }
+    return dynamicTrends.filter((t) =>
+      (t.category || "").toLowerCase().includes(exploreCategory.toLowerCase())
+    );
+  }, [dynamicTrends, exploreCategory]);
 
   // Advanced Filters State
   const [filterFromUser, setFilterFromUser] = useState("");
@@ -468,38 +487,53 @@ function SearchPageContent() {
           {/* Search Content */}
           <div className="flex-1 flex flex-col">
             {!rawQuery.trim() ? (
-              /* Screenshot 2: Authentic Trending List */
-              <div className="flex flex-col divide-y divide-border">
-                {trendingList.map((trend, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => handleSearchSubmit(trend.title)}
-                    className="p-4 hover:bg-subtle/50 cursor-pointer transition-colors flex items-start justify-between group"
-                  >
-                    <div className="flex flex-col gap-0.5 min-w-0">
-                      <span className="text-[13px] text-muted leading-tight">
-                        {trend.category}
-                      </span>
-                      <span className="font-bold text-[15px] text-foreground group-hover:underline truncate">
-                        {trend.title}
-                      </span>
-                      <span className="text-[13px] text-muted leading-tight">
-                        {trend.count}
-                      </span>
-                    </div>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                      }}
-                      className="p-2 -mr-2 text-muted hover:text-foreground hover:bg-subtle rounded-full transition-colors"
-                      title="More"
+              /* Dynamic Trending List from Backend */
+              trendsLoading ? (
+                <div className="flex justify-center items-center py-16 text-brand">
+                  <Loader2 className="w-8 h-8 animate-spin" />
+                </div>
+              ) : filteredTrends.length === 0 ? (
+                <div className="text-center py-20 px-6">
+                  <h3 className="font-bold text-[20px] mb-2">Nothing trending right now</h3>
+                  <p className="text-muted text-[15px] max-w-sm mx-auto">
+                    {exploreCategory === "explore" || exploreCategory === "trending"
+                      ? "Create a post with hashtags or topics to start a trend."
+                      : `No trending topics in ${exploreCategory.charAt(0).toUpperCase() + exploreCategory.slice(1)} yet.`}
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col divide-y divide-border">
+                  {filteredTrends.map((trend, idx) => (
+                    <div
+                      key={`${trend.topic}-${idx}`}
+                      onClick={() => handleSearchSubmit(trend.topic)}
+                      className="p-4 hover:bg-subtle/50 cursor-pointer transition-colors flex items-start justify-between group"
                     >
-                      <MoreHorizontal className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
+                      <div className="flex flex-col gap-0.5 min-w-0">
+                        <span className="text-[13px] text-muted leading-tight">
+                          {trend.category || "Trending"}
+                        </span>
+                        <span className="font-bold text-[15px] text-foreground group-hover:underline truncate">
+                          {trend.topic}
+                        </span>
+                        <span className="text-[13px] text-muted leading-tight">
+                          {formatNumber(trend.posts_count || 0)} {trend.posts_count === 1 ? "post" : "posts"}
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                        className="p-2 -mr-2 text-muted hover:text-foreground hover:bg-subtle rounded-full transition-colors"
+                        title="More"
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )
             ) : isPeopleTab ? (
               /* People Tab View */
               <div className="flex flex-col divide-y divide-border">
@@ -530,10 +564,11 @@ function SearchPageContent() {
                           />
                           <div className="flex flex-col min-w-0">
                             <div className="flex items-center gap-1">
-                              <span className="font-bold text-[15px] text-foreground hover:underline truncate">
-                                {u.display_name}
-                              </span>
-                              {u.is_verified && <VerifiedBadge type={u.verified_type} />}
+                              <UserNameWithRole
+                                displayName={u.display_name || u.username}
+                                role={u.role}
+                                className="text-[15px] hover:underline truncate"
+                              />
                             </div>
                             <span className="text-[13px] text-muted leading-4">@{u.username}</span>
                             {u.bio && (

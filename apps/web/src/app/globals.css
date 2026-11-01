@@ -56,3 +56,193 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+.owner_name {
+  color: #ff9f00;
+  text-shadow: 2px 2px 5px #ff4500 !important;
+  font-weight: 900;
+  background-image: url("/god.gif");
+  text-shadow: 0px 0px 5px #090909;
+  background-color: #0a0a0a;
+  line-height: 1.25;
+  padding: 0 3px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.owner_badge::before {
+  content: "[Owner] ";
+  color: #a50000;
+  font-weight: 800;
+  font-family: Roboto, Arial, sans-serif;
+  font-size: 0.92em;
+  line-height: 1.25;
+}
+
+.admin_name {
+  color: #000000;
+  font-weight: 900;
+  background-image: url("/admin.gif");
+  text-shadow: 2px 2px 6px #d035c9 !important;
+  background-color: #0a0a0a;
+  line-height: 1.25;
+  padding: 0 3px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.admin_badge::before {
+  content: "[Admin] ";
+  color: #a50000;
+  font-weight: 800;
+  font-family: Roboto, Arial, sans-serif;
+  font-size: 0.92em;
+  line-height: 1.25;
+}
+
+.mod_name {
+  color: #c61aff;
+  font-weight: 900;
+  text-shadow: 0px 0px 5px #c61aff !important;
+  background-image: url("/god.gif");
+  background-color: #0a0a0a;
+  line-height: 1.25;
+  padding: 0 3px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.mod_badge::before {
+  content: "[Mod]+ ";
+  color: #a50000;
+  font-weight: 800;
+  font-family: Roboto, Arial, sans-serif;
+  font-size: 0.92em;
+  line-height: 1.25;
+}
+
+.mvp_name {
+  color: #e7e7e7;
+  text-shadow: 2px 2px 6px #ffffff !important;
+  font-weight: 900;
+  background-image: url("/mvp.gif");
+  background-color: #0a0a0a;
+  line-height: 1.25;
+  padding: 0 3px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.mvp_badge::before {
+  content: "\f3a5";
+  color: #e7e7e7;
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  display: inline-block;
+  font-size: 0.9em;
+  line-height: 1.25;
+  margin-right: 2px;
+}
+
+.god_name {
+  color: #b30000;
+  text-shadow: 2px 2px 6px #b30000 !important;
+  font-weight: 900;
+  background-image: url("/god.gif");
+  background-color: #0a0a0a;
+  line-height: 1.25;
+  padding: 0 3px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.god_badge::before {
+  content: "\f521";
+  color: #f1c40f;
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  display: inline-block;
+  font-size: 0.9em;
+  line-height: 1.25;
+  margin-right: 2px;
+}
+
+.vip_name {
+  color: #0c0;
+  font-weight: 900;
+  background-image: url("/vip.gif");
+  background-color: #0a0a0a;
+  line-height: 1.25;
+  padding: 0 3px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.vip_badge::before {
+  content: "\f521";
+  color: #f1c40f;
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  display: inline-block;
+  font-size: 0.9em;
+  line-height: 1.25;
+  margin-right: 2px;
+}
+
+.member_name {
+  color: white;
+  font-weight: 900;
+  line-height: 1.25;
+  display: inline-block;
+}
+.member_badge::before {
+  content: "";
+  display: none;
+}
+
+.start {
+  color: #f90;
+}
+
+.line-height-30 .owner_name,
+.line-height-30 .admin_name,
+.line-height-30 .mod_name,
+.line-height-30 .mvp_name,
+.line-height-30 .god_name,
+.line-height-30 .vip_name,
+.line-height-30 .member_name {
+  line-height: 30px !important;
+  margin-left: 5px !important;
+}
+
+/* Role upgrade card styling */
+.role-card {
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.1);
+}
+.role-card:hover {
+  box-shadow: 0 4px 12px oklch(0.488 0.243 264.376 / 0.2);
+}
+.dark .role-card {
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.3);
+}
+.dark .role-card:hover {
+  box-shadow: 0 4px 12px oklch(0.488 0.243 264.376 / 0.25);
+}
+
+/* Custom Scrollbar Global */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #333c45;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #1d9bf0;
+}

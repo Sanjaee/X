@@ -18,6 +18,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+          crossOrigin="anonymous"
+          referrerPolicy="no-referrer"
+        />
+      </head>
       <body className="bg-background text-foreground min-h-screen antialiased selection:bg-brand selection:text-white">
         <AppProviders>
           <AppShell>{children}</AppShell>

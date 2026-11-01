@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Search, X, Clock, Loader2, ArrowUpRight } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { User } from "@/types";
-import { VerifiedBadge } from "@/components/common/VerifiedBadge";
+import { UserNameWithRole } from "@/components/ui/UserNameWithRole";
 
 interface RecentSearchItem {
   id?: string;
@@ -269,7 +269,10 @@ export function SearchBarDropdown({
 
       {/* Autocomplete & Recent Searches Dropdown */}
       {isOpen && (
-        <div className="absolute top-12 left-0 right-0 bg-background border border-border shadow-2xl rounded-2xl overflow-hidden z-50 py-2 max-h-[460px] overflow-y-auto">
+        <div
+          style={{ backgroundColor: "var(--background, #000000)" }}
+          className="absolute top-12 left-0 right-0 bg-[#ffffff] dark:bg-[#000000] bg-background border border-border shadow-2xl rounded-2xl overflow-hidden z-50 py-2 max-h-[460px] overflow-y-auto"
+        >
           {/* Loading Indicator */}
           {isLoading && (
             <div className="flex items-center justify-center py-4 text-brand">
@@ -366,10 +369,11 @@ export function SearchBarDropdown({
                         />
                         <div className="flex flex-col min-w-0">
                           <div className="flex items-center gap-1">
-                            <span className="font-bold text-[15px] text-foreground truncate">
-                              {u.display_name}
-                            </span>
-                            {u.is_verified && <VerifiedBadge type={u.verified_type} />}
+                            <UserNameWithRole
+                              displayName={u.display_name || u.username}
+                              role={u.role}
+                              className="text-[15px] truncate"
+                            />
                           </div>
                           <span className="text-[13px] text-muted truncate">@{u.username}</span>
                         </div>

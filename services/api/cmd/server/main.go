@@ -84,7 +84,8 @@ func main() {
 	r.Use(middleware.LoggerMiddleware(logger))
 	r.Use(middleware.RecoveryMiddleware(logger))
 
-	// Resiliency & Backpressure middleware (4GB VPS Tuning)
+	// Resiliency & Backpressure middleware (VPS Tuning & DDoS Protection)
+	r.Use(middleware.MaxBodySizeMiddleware(1 << 20))
 	r.Use(middleware.ConcurrencyLimiter(cfg.MaxConcurrentRequests))
 	r.Use(middleware.RateLimiter(rdb, cfg.RateLimitPerMin))
 	r.Use(middleware.RequestTimeoutMiddleware(15))
@@ -153,14 +154,14 @@ func main() {
 		// WebSocket Realtime Gateway (Section 4G & 10)
 		v1.Get("/ws", h.ServeWebSocket)
 
-		// LM-SEC-013 Remediation: Dedicated strict rate limiting for public authentication routes (10 req/min)
+		// LM-SEC-013 & LM-SEC-014 Remediation: Dedicated strict rate limiting for authentication routes (10 req/min)
 		authLimiter := middleware.RateLimiter(rdb, 10)
 		v1.Group(func(authPub chi.Router) {
 			authPub.Use(authLimiter)
 			authPub.Post("/auth/register", h.Register)
 			authPub.Post("/auth/login", h.Login)
+			authPub.Post("/auth/google", h.GoogleAuth)
 		})
-		v1.Post("/auth/google", h.GoogleAuth)
 
 		// Public Webhook for Plisio Cryptocurrency Gateway (Section 6F)
 		v1.Post("/webhooks/payments/plisio", h.HandlePlisioWebhook)
@@ -337,11 +338,14 @@ func main() {
 
 
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%s", cfg.Port),
-		Handler:      r,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Addr:              fmt.Sprintf(":%s", cfg.Port),
+		Handler:           r,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		// WriteTimeout is 0 so hijacked WebSocket connections (/api/v1/ws) are not killed after 15s;
+		// REST routes are protected by RequestTimeoutMiddleware(15s) and writePump sets per-frame write deadlines.
+		WriteTimeout:      0,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	// Server runner

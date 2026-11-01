@@ -16,7 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { User } from "@/types";
-import { VerifiedBadge } from "@/components/common/VerifiedBadge";
+import { UserNameWithRole } from "@/components/ui/UserNameWithRole";
 import { formatNumber } from "@/lib/utils";
 
 interface MobileDrawerProps {
@@ -104,10 +104,10 @@ export function MobileDrawer({
                 onClick={onClose}
                 className="flex items-center gap-1 font-bold text-[17px] leading-tight hover:underline"
               >
-                <span>{currentUser.display_name}</span>
-                {currentUser.is_verified && (
-                  <VerifiedBadge type={currentUser.verified_type} />
-                )}
+                <UserNameWithRole
+                  displayName={currentUser.display_name || currentUser.username}
+                  role={currentUser.role}
+                />
               </Link>
               <span className="text-muted text-[14px]">
                 @{currentUser.username}

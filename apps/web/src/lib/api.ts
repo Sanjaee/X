@@ -1,8 +1,11 @@
 export function getApiBase(): string {
   if (typeof window !== "undefined") {
     const origin = window.location.origin;
-    if (origin.includes("localhost") && !origin.includes(":3000")) {
+    if (!origin.includes(":3000")) {
       return `${origin}/api/v1`;
+    }
+    if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
+      return "http://localhost/api/v1";
     }
   }
   let base = process.env.NEXT_PUBLIC_API_URL;
@@ -61,6 +64,7 @@ export function setStoredToken(token: string | null) {
       localStorage.removeItem("x_session_user");
       document.cookie = `x_session_token=; path=/; max-age=0; SameSite=Lax`;
     }
+    window.dispatchEvent(new Event("x_auth_state_change"));
   }
 }
 
