@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,7 +20,19 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
-		return true // Origin checked in router/CORS layer
+		origin := strings.TrimSpace(r.Header.Get("Origin"))
+		if origin == "" {
+			return true
+		}
+		u, err := url.Parse(origin)
+		if err != nil {
+			return false
+		}
+		host := strings.ToLower(u.Hostname())
+		if host == "lostmedia.pro" || host == "www.lostmedia.pro" || host == "localhost" || host == "127.0.0.1" {
+			return true
+		}
+		return strings.EqualFold(u.Host, r.Host)
 	},
 }
 
@@ -40,12 +54,13 @@ type OutboundEvent struct {
 
 // Hub maintains the set of active clients and handles routing of events
 type Hub struct {
-	mu           sync.RWMutex
-	clients      map[uuid.UUID]map[*Client]bool
-	rooms        map[uuid.UUID]map[*Client]bool // conversation subscriptions
-	register     chan *Client
-	unregister   chan *Client
-	rdb          *redis.Client
+	mu                    sync.RWMutex
+	clients               map[uuid.UUID]map[*Client]bool
+	rooms                 map[uuid.UUID]map[*Client]bool // conversation subscriptions
+	register              chan *Client
+	unregister            chan *Client
+	rdb                   *redis.Client
+	canAccessConversation func(ctx context.Context, userID, convID uuid.UUID) bool
 }
 
 func NewHub(rdb *redis.Client) *Hub {
@@ -56,6 +71,22 @@ func NewHub(rdb *redis.Client) *Hub {
 		unregister: make(chan *Client),
 		rdb:        rdb,
 	}
+}
+
+func (h *Hub) SetConversationAccessChecker(fn func(ctx context.Context, userID, convID uuid.UUID) bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.canAccessConversation = fn
+}
+
+func (h *Hub) CanAccessConversation(ctx context.Context, userID, convID uuid.UUID) bool {
+	h.mu.RLock()
+	fn := h.canAccessConversation
+	h.mu.RUnlock()
+	if fn == nil {
+		return true
+	}
+	return fn(ctx, userID, convID)
 }
 
 func (h *Hub) Run(ctx context.Context) {
@@ -390,7 +421,12 @@ func (c *Client) handleInboundEvent(event InboundEvent) {
 		}
 		if err := json.Unmarshal(event.Payload, &p); err == nil {
 			if convUUID, err := uuid.Parse(p.ConversationID); err == nil {
-				c.hub.SubscribeToConversation(c, convUUID)
+				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+				allowed := c.hub.CanAccessConversation(ctx, c.userID, convUUID)
+				cancel()
+				if allowed {
+					c.hub.SubscribeToConversation(c, convUUID)
+				}
 			}
 		}
 
@@ -411,6 +447,12 @@ func (c *Client) handleInboundEvent(event InboundEvent) {
 		}
 		if err := json.Unmarshal(event.Payload, &p); err == nil {
 			if convUUID, err := uuid.Parse(p.ConversationID); err == nil {
+				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+				allowed := c.hub.CanAccessConversation(ctx, c.userID, convUUID)
+				cancel()
+				if !allowed {
+					return
+				}
 				isTyping := true
 				if evtType == "typing" {
 					isTyping = p.IsTyping
@@ -438,6 +480,12 @@ func (c *Client) handleInboundEvent(event InboundEvent) {
 		}
 		if err := json.Unmarshal(event.Payload, &p); err == nil {
 			if convUUID, err := uuid.Parse(p.ConversationID); err == nil {
+				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+				allowed := c.hub.CanAccessConversation(ctx, c.userID, convUUID)
+				cancel()
+				if !allowed {
+					return
+				}
 				if c.hub.rdb != nil {
 					key := fmt.Sprintf("typing:conversation:%s:user:%s", convUUID, c.userID)
 					_ = c.hub.rdb.Del(context.Background(), key).Err()

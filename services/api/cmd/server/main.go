@@ -34,7 +34,7 @@ func main() {
 	slog.SetDefault(logger)
 
 	cfg := config.Load()
-	logger.Info("starting_service", slog.String("port", cfg.Port), slog.String("db_url", cfg.DatabaseURL))
+	logger.Info("starting_service", slog.String("port", cfg.Port))
 
 	// Connect to Database with graceful fallback
 	var repo repository.Repository

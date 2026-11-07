@@ -33,6 +33,47 @@ func lockOrder(id uuid.UUID) func() {
 	return mu.Unlock
 }
 
+// isOperationFullyPaid verifies that a Plisio operation has been paid in full.
+// In Plisio, status="mismatch" is emitted for BOTH overpayments and underpayments.
+// An order must NEVER be settled on "mismatch" unless pending_amount <= 0 and
+// received_amount >= expected invoice amount > 0.
+func isOperationFullyPaid(op *payment.CryptoOperation, inv *payment.CryptoInvoice) bool {
+	if op == nil {
+		return false
+	}
+	switch strings.ToLower(op.Status) {
+	case "completed":
+		if op.PendingAmount != "" {
+			if pend, err := strconv.ParseFloat(op.PendingAmount, 64); err == nil && pend > 0 {
+				return false
+			}
+		}
+		return true
+	case "mismatch":
+		if op.PendingAmount == "" {
+			return false
+		}
+		pend, err := strconv.ParseFloat(op.PendingAmount, 64)
+		if err != nil || pend > 0 {
+			return false
+		}
+		expectedStr := op.Amount
+		if inv != nil && inv.Amount != "" {
+			expectedStr = inv.Amount
+		}
+		if expectedStr != "" && op.ReceivedAmount != "" {
+			exp, errE := strconv.ParseFloat(expectedStr, 64)
+			rec, errR := strconv.ParseFloat(op.ReceivedAmount, 64)
+			if errE == nil && errR == nil && exp > 0 {
+				return rec >= exp
+			}
+		}
+		return false
+	default:
+		return false
+	}
+}
+
 type CheckoutRequest struct {
 	PlanID         string `json:"plan_id"`
 	BillingCycle   string `json:"billing_cycle"` // 'monthly' or 'annual'
@@ -122,9 +163,11 @@ func (h *Handler) CheckoutSubscription(w http.ResponseWriter, r *http.Request) {
 					op = live
 					switch op.Status {
 					case "completed", "mismatch":
-						h.settleOrder(r, activeOrder.ID)
-						writeError(w, http.StatusBadRequest, "Your existing order has already been paid and activated.")
-						return
+						if isOperationFullyPaid(op, inv) {
+							h.settleOrder(r, activeOrder.ID)
+							writeError(w, http.StatusBadRequest, "Your existing order has already been paid and activated.")
+							return
+						}
 					case "expired", "cancelled", "error":
 						h.closeOrder(r, activeOrder.ID, op.Status)
 						activeOrder = nil
@@ -277,9 +320,11 @@ func (h *Handler) GetActiveSubscriptionOrder(w http.ResponseWriter, r *http.Requ
 			op = live
 			switch op.Status {
 			case "completed", "mismatch":
-				h.settleOrder(r, order.ID)
-				writeJSON(w, http.StatusOK, map[string]interface{}{"order": nil})
-				return
+				if isOperationFullyPaid(op, inv) {
+					h.settleOrder(r, order.ID)
+					writeJSON(w, http.StatusOK, map[string]interface{}{"order": nil})
+					return
+				}
 			case "expired", "cancelled", "error":
 				h.closeOrder(r, order.ID, op.Status)
 				writeJSON(w, http.StatusOK, map[string]interface{}{"order": nil})
@@ -376,8 +421,10 @@ func (h *Handler) GetSubscriptionOrder(w http.ResponseWriter, r *http.Request) {
 				op = live
 				switch op.Status {
 				case "completed", "mismatch":
-					// "mismatch" = funds received but over-paid; still credited.
-					h.settleOrder(r, order.ID)
+					// Only settle if full invoice amount is confirmed (never settle underpayments).
+					if isOperationFullyPaid(op, inv) {
+						h.settleOrder(r, order.ID)
+					}
 				case "expired":
 					h.closeOrder(r, order.ID, "expired")
 				case "cancelled", "error":
@@ -425,7 +472,10 @@ func (h *Handler) HandleCryptoWebhook(w http.ResponseWriter, r *http.Request) {
 			payload.Status = vals.Get("status")
 			payload.OrderNumber = vals.Get("order_number")
 			payload.TxnID = vals.Get("txn_id")
+			payload.Amount = vals.Get("amount")
+			payload.Currency = vals.Get("currency")
 			payload.SourceAmount = vals.Get("source_amount")
+			payload.PendingAmount = vals.Get("pending_amount")
 			payload.VerifyHash = vals.Get("verify_hash")
 		}
 	}
@@ -468,8 +518,35 @@ func (h *Handler) HandleCryptoWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch strings.ToLower(payload.Status) {
-	case "completed", "mismatch":
+	case "completed":
+		if payload.PendingAmount != "" {
+			if pend, err := strconv.ParseFloat(payload.PendingAmount, 64); err == nil && pend > 0 {
+				slog.Warn("payments.webhook_underpaid_completed", "order_id", order.ID, "pending_amount", payload.PendingAmount)
+				writeJSON(w, http.StatusOK, map[string]string{"status": "underpaid_ignored"})
+				return
+			}
+		}
 		h.settleOrder(r, order.ID)
+	case "mismatch":
+		inv := invoiceFromMetadata(order.Metadata)
+		settled := false
+		if h.gateway != nil && h.gateway.IsConfigured() && order.ProviderOrderID != "" {
+			if live, err := h.gateway.GetOperation(r.Context(), order.ProviderOrderID); err == nil && isOperationFullyPaid(live, inv) {
+				settled = true
+			}
+		} else if payload.PendingAmount != "" && inv != nil && inv.Amount != "" && payload.Amount != "" {
+			pend, errP := strconv.ParseFloat(payload.PendingAmount, 64)
+			exp, errE := strconv.ParseFloat(inv.Amount, 64)
+			rec, errR := strconv.ParseFloat(payload.Amount, 64)
+			if errP == nil && errE == nil && errR == nil && pend <= 0 && exp > 0 && rec >= exp {
+				settled = true
+			}
+		}
+		if settled {
+			h.settleOrder(r, order.ID)
+		} else {
+			slog.Warn("payments.webhook_underpaid_mismatch", "order_id", order.ID, "pending_amount", payload.PendingAmount, "amount", payload.Amount)
+		}
 	case "expired":
 		h.closeOrder(r, order.ID, "expired")
 	case "cancelled", "error":

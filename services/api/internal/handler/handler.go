@@ -48,6 +48,12 @@ type Handler struct {
 
 func NewHandler(repo repository.Repository, storageDir string, mediaSvc *media.MediaService, gateway *payment.CryptoGateway, hub *realtime.Hub, rdb *redis.Client) *Handler {
 	_ = os.MkdirAll(storageDir, 0755)
+	if hub != nil && repo != nil {
+		hub.SetConversationAccessChecker(func(ctx context.Context, userID, convID uuid.UUID) bool {
+			_, err := repo.GetConversationByID(ctx, convID, userID)
+			return err == nil
+		})
+	}
 	return &Handler{
 		repo:       repo,
 		storageDir: storageDir,
@@ -2363,9 +2369,6 @@ func (h *Handler) ServeWebSocket(w http.ResponseWriter, r *http.Request) {
 			hash := sha256.Sum256([]byte(token))
 			tokenHash := hex.EncodeToString(hash[:])
 			session, err := h.repo.GetSessionByTokenHash(r.Context(), tokenHash)
-			if err != nil {
-				session, err = h.repo.GetSessionByTokenHash(r.Context(), token)
-			}
 			if err == nil && session != nil && session.ExpiresAt.After(time.Now()) {
 				u, err := h.repo.GetUserByID(r.Context(), session.UserID, nil)
 				if err == nil && u != nil {
