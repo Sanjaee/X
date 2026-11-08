@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MoreHorizontal, CheckCircle2, X, Loader2 } from "lucide-react";
+import { MoreHorizontal, CheckCircle2, X, Loader2, ShieldCheck, ArrowLeft } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { formatNumber } from "@/lib/utils";
@@ -39,9 +39,6 @@ export function RightSidebar({
   const [followingMap, setFollowingMap] = useState<Record<string, boolean>>({});
 
   // Inline sidebar login state
-  const [sidebarIdentifier, setSidebarIdentifier] = useState("");
-  const [sidebarPassword, setSidebarPassword] = useState("");
-  const [sidebarLoading, setSidebarLoading] = useState(false);
   const [sidebarGoogleLoading, setSidebarGoogleLoading] = useState(false);
   const [sidebarError, setSidebarError] = useState<string | null>(null);
 
@@ -95,26 +92,6 @@ export function RightSidebar({
     }
   };
 
-  const handleSidebarLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSidebarError(null);
-    setSidebarLoading(true);
-
-    try {
-      const res = await apiRequest<AuthResponse>("/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ identifier: sidebarIdentifier, password: sidebarPassword }),
-      });
-      setStoredToken(res.session_token);
-      setStoredUser(res.user);
-      window.dispatchEvent(new Event("x_auth_state_change"));
-    } catch (err: any) {
-      setSidebarError(err?.message || "Invalid credentials");
-    } finally {
-      setSidebarLoading(false);
-    }
-  };
-
   const handleToggleFollow = async (e: React.MouseEvent, rec: UserRecommendation) => {
     e.stopPropagation();
     if (!user) {
@@ -156,25 +133,27 @@ export function RightSidebar({
   };
 
   const renderSignInCard = () => (
-    <div className="bg-transparent rounded-2xl p-5 border border-border mb-4 flex flex-col items-center">
-      {/* X Logo */}
-      <div className="mb-4 text-foreground">
-        <svg viewBox="0 0 24 24" aria-hidden="true" className="w-8 h-8 fill-current">
-          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-        </svg>
-      </div>
-
-      <h2 className="text-[22px] font-extrabold mb-5 text-center leading-tight text-foreground">
-        Sign in to X
+    <div className="bg-transparent rounded-2xl p-4 border border-border mb-4">
+      <h2 className="font-extrabold text-[20px] leading-6 mb-1 text-foreground">
+        New to X?
       </h2>
+      <p className="text-[13px] leading-4 text-muted mb-4 font-normal">
+        Sign up now to get your own personalized timeline!
+      </p>
+
+      {sidebarError && (
+        <div className="w-full mb-3 p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-500 text-xs text-center">
+          {sidebarError}
+        </div>
+      )}
 
       {/* Google Sign-In Button */}
-      <div className="w-full mb-3.5">
+      <div className="w-full mb-2">
         <button
           type="button"
           onClick={handleSidebarGoogleSignIn}
-          disabled={sidebarGoogleLoading || sidebarLoading}
-          className="w-full flex items-center justify-center gap-3 bg-white hover:bg-neutral-200 text-[#0f1419] font-semibold text-[14px] h-[40px] px-4 rounded-full transition-colors shadow-sm select-none disabled:opacity-50"
+          disabled={sidebarGoogleLoading}
+          className="w-full flex items-center justify-center gap-3 bg-white hover:bg-neutral-100 active:scale-[0.99] text-[#0f1419] font-bold text-[14px] h-[44px] px-4 rounded-full transition-all shadow-sm select-none disabled:opacity-50"
         >
           {sidebarGoogleLoading ? (
             <Loader2 className="w-4 h-4 animate-spin text-neutral-600" />
@@ -202,63 +181,9 @@ export function RightSidebar({
         </button>
       </div>
 
-      {/* Horizontal Divider with OR */}
-      <div className="w-full flex items-center mb-3.5">
-        <div className="flex-1 h-px bg-border" />
-        <span className="px-3 text-xs text-muted font-normal uppercase">OR</span>
-        <div className="flex-1 h-px bg-border" />
-      </div>
-
-      {sidebarError && (
-        <div className="w-full mb-3 p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-500 text-xs text-center">
-          {sidebarError}
-        </div>
-      )}
-
-      {/* Credentials Form */}
-      <form onSubmit={handleSidebarLogin} className="w-full flex flex-col gap-3">
-        <div>
-          <label className="text-xs text-muted font-medium mb-1 block">Phone, email, or username</label>
-          <input
-            type="text"
-            required
-            value={sidebarIdentifier}
-            onChange={(e) => setSidebarIdentifier(e.target.value)}
-            placeholder="Username or email"
-            className="w-full bg-transparent border border-border focus:border-brand rounded-lg p-2.5 text-[14px] outline-none text-foreground"
-          />
-        </div>
-        <div>
-          <label className="text-xs text-muted font-medium mb-1 block">Password</label>
-          <input
-            type="password"
-            required
-            value={sidebarPassword}
-            onChange={(e) => setSidebarPassword(e.target.value)}
-            placeholder="Password"
-            className="w-full bg-transparent border border-border focus:border-brand rounded-lg p-2.5 text-[14px] outline-none text-foreground"
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={sidebarLoading || sidebarGoogleLoading}
-          className="w-full mt-1 bg-foreground text-background font-bold text-[15px] py-2.5 rounded-full hover:opacity-90 transition-opacity flex items-center justify-center disabled:opacity-50"
-        >
-          {sidebarLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sign In"}
-        </button>
-      </form>
-
-      {/* Footer */}
-      <div className="mt-4 text-[13px] text-muted text-center">
-        Don&apos;t have an account?{" "}
-        <button
-          type="button"
-          onClick={() => handleTriggerAuth("register")}
-          className="text-brand hover:underline font-medium"
-        >
-          Sign up
-        </button>
-      </div>
+      <p className="text-[11px] text-muted leading-relaxed mt-3">
+        By signing up, you agree to the Terms of Service and Privacy Policy, including Cookie Use.
+      </p>
     </div>
   );
 
@@ -454,6 +379,7 @@ export function RightSidebar({
                           <UserNameWithRole
                             displayName={rec.user.display_name || rec.user.username}
                             role={rec.user.role}
+                            nameStyle={rec.user.name_style}
                             className="text-[15px] leading-5 hover:underline truncate"
                           />
                         </div>

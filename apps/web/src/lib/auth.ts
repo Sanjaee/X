@@ -58,6 +58,12 @@ export const authOptions: NextAuthOptions = {
 
           if (response && response.ok) {
             const data = await response.json();
+            if (data.requires_totp && data.mfa_token) {
+              (user as any).requiresTotp = true;
+              (user as any).mfaToken = data.mfa_token;
+              (user as any).username = data.username;
+              return true;
+            }
             (user as any).sessionToken = data.session_token;
             (user as any).backendUser = data.user;
             return true;
@@ -69,11 +75,19 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async jwt({ token, user, account }) {
-      if (user && (user as any).sessionToken) {
-        token.sessionToken = (user as any).sessionToken;
-        token.backendUser = (user as any).backendUser;
+      if (user) {
+        if ((user as any).requiresTotp) {
+          token.requiresTotp = true;
+          token.mfaToken = (user as any).mfaToken;
+          token.username = (user as any).username;
+        } else if ((user as any).sessionToken) {
+          token.sessionToken = (user as any).sessionToken;
+          token.backendUser = (user as any).backendUser;
+          delete token.requiresTotp;
+          delete token.mfaToken;
+        }
       }
-      if (!token.sessionToken && account?.provider === "google" && token?.email) {
+      if (!token.sessionToken && !token.requiresTotp && account?.provider === "google" && token?.email) {
         try {
           const candidates = [
             process.env.INTERNAL_API_URL,
@@ -103,8 +117,14 @@ export const authOptions: NextAuthOptions = {
               });
               if (res.ok) {
                 const data = await res.json();
-                token.sessionToken = data.session_token;
-                token.backendUser = data.user;
+                if (data.requires_totp && data.mfa_token) {
+                  token.requiresTotp = true;
+                  token.mfaToken = data.mfa_token;
+                  token.username = data.username;
+                } else {
+                  token.sessionToken = data.session_token;
+                  token.backendUser = data.user;
+                }
                 break;
               }
             } catch (e) {}
@@ -115,6 +135,9 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (token) {
+        (session as any).requiresTotp = token.requiresTotp;
+        (session as any).mfaToken = token.mfaToken;
+        (session as any).username = token.username;
         (session as any).sessionToken = token.sessionToken;
         (session as any).backendUser = token.backendUser;
       }

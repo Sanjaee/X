@@ -197,6 +197,7 @@ export function LeftNavRail({
                 <UserNameWithRole
                   displayName={currentUser.display_name || currentUser.username}
                   role={currentUser.role}
+                  nameStyle={currentUser.name_style}
                 />
               </div>
               <span className="text-muted text-[14px] leading-4">@{currentUser.username}</span>

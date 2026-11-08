@@ -21,6 +21,7 @@ import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { MobileDrawer } from "@/components/layout/MobileDrawer";
 import { MobileComposerModal } from "@/components/composer/MobileComposerModal";
 import { AuthModal } from "@/components/auth/AuthModal";
+import { TwoFactorManager } from "@/components/profile/TwoFactorManager";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/api";
 
@@ -33,14 +34,17 @@ export default function SettingsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [composerModalOpen, setComposerModalOpen] = useState(false);
 
-  // Display Theme state
-  const [theme, setTheme] = useState<"dark" | "dim" | "light">(() => {
+  // Display Theme state (hydrated in useEffect to prevent SSR mismatch #418)
+  const [theme, setTheme] = useState<"dark" | "dim" | "light">("dark");
+
+  React.useEffect(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("x_theme");
-      if (saved === "dim" || saved === "light" || saved === "dark") return saved;
+      if (saved === "dim" || saved === "light" || saved === "dark") {
+        setTheme(saved);
+      }
     }
-    return "dark";
-  });
+  }, []);
 
   // Account form state
   const [displayName, setDisplayName] = useState(currentUser?.display_name || "");
@@ -253,6 +257,13 @@ export default function SettingsPage() {
                     >
                       {savingAccount ? "Saving..." : "Save changes"}
                     </button>
+
+                    <div className="pt-4 mt-2 border-t border-border">
+                      <TwoFactorManager
+                        currentUser={currentUser}
+                        onUserUpdated={(updated) => updateUser(updated)}
+                      />
+                    </div>
                   </form>
                 )}
               </div>

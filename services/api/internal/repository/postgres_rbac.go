@@ -111,6 +111,9 @@ func (r *PostgresRepository) ensureRBACSchema(ctx context.Context) {
 		);`,
 		`ALTER TABLE posts ADD COLUMN IF NOT EXISTS visibility VARCHAR(20) NOT NULL DEFAULT 'public';`,
 		`ALTER TABLE posts ADD COLUMN IF NOT EXISTS moderation_status VARCHAR(20) NOT NULL DEFAULT 'active';`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret VARCHAR(128) NOT NULL DEFAULT '';`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled BOOLEAN NOT NULL DEFAULT FALSE;`,
+		`ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS name_style TEXT NOT NULL DEFAULT '';`,
 		`ALTER TABLE payment_orders DROP CONSTRAINT IF EXISTS payment_orders_plan_id_fkey;`,
 		`ALTER TABLE subscriptions DROP CONSTRAINT IF EXISTS subscriptions_plan_id_fkey;`,
 		`INSERT INTO roles (key, name, description, is_system, is_active) VALUES
@@ -976,7 +979,7 @@ func (r *PostgresRepository) GetAllUsersAdmin(ctx context.Context, limit, offset
 
 	query := fmt.Sprintf(`
 		SELECT u.id, u.username, u.email, COALESCE(u.role, 'member'), u.is_verified, u.verified_type, u.is_private, u.created_at, u.updated_at,
-		       COALESCE(p.display_name, u.username), COALESCE(p.avatar_url, '')
+		       COALESCE(p.display_name, u.username), COALESCE(p.avatar_url, ''), COALESCE(p.name_style, '')
 		FROM users u
 		LEFT JOIN user_profiles p ON u.id = p.user_id
 		%s
@@ -994,7 +997,7 @@ func (r *PostgresRepository) GetAllUsersAdmin(ctx context.Context, limit, offset
 	var users []domain.User
 	for rows.Next() {
 		var u domain.User
-		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Role, &u.IsVerified, &u.VerifiedType, &u.IsPrivate, &u.CreatedAt, &u.UpdatedAt, &u.DisplayName, &u.AvatarURL); err != nil {
+		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Role, &u.IsVerified, &u.VerifiedType, &u.IsPrivate, &u.CreatedAt, &u.UpdatedAt, &u.DisplayName, &u.AvatarURL, &u.NameStyle); err != nil {
 			return nil, 0, err
 		}
 		users = append(users, u)
@@ -1267,7 +1270,7 @@ func (r *PostgresRepository) GetAdminPosts(ctx context.Context, filter domain.Ad
 	selectQuery := fmt.Sprintf(`
 		SELECT p.id, p.author_id, p.content, p.visibility, COALESCE(p.moderation_status, 'normal'),
 		       p.created_at, p.updated_at, p.deleted_at,
-		       COALESCE(u.username, ''), COALESCE(pr.display_name, u.username, ''), COALESCE(pr.avatar_url, ''), COALESCE(u.role, 'member'), COALESCE(u.is_verified, false)
+		       COALESCE(u.username, ''), COALESCE(pr.display_name, u.username, ''), COALESCE(pr.avatar_url, ''), COALESCE(pr.name_style, ''), COALESCE(u.role, 'member'), COALESCE(u.is_verified, false)
 		FROM posts p
 		LEFT JOIN users u ON p.author_id = u.id
 		LEFT JOIN user_profiles pr ON pr.user_id = u.id
@@ -1291,7 +1294,7 @@ func (r *PostgresRepository) GetAdminPosts(ctx context.Context, filter domain.Ad
 		if err := rows.Scan(
 			&p.ID, &p.AuthorID, &p.Content, &p.Visibility, &p.ModerationStatus,
 			&p.CreatedAt, &p.UpdatedAt, &p.DeletedAt,
-			&u.Username, &u.DisplayName, &u.AvatarURL, &u.Role, &u.IsVerified,
+			&u.Username, &u.DisplayName, &u.AvatarURL, &u.NameStyle, &u.Role, &u.IsVerified,
 		); err != nil {
 			return nil, 0, err
 		}

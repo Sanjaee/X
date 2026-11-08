@@ -426,6 +426,7 @@ export function SearchBarDropdown({
                             <UserNameWithRole
                               displayName={u.display_name || u.username}
                               role={u.role}
+                              nameStyle={u.name_style}
                               className="text-[15px] truncate"
                             />
                           </div>

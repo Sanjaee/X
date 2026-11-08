@@ -160,6 +160,7 @@ func main() {
 			authPub.Use(authLimiter)
 			authPub.Post("/auth/register", h.Register)
 			authPub.Post("/auth/login", h.Login)
+			authPub.Post("/auth/login/totp", h.VerifyLoginTOTP)
 			authPub.Post("/auth/google", h.GoogleAuth)
 		})
 
@@ -202,6 +203,10 @@ func main() {
 			auth.Post("/auth/logout", h.Logout)
 			auth.Get("/me", h.GetMe)
 			auth.Patch("/me/profile", h.UpdateProfile)
+			auth.Get("/me/totp/status", h.GetTOTPStatus)
+			auth.Post("/me/totp/setup", h.SetupTOTP)
+			auth.Post("/me/totp/enable", h.EnableTOTP)
+			auth.Post("/me/totp/disable", h.DisableTOTP)
 
 			// Posts
 			auth.Post("/posts", h.CreatePost)

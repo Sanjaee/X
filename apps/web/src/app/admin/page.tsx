@@ -1236,7 +1236,7 @@ export default function AdminDashboardPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {roles.map((r) => {
+                {roles.filter((r) => r.key !== 'owner').map((r) => {
                   const isProtected = r.is_system || r.key === 'owner';
                   return (
                     <div
@@ -1673,7 +1673,7 @@ export default function AdminDashboardPage() {
 
             <div className="mt-4 space-y-4 text-sm">
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                {roles.map((r) => {
+                {roles.filter((r) => r.key !== 'owner').map((r) => {
                   const isChecked = userSelectedRoleIds.includes(r.id);
                   return (
                     <label

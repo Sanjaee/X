@@ -569,6 +569,7 @@ function MessagesContent() {
                             <UserNameWithRole
                               displayName={other?.display_name || other?.username || "Conversation"}
                               role={other?.role}
+                              nameStyle={other?.name_style}
                             />
                           </span>
                           {hasUnread && (
@@ -635,6 +636,7 @@ function MessagesContent() {
                             "User"
                           }
                           role={activeConv.other_member?.role}
+                          nameStyle={activeConv.other_member?.name_style}
                         />
                       </Link>
                       <span className="text-[12px] text-muted">
@@ -831,6 +833,7 @@ function MessagesContent() {
                           <UserNameWithRole
                             displayName={u.display_name || u.username}
                             role={u.role}
+                            nameStyle={u.name_style}
                           />
                         </div>
                         <div className="text-xs text-muted truncate">@{u.username}</div>

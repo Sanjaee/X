@@ -14,6 +14,7 @@ import {
   Lock,
   VolumeX,
   Ban,
+  ShieldCheck,
 } from "lucide-react";
 import { LeftNavRail } from "@/components/layout/LeftNavRail";
 import { RightSidebar } from "@/components/layout/RightSidebar";
@@ -26,24 +27,17 @@ import { apiRequest } from "@/lib/api";
 import { formatNumber, cn } from "@/lib/utils";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 
-import { useSearchParams } from "next/navigation";
-
 export default function UserProfilePage() {
   const params = useParams();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const username = params.username as string;
-
-  const urlTab = searchParams.get("tab");
-  const initialTab: "posts" | "replies" | "reposts" | "media" | "likes" =
-    urlTab === "replies" || urlTab === "reposts" || urlTab === "media" || urlTab === "likes" ? urlTab : "posts";
 
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const { currentUser, updateUser: setCurrentUser } = useCurrentUser();
   const [relationship, setRelationship] = useState<SocialRelationship | null>(null);
   const [mutuals, setMutuals] = useState<User[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [activeTab, setActiveTab] = useState<"posts" | "replies" | "reposts" | "media" | "likes">(initialTab);
+  const [activeTab, setActiveTab] = useState<"posts" | "replies" | "reposts" | "media" | "likes">("posts");
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -59,17 +53,18 @@ export default function UserProfilePage() {
     window.history.pushState({ tab: newTab }, "", newUrl);
   };
 
-  // Support browser Back/Forward navigation for tabs
+  // Support initial tab param and browser Back/Forward navigation for tabs
   useEffect(() => {
-    const handlePopState = () => {
+    const syncTabFromUrl = () => {
       const sp = new URLSearchParams(window.location.search);
       const t = sp.get("tab");
       const valid: "posts" | "replies" | "reposts" | "media" | "likes" =
         t === "replies" || t === "reposts" || t === "media" || t === "likes" ? t : "posts";
       setActiveTab(valid);
     };
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
+    syncTabFromUrl();
+    window.addEventListener("popstate", syncTabFromUrl);
+    return () => window.removeEventListener("popstate", syncTabFromUrl);
   }, []);
 
   // Restore and persist scroll position per tab
@@ -257,6 +252,7 @@ export default function UserProfilePage() {
                 <UserNameWithRole
                   displayName={profileUser?.display_name || username}
                   role={profileUser?.role}
+                  nameStyle={profileUser?.name_style}
                 />
               </h1>
               <span className="text-xs text-muted">
@@ -303,14 +299,12 @@ export default function UserProfilePage() {
                   />
 
                   {isSelf ? (
-                    <div className="flex items-center gap-2 mb-2">
-                      <button
-                        onClick={() => setEditProfileModalOpen(true)}
-                        className="border border-border hover:bg-subtle font-bold text-[15px] px-4 py-1.5 rounded-full transition-colors"
-                      >
-                        Edit profile
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => setEditProfileModalOpen(true)}
+                      className="border border-border hover:bg-subtle font-bold text-[15px] px-4 py-1.5 rounded-full transition-colors mb-2"
+                    >
+                      Edit profile
+                    </button>
                   ) : (
                     <div className="flex items-center gap-2 mb-2 relative">
                       {/* More actions dropdown */}
@@ -386,6 +380,7 @@ export default function UserProfilePage() {
                   <UserNameWithRole
                     displayName={profileUser.display_name || profileUser.username}
                     role={profileUser.role}
+                    nameStyle={profileUser.name_style}
                   />
                 </div>
 

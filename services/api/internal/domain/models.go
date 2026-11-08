@@ -16,6 +16,8 @@ type User struct {
 	IsVerified   bool       `json:"is_verified"`
 	VerifiedType string     `json:"verified_type"`
 	IsPrivate    bool       `json:"is_private"`
+	TOTPSecret   string     `json:"-"`
+	TOTPEnabled  bool       `json:"totp_enabled"`
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
 	DeletedAt    *time.Time `json:"deleted_at,omitempty"`
@@ -27,6 +29,7 @@ type User struct {
 	BannerURL      string `json:"banner_url"`
 	Location       string `json:"location"`
 	Website        string `json:"website"`
+	NameStyle      string `json:"name_style"`
 	FollowersCount int    `json:"followers_count"`
 	FollowingCount int    `json:"following_count"`
 	PostsCount     int    `json:"posts_count"`

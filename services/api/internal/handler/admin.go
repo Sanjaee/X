@@ -25,7 +25,13 @@ func (h *Handler) AdminGetRoles(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to fetch roles")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]interface{}{"roles": roles})
+	filtered := make([]domain.Role, 0, len(roles))
+	for _, role := range roles {
+		if role.Key != "owner" {
+			filtered = append(filtered, role)
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{"roles": filtered})
 }
 
 func (h *Handler) AdminGetRoleByID(w http.ResponseWriter, r *http.Request) {

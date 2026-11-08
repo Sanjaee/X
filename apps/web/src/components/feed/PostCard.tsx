@@ -283,6 +283,7 @@ export function PostCard({
               <UserNameWithRole
                 displayName={post.author?.display_name || post.author?.username || "User"}
                 role={post.author?.role}
+                nameStyle={post.author?.name_style}
               />
             </Link>
 
@@ -504,6 +505,7 @@ export function PostCard({
                 <UserNameWithRole
                   displayName={post.quote_post.author?.display_name || post.quote_post.author?.username || "User"}
                   role={post.quote_post.author?.role}
+                  nameStyle={post.quote_post.author?.name_style}
                   className="hover:underline truncate"
                 />
                 <span className="text-muted truncate">@{post.quote_post.author?.username || "user"}</span>

@@ -315,6 +315,7 @@ export default function NotificationsPage() {
                           <UserNameWithRole
                             displayName={n.actor?.display_name || n.actor?.username || "User"}
                             role={n.actor?.role}
+                            nameStyle={n.actor?.name_style}
                           />
                         </Link>
                         <span>

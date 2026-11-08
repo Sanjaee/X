@@ -59,10 +59,9 @@ body {
 
 .owner_name {
   color: #ff9f00;
-  text-shadow: 2px 2px 5px #ff4500 !important;
+  text-shadow: 2px 2px 5px #ff4500;
   font-weight: 900;
   background-image: url("/god.gif");
-  text-shadow: 0px 0px 5px #090909;
   background-color: #0a0a0a;
   line-height: 1.25;
   padding: 0 3px;
@@ -80,10 +79,11 @@ body {
 }
 
 .admin_name {
-  color: #000000;
-  font-weight: 900;
+  color: #a50000;
+  font-weight: 800;
+  font-family: Roboto, Arial, sans-serif;
   background-image: url("/admin.gif");
-  text-shadow: 2px 2px 6px #d035c9 !important;
+  text-shadow: 2px 2px 6px #d035c9;
   background-color: #0a0a0a;
   line-height: 1.25;
   padding: 0 3px;
@@ -102,7 +102,7 @@ body {
 .mod_name {
   color: #c61aff;
   font-weight: 900;
-  text-shadow: 0px 0px 5px #c61aff !important;
+  text-shadow: 0px 0px 5px #c61aff;
   background-image: url("/god.gif");
   background-color: #0a0a0a;
   line-height: 1.25;
@@ -122,7 +122,7 @@ body {
 
 .mvp_name {
   color: #e7e7e7;
-  text-shadow: 2px 2px 6px #ffffff !important;
+  text-shadow: 2px 2px 6px #ffffff;
   font-weight: 900;
   background-image: url("/mvp.gif");
   background-color: #0a0a0a;
@@ -146,7 +146,7 @@ body {
 
 .god_name {
   color: #b30000;
-  text-shadow: 2px 2px 6px #b30000 !important;
+  text-shadow: 2px 2px 6px #b30000;
   font-weight: 900;
   background-image: url("/god.gif");
   background-color: #0a0a0a;

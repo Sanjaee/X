@@ -198,6 +198,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 type LoginRequest struct {
 	Identifier string `json:"identifier"`
 	Password   string `json:"password"`
+	TOTPCode   string `json:"totp_code"`
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -216,6 +217,27 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 		writeError(w, http.StatusUnauthorized, "invalid credentials")
 		return
+	}
+
+	// Enforce TOTP two-factor authentication when enabled on the account
+	if user.TOTPEnabled && user.TOTPSecret != "" {
+		if strings.TrimSpace(req.TOTPCode) == "" {
+			mfaToken, err := createMFAToken(user.ID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "failed to initiate two-factor challenge")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]interface{}{
+				"requires_totp": true,
+				"mfa_token":     mfaToken,
+				"username":      user.Username,
+			})
+			return
+		}
+		if !verifyTOTPOrRecovery(user.TOTPSecret, req.TOTPCode, time.Now()) {
+			writeError(w, http.StatusUnauthorized, "Invalid authentication code or recovery seed phrase")
+			return
+		}
 	}
 
 	// Secure, idempotent Owner bootstrap for afrizaahmad18@gmail.com
@@ -280,6 +302,21 @@ func (h *Handler) GoogleAuth(w http.ResponseWriter, r *http.Request) {
 		if email == "afrizaahmad18@gmail.com" {
 			_, _ = h.repo.BootstrapOwner(r.Context(), email)
 			existingUser.Role = "owner"
+		}
+
+		// Enforce TOTP two-factor authentication on Google OAuth sign-in when enabled
+		if existingUser.TOTPEnabled && existingUser.TOTPSecret != "" {
+			mfaToken, err := createMFAToken(existingUser.ID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "failed to initiate two-factor challenge")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]interface{}{
+				"requires_totp": true,
+				"mfa_token":     mfaToken,
+				"username":      existingUser.Username,
+			})
+			return
 		}
 
 		token, err := h.createSessionForUser(r, existingUser.ID)
@@ -424,6 +461,7 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 		"is_verified":     user.IsVerified,
 		"verified_type":   user.VerifiedType,
 		"is_private":      user.IsPrivate,
+		"totp_enabled":    user.TOTPEnabled,
 		"created_at":      user.CreatedAt,
 		"updated_at":      user.UpdatedAt,
 		"display_name":    user.DisplayName,
@@ -432,6 +470,7 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 		"banner_url":      user.BannerURL,
 		"location":        user.Location,
 		"website":         user.Website,
+		"name_style":      user.NameStyle,
 		"followers_count": user.FollowersCount,
 		"following_count": user.FollowingCount,
 		"posts_count":     user.PostsCount,
@@ -453,12 +492,13 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		DisplayName string `json:"display_name"`
-		Bio         string `json:"bio"`
-		AvatarURL   string `json:"avatar_url"`
-		BannerURL   string `json:"banner_url"`
-		Location    string `json:"location"`
-		Website     string `json:"website"`
+		DisplayName string  `json:"display_name"`
+		Bio         string  `json:"bio"`
+		AvatarURL   string  `json:"avatar_url"`
+		BannerURL   string  `json:"banner_url"`
+		Location    string  `json:"location"`
+		Website     string  `json:"website"`
+		NameStyle   *string `json:"name_style"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid payload")
@@ -476,6 +516,13 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		user.BannerURL = req.BannerURL
 	}
 	user.Location = req.Location
+	if req.NameStyle != nil {
+		// Sanitize length to max 2KB JSON
+		trimmedStyle := strings.TrimSpace(*req.NameStyle)
+		if len(trimmedStyle) <= 2048 {
+			user.NameStyle = trimmedStyle
+		}
+	}
 
 	cleanWebsite := strings.TrimSpace(req.Website)
 	if cleanWebsite != "" {

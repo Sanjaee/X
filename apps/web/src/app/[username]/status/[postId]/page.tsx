@@ -433,6 +433,7 @@ export default function PostDetailPage() {
                         <UserNameWithRole
                           displayName={post.author?.display_name || post.author?.username || "User"}
                           role={post.author?.role}
+                          nameStyle={post.author?.name_style}
                         />
                       </div>
                       <span className="text-[14px] text-muted leading-4">

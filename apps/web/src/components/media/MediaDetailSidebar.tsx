@@ -139,6 +139,7 @@ export function MediaDetailSidebar({
               <UserNameWithRole
                 displayName={author.display_name || author.username}
                 role={author.role}
+                nameStyle={author.name_style}
                 className="text-[15px] leading-snug"
               />
             </div>

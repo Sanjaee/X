@@ -158,10 +158,10 @@ func (r *PostgresRepository) CreateUser(ctx context.Context, u *domain.User) err
 	}
 
 	queryProfile := `
-		INSERT INTO user_profiles (user_id, display_name, bio, avatar_url, banner_url, location, website)
-		VALUES ($1, $2, $3, $4, $5, $6, $7);
+		INSERT INTO user_profiles (user_id, display_name, bio, avatar_url, banner_url, location, website, name_style)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
 	`
-	_, err = tx.ExecContext(ctx, queryProfile, u.ID, u.DisplayName, u.Bio, u.AvatarURL, u.BannerURL, u.Location, u.Website)
+	_, err = tx.ExecContext(ctx, queryProfile, u.ID, u.DisplayName, u.Bio, u.AvatarURL, u.BannerURL, u.Location, u.Website, u.NameStyle)
 	if err != nil {
 		return err
 	}
@@ -194,8 +194,10 @@ func (r *PostgresRepository) CreateUser(ctx context.Context, u *domain.User) err
 
 func (r *PostgresRepository) GetUserByID(ctx context.Context, id uuid.UUID, viewerID *uuid.UUID) (*domain.User, error) {
 	query := `
-		SELECT u.id, u.username, u.email, u.role, u.is_verified, u.verified_type, u.is_private, u.created_at, u.updated_at,
-		       p.display_name, p.bio, p.avatar_url, p.banner_url, p.location, p.website,
+		SELECT u.id, u.username, u.email, u.role, u.is_verified, u.verified_type, u.is_private,
+		       COALESCE(u.totp_secret, ''), COALESCE(u.totp_enabled, FALSE),
+		       u.created_at, u.updated_at,
+		       p.display_name, p.bio, p.avatar_url, p.banner_url, p.location, p.website, COALESCE(p.name_style, ''),
 		       p.followers_count, p.following_count, p.posts_count,
 		       COALESCE((SELECT TRUE FROM follows f WHERE f.follower_id = $2 AND f.following_id = u.id), FALSE) as is_following,
 		       COALESCE((SELECT TRUE FROM follows f WHERE f.follower_id = u.id AND f.following_id = $2), FALSE) as is_followed_by
@@ -210,8 +212,10 @@ func (r *PostgresRepository) GetUserByID(ctx context.Context, id uuid.UUID, view
 	}
 
 	err := r.db.QueryRowContext(ctx, query, id, vID).Scan(
-		&u.ID, &u.Username, &u.Email, &u.Role, &u.IsVerified, &u.VerifiedType, &u.IsPrivate, &u.CreatedAt, &u.UpdatedAt,
-		&u.DisplayName, &u.Bio, &u.AvatarURL, &u.BannerURL, &u.Location, &u.Website,
+		&u.ID, &u.Username, &u.Email, &u.Role, &u.IsVerified, &u.VerifiedType, &u.IsPrivate,
+		&u.TOTPSecret, &u.TOTPEnabled,
+		&u.CreatedAt, &u.UpdatedAt,
+		&u.DisplayName, &u.Bio, &u.AvatarURL, &u.BannerURL, &u.Location, &u.Website, &u.NameStyle,
 		&u.FollowersCount, &u.FollowingCount, &u.PostsCount,
 		&u.IsFollowing, &u.IsFollowedBy,
 	)
@@ -223,8 +227,10 @@ func (r *PostgresRepository) GetUserByID(ctx context.Context, id uuid.UUID, view
 
 func (r *PostgresRepository) GetUserByUsername(ctx context.Context, username string, viewerID *uuid.UUID) (*domain.User, error) {
 	query := `
-		SELECT u.id, u.username, u.email, u.role, u.is_verified, u.verified_type, u.is_private, u.created_at, u.updated_at,
-		       p.display_name, p.bio, p.avatar_url, p.banner_url, p.location, p.website,
+		SELECT u.id, u.username, u.email, u.role, u.is_verified, u.verified_type, u.is_private,
+		       COALESCE(u.totp_secret, ''), COALESCE(u.totp_enabled, FALSE),
+		       u.created_at, u.updated_at,
+		       p.display_name, p.bio, p.avatar_url, p.banner_url, p.location, p.website, COALESCE(p.name_style, ''),
 		       p.followers_count, p.following_count, p.posts_count,
 		       COALESCE((SELECT TRUE FROM follows f WHERE f.follower_id = $2 AND f.following_id = u.id), FALSE) as is_following,
 		       COALESCE((SELECT TRUE FROM follows f WHERE f.follower_id = u.id AND f.following_id = $2), FALSE) as is_followed_by
@@ -239,8 +245,10 @@ func (r *PostgresRepository) GetUserByUsername(ctx context.Context, username str
 	}
 
 	err := r.db.QueryRowContext(ctx, query, username, vID).Scan(
-		&u.ID, &u.Username, &u.Email, &u.Role, &u.IsVerified, &u.VerifiedType, &u.IsPrivate, &u.CreatedAt, &u.UpdatedAt,
-		&u.DisplayName, &u.Bio, &u.AvatarURL, &u.BannerURL, &u.Location, &u.Website,
+		&u.ID, &u.Username, &u.Email, &u.Role, &u.IsVerified, &u.VerifiedType, &u.IsPrivate,
+		&u.TOTPSecret, &u.TOTPEnabled,
+		&u.CreatedAt, &u.UpdatedAt,
+		&u.DisplayName, &u.Bio, &u.AvatarURL, &u.BannerURL, &u.Location, &u.Website, &u.NameStyle,
 		&u.FollowersCount, &u.FollowingCount, &u.PostsCount,
 		&u.IsFollowing, &u.IsFollowedBy,
 	)
@@ -252,8 +260,10 @@ func (r *PostgresRepository) GetUserByUsername(ctx context.Context, username str
 
 func (r *PostgresRepository) GetUserByIdentifier(ctx context.Context, identifier string) (*domain.User, error) {
 	query := `
-		SELECT u.id, u.username, u.email, u.password_hash, u.role, u.is_verified, u.verified_type, u.is_private, u.created_at, u.updated_at,
-		       p.display_name, p.bio, p.avatar_url, p.banner_url, p.location, p.website,
+		SELECT u.id, u.username, u.email, u.password_hash, u.role, u.is_verified, u.verified_type, u.is_private,
+		       COALESCE(u.totp_secret, ''), COALESCE(u.totp_enabled, FALSE),
+		       u.created_at, u.updated_at,
+		       p.display_name, p.bio, p.avatar_url, p.banner_url, p.location, p.website, COALESCE(p.name_style, ''),
 		       p.followers_count, p.following_count, p.posts_count
 		FROM users u
 		JOIN user_profiles p ON p.user_id = u.id
@@ -261,8 +271,10 @@ func (r *PostgresRepository) GetUserByIdentifier(ctx context.Context, identifier
 	`
 	var u domain.User
 	err := r.db.QueryRowContext(ctx, query, identifier).Scan(
-		&u.ID, &u.Username, &u.Email, &u.PasswordHash, &u.Role, &u.IsVerified, &u.VerifiedType, &u.IsPrivate, &u.CreatedAt, &u.UpdatedAt,
-		&u.DisplayName, &u.Bio, &u.AvatarURL, &u.BannerURL, &u.Location, &u.Website,
+		&u.ID, &u.Username, &u.Email, &u.PasswordHash, &u.Role, &u.IsVerified, &u.VerifiedType, &u.IsPrivate,
+		&u.TOTPSecret, &u.TOTPEnabled,
+		&u.CreatedAt, &u.UpdatedAt,
+		&u.DisplayName, &u.Bio, &u.AvatarURL, &u.BannerURL, &u.Location, &u.Website, &u.NameStyle,
 		&u.FollowersCount, &u.FollowingCount, &u.PostsCount,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -271,13 +283,30 @@ func (r *PostgresRepository) GetUserByIdentifier(ctx context.Context, identifier
 	return &u, err
 }
 
+func (r *PostgresRepository) UpdateUserTOTP(ctx context.Context, userID uuid.UUID, secret string, enabled bool) error {
+	query := `
+		UPDATE users
+		SET totp_secret = $2, totp_enabled = $3, updated_at = NOW()
+		WHERE id = $1 AND deleted_at IS NULL;
+	`
+	res, err := r.db.ExecContext(ctx, query, userID, secret, enabled)
+	if err != nil {
+		return err
+	}
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (r *PostgresRepository) UpdateProfile(ctx context.Context, u *domain.User) error {
 	query := `
 		UPDATE user_profiles
-		SET display_name = $2, bio = $3, avatar_url = $4, banner_url = $5, location = $6, website = $7, updated_at = NOW()
+		SET display_name = $2, bio = $3, avatar_url = $4, banner_url = $5, location = $6, website = $7, name_style = $8, updated_at = NOW()
 		WHERE user_id = $1;
 	`
-	_, err := r.db.ExecContext(ctx, query, u.ID, u.DisplayName, u.Bio, u.AvatarURL, u.BannerURL, u.Location, u.Website)
+	_, err := r.db.ExecContext(ctx, query, u.ID, u.DisplayName, u.Bio, u.AvatarURL, u.BannerURL, u.Location, u.Website, u.NameStyle)
 	return err
 }
 
@@ -406,7 +435,7 @@ func (r *PostgresRepository) GetPostByID(ctx context.Context, postID uuid.UUID, 
 		SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 		       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
 		       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-		       pr.display_name, pr.avatar_url,
+		       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 		       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $2), FALSE) as is_liked,
 		       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $2), FALSE) as is_reposted,
 		       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $2), FALSE) as is_bookmarked
@@ -427,7 +456,7 @@ func (r *PostgresRepository) GetPostByID(ctx context.Context, postID uuid.UUID, 
 		&p.ID, &p.AuthorID, &p.Content, &p.ReplyToID, &p.QuotePostID,
 		&p.RepliesCount, &p.RepostsCount, &p.LikesCount, &p.ViewsCount, &p.CreatedAt, &p.UpdatedAt,
 		&author.Username, &author.Role, &author.IsVerified, &author.VerifiedType,
-		&author.DisplayName, &author.AvatarURL,
+		&author.DisplayName, &author.AvatarURL, &author.NameStyle,
 		&p.IsLiked, &p.IsReposted, &p.IsBookmarked,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -483,7 +512,7 @@ func (r *PostgresRepository) scanPostRows(rows *sql.Rows) ([]domain.Post, error)
 			&p.ID, &p.AuthorID, &p.Content, &p.ReplyToID, &p.QuotePostID,
 			&p.RepliesCount, &p.RepostsCount, &p.LikesCount, &p.ViewsCount, &p.CreatedAt, &p.UpdatedAt,
 			&author.Username, &author.Role, &author.IsVerified, &author.VerifiedType,
-			&author.DisplayName, &author.AvatarURL,
+			&author.DisplayName, &author.AvatarURL, &author.NameStyle,
 			&p.IsLiked, &p.IsReposted, &p.IsBookmarked,
 		)
 		if err != nil {
@@ -519,7 +548,7 @@ func (r *PostgresRepository) attachQuotesToPosts(ctx context.Context, posts []do
 		SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 		       p.replies_count, p.reposts_count, p.likes_count, COALESCE(p.quotes_count, 0), p.views_count, p.created_at, p.updated_at,
 		       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-		       pr.display_name, pr.avatar_url,
+		       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 		       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $2), FALSE) as is_liked,
 		       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $2), FALSE) as is_reposted,
 		       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $2), FALSE) as is_bookmarked
@@ -543,7 +572,7 @@ func (r *PostgresRepository) attachQuotesToPosts(ctx context.Context, posts []do
 			&qp.ID, &qp.AuthorID, &qp.Content, &qp.ReplyToID, &qp.QuotePostID,
 			&qp.RepliesCount, &qp.RepostsCount, &qp.LikesCount, &qp.QuotesCount, &qp.ViewsCount, &qp.CreatedAt, &qp.UpdatedAt,
 			&author.Username, &author.Role, &author.IsVerified, &author.VerifiedType,
-			&author.DisplayName, &author.AvatarURL,
+			&author.DisplayName, &author.AvatarURL, &author.NameStyle,
 			&qp.IsLiked, &qp.IsReposted, &qp.IsBookmarked,
 		)
 		if err == nil {
@@ -588,7 +617,7 @@ func (r *PostgresRepository) attachParentPosts(ctx context.Context, posts []doma
 	}
 
 	query := `
-		SELECT p.id, p.author_id, u.username, COALESCE(u.role, 'member'), pr.display_name
+		SELECT p.id, p.author_id, u.username, COALESCE(u.role, 'member'), pr.display_name, COALESCE(pr.name_style, '')
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
 		JOIN user_profiles pr ON pr.user_id = p.author_id
@@ -603,8 +632,8 @@ func (r *PostgresRepository) attachParentPosts(ctx context.Context, posts []doma
 	parentMap := make(map[uuid.UUID]*domain.Post)
 	for rows.Next() {
 		var parentID, authorID uuid.UUID
-		var username, role, displayName string
-		if err := rows.Scan(&parentID, &authorID, &username, &role, &displayName); err == nil {
+		var username, role, displayName, nameStyle string
+		if err := rows.Scan(&parentID, &authorID, &username, &role, &displayName, &nameStyle); err == nil {
 			parentMap[parentID] = &domain.Post{
 				ID:       parentID,
 				AuthorID: authorID,
@@ -613,6 +642,7 @@ func (r *PostgresRepository) attachParentPosts(ctx context.Context, posts []doma
 					Username:    username,
 					Role:        role,
 					DisplayName: displayName,
+					NameStyle:   nameStyle,
 				},
 			}
 		}
@@ -639,13 +669,13 @@ func (r *PostgresRepository) GetUserPosts(ctx context.Context, username, tab str
 
 	var targetUser domain.User
 	err := r.db.QueryRowContext(ctx, `
-		SELECT u.id, u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type, pr.display_name, pr.avatar_url
+		SELECT u.id, u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type, pr.display_name, pr.avatar_url, COALESCE(pr.name_style, '')
 		FROM users u
 		JOIN user_profiles pr ON pr.user_id = u.id
 		WHERE LOWER(u.username) = LOWER($1) AND u.deleted_at IS NULL;
 	`, username).Scan(
 		&targetUser.ID, &targetUser.Username, &targetUser.Role, &targetUser.IsVerified, &targetUser.VerifiedType,
-		&targetUser.DisplayName, &targetUser.AvatarURL,
+		&targetUser.DisplayName, &targetUser.AvatarURL, &targetUser.NameStyle,
 	)
 	if err != nil {
 		return []domain.Post{}, "", nil
@@ -668,7 +698,7 @@ func (r *PostgresRepository) GetUserPosts(ctx context.Context, username, tab str
 			SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 			       p.replies_count, p.reposts_count, p.likes_count, COALESCE(p.quotes_count, 0), p.views_count, p.created_at, p.updated_at,
 			       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-			       pr.display_name, pr.avatar_url,
+			       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 			       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $2), FALSE) as is_liked,
 			       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $2), FALSE) as is_reposted,
 			       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $2), FALSE) as is_bookmarked
@@ -691,7 +721,7 @@ func (r *PostgresRepository) GetUserPosts(ctx context.Context, username, tab str
 			SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 			       p.replies_count, p.reposts_count, p.likes_count, COALESCE(p.quotes_count, 0), p.views_count, p.created_at, p.updated_at,
 			       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-			       pr.display_name, pr.avatar_url,
+			       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 			       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $2), FALSE) as is_liked,
 			       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $2), FALSE) as is_reposted,
 			       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $2), FALSE) as is_bookmarked,
@@ -716,7 +746,7 @@ func (r *PostgresRepository) GetUserPosts(ctx context.Context, username, tab str
 			SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 			       p.replies_count, p.reposts_count, p.likes_count, COALESCE(p.quotes_count, 0), p.views_count, p.created_at, p.updated_at,
 			       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-			       pr.display_name, pr.avatar_url,
+			       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 			       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $2), FALSE) as is_liked,
 			       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $2), FALSE) as is_reposted,
 			       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $2), FALSE) as is_bookmarked
@@ -740,7 +770,7 @@ func (r *PostgresRepository) GetUserPosts(ctx context.Context, username, tab str
 			SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 			       p.replies_count, p.reposts_count, p.likes_count, COALESCE(p.quotes_count, 0), p.views_count, p.created_at, p.updated_at,
 			       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-			       pr.display_name, pr.avatar_url,
+			       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 			       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $2), FALSE) as is_liked,
 			       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $2), FALSE) as is_reposted,
 			       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $2), FALSE) as is_bookmarked,
@@ -765,7 +795,7 @@ func (r *PostgresRepository) GetUserPosts(ctx context.Context, username, tab str
 			SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 			       p.replies_count, p.reposts_count, p.likes_count, COALESCE(p.quotes_count, 0), p.views_count, p.created_at, p.updated_at,
 			       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-			       pr.display_name, pr.avatar_url,
+			       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 			       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $2), FALSE) as is_liked,
 			       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $2), FALSE) as is_reposted,
 			       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $2), FALSE) as is_bookmarked
@@ -802,7 +832,7 @@ func (r *PostgresRepository) GetUserPosts(ctx context.Context, username, tab str
 				&p.ID, &p.AuthorID, &p.Content, &p.ReplyToID, &p.QuotePostID,
 				&p.RepliesCount, &p.RepostsCount, &p.LikesCount, &p.QuotesCount, &p.ViewsCount, &p.CreatedAt, &p.UpdatedAt,
 				&author.Username, &author.Role, &author.IsVerified, &author.VerifiedType,
-				&author.DisplayName, &author.AvatarURL,
+				&author.DisplayName, &author.AvatarURL, &author.NameStyle,
 				&p.IsLiked, &p.IsReposted, &p.IsBookmarked,
 				&repostedAt,
 			)
@@ -811,7 +841,7 @@ func (r *PostgresRepository) GetUserPosts(ctx context.Context, username, tab str
 				&p.ID, &p.AuthorID, &p.Content, &p.ReplyToID, &p.QuotePostID,
 				&p.RepliesCount, &p.RepostsCount, &p.LikesCount, &p.QuotesCount, &p.ViewsCount, &p.CreatedAt, &p.UpdatedAt,
 				&author.Username, &author.Role, &author.IsVerified, &author.VerifiedType,
-				&author.DisplayName, &author.AvatarURL,
+				&author.DisplayName, &author.AvatarURL, &author.NameStyle,
 				&p.IsLiked, &p.IsReposted, &p.IsBookmarked,
 				&likedAt,
 			)
@@ -820,7 +850,7 @@ func (r *PostgresRepository) GetUserPosts(ctx context.Context, username, tab str
 				&p.ID, &p.AuthorID, &p.Content, &p.ReplyToID, &p.QuotePostID,
 				&p.RepliesCount, &p.RepostsCount, &p.LikesCount, &p.QuotesCount, &p.ViewsCount, &p.CreatedAt, &p.UpdatedAt,
 				&author.Username, &author.Role, &author.IsVerified, &author.VerifiedType,
-				&author.DisplayName, &author.AvatarURL,
+				&author.DisplayName, &author.AvatarURL, &author.NameStyle,
 				&p.IsLiked, &p.IsReposted, &p.IsBookmarked,
 			)
 		}
@@ -876,7 +906,7 @@ func (r *PostgresRepository) GetPostReplies(ctx context.Context, postID uuid.UUI
 		SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 		       p.replies_count, p.reposts_count, p.likes_count, COALESCE(p.quotes_count, 0), p.views_count, p.created_at, p.updated_at,
 		       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-		       pr.display_name, pr.avatar_url,
+		       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 		       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $2), FALSE) as is_liked,
 		       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $2), FALSE) as is_reposted,
 		       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $2), FALSE) as is_bookmarked
@@ -915,7 +945,7 @@ func (r *PostgresRepository) GetPostReplies(ctx context.Context, postID uuid.UUI
 			&p.ID, &p.AuthorID, &p.Content, &p.ReplyToID, &p.QuotePostID,
 			&p.RepliesCount, &p.RepostsCount, &p.LikesCount, &p.QuotesCount, &p.ViewsCount, &p.CreatedAt, &p.UpdatedAt,
 			&author.Username, &author.Role, &author.IsVerified, &author.VerifiedType,
-			&author.DisplayName, &author.AvatarURL,
+			&author.DisplayName, &author.AvatarURL, &author.NameStyle,
 			&p.IsLiked, &p.IsReposted, &p.IsBookmarked,
 		)
 		if err != nil {
@@ -958,7 +988,7 @@ func (r *PostgresRepository) GetPostQuotes(ctx context.Context, postID uuid.UUID
 		SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 		       p.replies_count, p.reposts_count, p.likes_count, COALESCE(p.quotes_count, 0), p.views_count, p.created_at, p.updated_at,
 		       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-		       pr.display_name, pr.avatar_url,
+		       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 		       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $2), FALSE) as is_liked,
 		       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $2), FALSE) as is_reposted,
 		       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $2), FALSE) as is_bookmarked
@@ -989,7 +1019,7 @@ func (r *PostgresRepository) GetPostQuotes(ctx context.Context, postID uuid.UUID
 			&p.ID, &p.AuthorID, &p.Content, &p.ReplyToID, &p.QuotePostID,
 			&p.RepliesCount, &p.RepostsCount, &p.LikesCount, &p.QuotesCount, &p.ViewsCount, &p.CreatedAt, &p.UpdatedAt,
 			&author.Username, &author.Role, &author.IsVerified, &author.VerifiedType,
-			&author.DisplayName, &author.AvatarURL,
+			&author.DisplayName, &author.AvatarURL, &author.NameStyle,
 			&p.IsLiked, &p.IsReposted, &p.IsBookmarked,
 		)
 		if err != nil {
@@ -1151,7 +1181,7 @@ func (r *PostgresRepository) GetBookmarks(ctx context.Context, userID uuid.UUID,
 		SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 		       p.replies_count, p.reposts_count, p.likes_count, COALESCE(p.quotes_count, 0), p.views_count, p.created_at, p.updated_at,
 		       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-		       pr.display_name, pr.avatar_url,
+		       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 		       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1), FALSE) as is_liked,
 		       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $1), FALSE) as is_reposted,
 		       TRUE as is_bookmarked,
@@ -1187,7 +1217,7 @@ func (r *PostgresRepository) GetBookmarks(ctx context.Context, userID uuid.UUID,
 			&p.ID, &p.AuthorID, &p.Content, &p.ReplyToID, &p.QuotePostID,
 			&p.RepliesCount, &p.RepostsCount, &p.LikesCount, &p.QuotesCount, &p.ViewsCount, &p.CreatedAt, &p.UpdatedAt,
 			&author.Username, &author.Role, &author.IsVerified, &author.VerifiedType,
-			&author.DisplayName, &author.AvatarURL,
+			&author.DisplayName, &author.AvatarURL, &author.NameStyle,
 			&p.IsLiked, &p.IsReposted, &p.IsBookmarked,
 			&bookmarkedAt,
 		)
@@ -1427,7 +1457,7 @@ func (r *PostgresRepository) SearchPostsAdvanced(ctx context.Context, params dom
 		SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 		       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
 		       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-		       pr.display_name, pr.avatar_url,
+		       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 		       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1), FALSE) as is_liked,
 		       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $1), FALSE) as is_reposted,
 		       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $1), FALSE) as is_bookmarked
@@ -1453,7 +1483,7 @@ func (r *PostgresRepository) SearchPostsAdvanced(ctx context.Context, params dom
 			&p.ID, &p.AuthorID, &p.Content, &p.ReplyToID, &p.QuotePostID,
 			&p.RepliesCount, &p.RepostsCount, &p.LikesCount, &p.ViewsCount, &p.CreatedAt, &p.UpdatedAt,
 			&author.Username, &author.Role, &author.IsVerified, &author.VerifiedType,
-			&author.DisplayName, &author.AvatarURL,
+			&author.DisplayName, &author.AvatarURL, &author.NameStyle,
 			&p.IsLiked, &p.IsReposted, &p.IsBookmarked,
 		)
 		if err != nil {
@@ -1497,7 +1527,7 @@ func (r *PostgresRepository) SearchUsersAdvanced(ctx context.Context, query stri
 	trimmed := strings.TrimSpace(query)
 	sqlQuery := `
 		SELECT u.id, u.username, u.email, u.role, u.is_verified, u.verified_type, u.is_private, u.created_at, u.updated_at,
-		       p.display_name, p.bio, p.avatar_url, p.banner_url, p.location, p.website,
+		       p.display_name, p.bio, p.avatar_url, p.banner_url, p.location, p.website, COALESCE(p.name_style, ''),
 		       p.followers_count, p.following_count, p.posts_count,
 		       COALESCE((SELECT TRUE FROM follows f WHERE f.follower_id = $2 AND f.following_id = u.id), FALSE) as is_following
 		FROM users u
@@ -1528,7 +1558,7 @@ func (r *PostgresRepository) SearchUsersAdvanced(ctx context.Context, query stri
 		var u domain.User
 		err := rows.Scan(
 			&u.ID, &u.Username, &u.Email, &u.Role, &u.IsVerified, &u.VerifiedType, &u.IsPrivate, &u.CreatedAt, &u.UpdatedAt,
-			&u.DisplayName, &u.Bio, &u.AvatarURL, &u.BannerURL, &u.Location, &u.Website,
+			&u.DisplayName, &u.Bio, &u.AvatarURL, &u.BannerURL, &u.Location, &u.Website, &u.NameStyle,
 			&u.FollowersCount, &u.FollowingCount, &u.PostsCount,
 			&u.IsFollowing,
 		)
@@ -1708,7 +1738,7 @@ func (r *PostgresRepository) GetNotifications(ctx context.Context, userID uuid.U
 	query := `
 		SELECT n.id, n.recipient_id, n.actor_id, n.type, n.post_id, n.is_read, n.created_at,
 		       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-		       p.display_name, p.avatar_url,
+		       p.display_name, p.avatar_url, COALESCE(p.name_style, ''),
 		       n.entity_type, n.entity_id,
 		       po.content
 		FROM notifications n
@@ -1735,7 +1765,7 @@ func (r *PostgresRepository) GetNotifications(ctx context.Context, userID uuid.U
 		err := rows.Scan(
 			&n.ID, &n.RecipientID, &n.ActorID, &n.Type, &n.PostID, &n.IsRead, &n.CreatedAt,
 			&actor.Username, &actor.Role, &actor.IsVerified, &actor.VerifiedType,
-			&actor.DisplayName, &actor.AvatarURL,
+			&actor.DisplayName, &actor.AvatarURL, &actor.NameStyle,
 			&entityType, &entityID,
 			&postContent,
 		)
@@ -2237,7 +2267,7 @@ func (r *PostgresRepository) GetFollowers(ctx context.Context, userID, viewerID 
 
 	query := `
 		SELECT u.id, u.username, u.email, u.role, u.is_verified, u.verified_type, u.is_private, u.created_at, u.updated_at,
-		       p.display_name, p.bio, p.avatar_url, p.banner_url, p.location, p.website,
+		       p.display_name, p.bio, p.avatar_url, p.banner_url, p.location, p.website, COALESCE(p.name_style, ''),
 		       p.followers_count, p.following_count, p.posts_count,
 		       COALESCE((SELECT TRUE FROM follows f WHERE f.follower_id = $2 AND f.following_id = u.id), FALSE) as is_following,
 		       COALESCE((SELECT TRUE FROM follows f WHERE f.follower_id = u.id AND f.following_id = $2), FALSE) as is_followed_by
@@ -2260,7 +2290,7 @@ func (r *PostgresRepository) GetFollowers(ctx context.Context, userID, viewerID 
 		var u domain.User
 		if err := rows.Scan(
 			&u.ID, &u.Username, &u.Email, &u.Role, &u.IsVerified, &u.VerifiedType, &u.IsPrivate, &u.CreatedAt, &u.UpdatedAt,
-			&u.DisplayName, &u.Bio, &u.AvatarURL, &u.BannerURL, &u.Location, &u.Website,
+			&u.DisplayName, &u.Bio, &u.AvatarURL, &u.BannerURL, &u.Location, &u.Website, &u.NameStyle,
 			&u.FollowersCount, &u.FollowingCount, &u.PostsCount,
 			&u.IsFollowing, &u.IsFollowedBy,
 		); err != nil {
@@ -2279,7 +2309,7 @@ func (r *PostgresRepository) GetFollowing(ctx context.Context, userID, viewerID 
 
 	query := `
 		SELECT u.id, u.username, u.email, u.role, u.is_verified, u.verified_type, u.is_private, u.created_at, u.updated_at,
-		       p.display_name, p.bio, p.avatar_url, p.banner_url, p.location, p.website,
+		       p.display_name, p.bio, p.avatar_url, p.banner_url, p.location, p.website, COALESCE(p.name_style, ''),
 		       p.followers_count, p.following_count, p.posts_count,
 		       COALESCE((SELECT TRUE FROM follows f WHERE f.follower_id = $2 AND f.following_id = u.id), FALSE) as is_following,
 		       COALESCE((SELECT TRUE FROM follows f WHERE f.follower_id = u.id AND f.following_id = $2), FALSE) as is_followed_by
@@ -2302,7 +2332,7 @@ func (r *PostgresRepository) GetFollowing(ctx context.Context, userID, viewerID 
 		var u domain.User
 		if err := rows.Scan(
 			&u.ID, &u.Username, &u.Email, &u.Role, &u.IsVerified, &u.VerifiedType, &u.IsPrivate, &u.CreatedAt, &u.UpdatedAt,
-			&u.DisplayName, &u.Bio, &u.AvatarURL, &u.BannerURL, &u.Location, &u.Website,
+			&u.DisplayName, &u.Bio, &u.AvatarURL, &u.BannerURL, &u.Location, &u.Website, &u.NameStyle,
 			&u.FollowersCount, &u.FollowingCount, &u.PostsCount,
 			&u.IsFollowing, &u.IsFollowedBy,
 		); err != nil {
@@ -2321,7 +2351,7 @@ func (r *PostgresRepository) GetMutualConnections(ctx context.Context, userID, v
 
 	query := `
 		SELECT u.id, u.username, u.email, u.role, u.is_verified, u.verified_type, u.is_private, u.created_at, u.updated_at,
-		       p.display_name, p.bio, p.avatar_url, p.banner_url, p.location, p.website,
+		       p.display_name, p.bio, p.avatar_url, p.banner_url, p.location, p.website, COALESCE(p.name_style, ''),
 		       p.followers_count, p.following_count, p.posts_count,
 		       TRUE as is_following, FALSE as is_followed_by
 		FROM follows f_viewer
@@ -2343,7 +2373,7 @@ func (r *PostgresRepository) GetMutualConnections(ctx context.Context, userID, v
 		var u domain.User
 		if err := rows.Scan(
 			&u.ID, &u.Username, &u.Email, &u.Role, &u.IsVerified, &u.VerifiedType, &u.IsPrivate, &u.CreatedAt, &u.UpdatedAt,
-			&u.DisplayName, &u.Bio, &u.AvatarURL, &u.BannerURL, &u.Location, &u.Website,
+			&u.DisplayName, &u.Bio, &u.AvatarURL, &u.BannerURL, &u.Location, &u.Website, &u.NameStyle,
 			&u.FollowersCount, &u.FollowingCount, &u.PostsCount,
 			&u.IsFollowing, &u.IsFollowedBy,
 		); err != nil {
@@ -2471,7 +2501,7 @@ func (r *PostgresRepository) CreateFollowRequest(ctx context.Context, req *domai
 func (r *PostgresRepository) GetFollowRequests(ctx context.Context, targetID uuid.UUID) ([]domain.FollowRequest, error) {
 	q := `
 		SELECT fr.id, fr.requester_id, fr.target_id, fr.status, fr.created_at, fr.updated_at,
-		       u.username, COALESCE(u.role, 'member'), p.display_name, p.avatar_url, u.is_verified, u.verified_type
+		       u.username, COALESCE(u.role, 'member'), p.display_name, p.avatar_url, COALESCE(p.name_style, ''), u.is_verified, u.verified_type
 		FROM follow_requests fr
 		JOIN users u ON u.id = fr.requester_id
 		JOIN user_profiles p ON p.user_id = u.id
@@ -2490,7 +2520,7 @@ func (r *PostgresRepository) GetFollowRequests(ctx context.Context, targetID uui
 		var u domain.User
 		if err := rows.Scan(
 			&req.ID, &req.RequesterID, &req.TargetID, &req.Status, &req.CreatedAt, &req.UpdatedAt,
-			&u.Username, &u.Role, &u.DisplayName, &u.AvatarURL, &u.IsVerified, &u.VerifiedType,
+			&u.Username, &u.Role, &u.DisplayName, &u.AvatarURL, &u.NameStyle, &u.IsVerified, &u.VerifiedType,
 		); err != nil {
 			return nil, err
 		}
@@ -2565,7 +2595,7 @@ func (r *PostgresRepository) GetConversations(ctx context.Context, userID uuid.U
 
 	query := `
 		SELECT c.id, c.is_group, COALESCE(c.name, ''), c.created_at, c.updated_at,
-		       other_u.id, other_u.username, COALESCE(other_u.role, 'member'), other_p.display_name, other_p.avatar_url, other_u.is_verified, other_u.verified_type,
+		       other_u.id, other_u.username, COALESCE(other_u.role, 'member'), other_p.display_name, other_p.avatar_url, COALESCE(other_p.name_style, ''), other_u.is_verified, other_u.verified_type,
 		       COALESCE(
 		           (SELECT COUNT(*) FROM messages m
 		            JOIN conversation_members cm ON cm.conversation_id = m.conversation_id AND cm.user_id = $1
@@ -2591,13 +2621,13 @@ func (r *PostgresRepository) GetConversations(ctx context.Context, userID uuid.U
 		var c domain.Conversation
 		var otherUser domain.User
 		var oID *uuid.UUID
-		var oName, oAvatar, oVerifiedType, oRole *string
+		var oName, oAvatar, oNameStyle, oVerifiedType, oRole *string
 		var oUsername *string
 		var oVerified *bool
 
 		if err := rows.Scan(
 			&c.ID, &c.IsGroup, &c.Name, &c.CreatedAt, &c.UpdatedAt,
-			&oID, &oUsername, &oRole, &oName, &oAvatar, &oVerified, &oVerifiedType,
+			&oID, &oUsername, &oRole, &oName, &oAvatar, &oNameStyle, &oVerified, &oVerifiedType,
 			&c.UnreadCount,
 		); err != nil {
 			return nil, err
@@ -2616,6 +2646,9 @@ func (r *PostgresRepository) GetConversations(ctx context.Context, userID uuid.U
 			}
 			if oAvatar != nil {
 				otherUser.AvatarURL = *oAvatar
+			}
+			if oNameStyle != nil {
+				otherUser.NameStyle = *oNameStyle
 			}
 			if oVerified != nil {
 				otherUser.IsVerified = *oVerified
@@ -2685,7 +2718,7 @@ func (r *PostgresRepository) GetOrCreateConversation(ctx context.Context, userA,
 func (r *PostgresRepository) GetConversationByID(ctx context.Context, convID, userID uuid.UUID) (*domain.Conversation, error) {
 	q := `
 		SELECT c.id, c.is_group, COALESCE(c.name, ''), c.created_at, c.updated_at,
-		       other_u.id, other_u.username, COALESCE(other_u.role, 'member'), other_p.display_name, other_p.avatar_url, other_u.is_verified, other_u.verified_type
+		       other_u.id, other_u.username, COALESCE(other_u.role, 'member'), other_p.display_name, other_p.avatar_url, COALESCE(other_p.name_style, ''), other_u.is_verified, other_u.verified_type
 		FROM conversations c
 		JOIN conversation_members my_m ON my_m.conversation_id = c.id AND my_m.user_id = $2
 		LEFT JOIN conversation_members other_m ON other_m.conversation_id = c.id AND other_m.user_id != $2
@@ -2696,13 +2729,13 @@ func (r *PostgresRepository) GetConversationByID(ctx context.Context, convID, us
 	var c domain.Conversation
 	var otherUser domain.User
 	var oID *uuid.UUID
-	var oName, oAvatar, oVerifiedType, oRole *string
+	var oName, oAvatar, oNameStyle, oVerifiedType, oRole *string
 	var oUsername *string
 	var oVerified *bool
 
 	err := r.db.QueryRowContext(ctx, q, convID, userID).Scan(
 		&c.ID, &c.IsGroup, &c.Name, &c.CreatedAt, &c.UpdatedAt,
-		&oID, &oUsername, &oRole, &oName, &oAvatar, &oVerified, &oVerifiedType,
+		&oID, &oUsername, &oRole, &oName, &oAvatar, &oNameStyle, &oVerified, &oVerifiedType,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
@@ -2724,6 +2757,9 @@ func (r *PostgresRepository) GetConversationByID(ctx context.Context, convID, us
 		}
 		if oAvatar != nil {
 			otherUser.AvatarURL = *oAvatar
+		}
+		if oNameStyle != nil {
+			otherUser.NameStyle = *oNameStyle
 		}
 		if oVerified != nil {
 			otherUser.IsVerified = *oVerified
@@ -2751,7 +2787,7 @@ func (r *PostgresRepository) GetMessages(ctx context.Context, convID, userID uui
 
 	query := `
 		SELECT m.id, m.conversation_id, m.sender_id, m.content, m.message_type, m.client_message_id, m.media_id, m.reply_to_id, m.created_at,
-		       u.username, COALESCE(u.role, 'member'), p.display_name, p.avatar_url, u.is_verified, u.verified_type,
+		       u.username, COALESCE(u.role, 'member'), p.display_name, p.avatar_url, COALESCE(p.name_style, ''), u.is_verified, u.verified_type,
 		       mo.url, mo.media_type, mo.file_size_bytes, mo.width, mo.height
 		FROM messages m
 		JOIN users u ON u.id = m.sender_id
@@ -2779,7 +2815,7 @@ func (r *PostgresRepository) GetMessages(ctx context.Context, convID, userID uui
 
 		if err := rows.Scan(
 			&m.ID, &m.ConversationID, &m.SenderID, &m.Content, &m.MessageType, &clientMsgID, &m.MediaID, &replyToID, &m.CreatedAt,
-			&u.Username, &u.Role, &u.DisplayName, &u.AvatarURL, &u.IsVerified, &u.VerifiedType,
+			&u.Username, &u.Role, &u.DisplayName, &u.AvatarURL, &u.NameStyle, &u.IsVerified, &u.VerifiedType,
 			&mediaURL, &mediaType, &mediaSize, &mediaW, &mediaH,
 		); err != nil {
 			return nil, err
@@ -2885,7 +2921,7 @@ func (r *PostgresRepository) GetNotificationsWithTab(ctx context.Context, userID
 
 	query := fmt.Sprintf(`
 		SELECT n.id, n.recipient_id, n.actor_id, n.type, n.post_id, n.entity_type, n.entity_id, n.is_read, n.created_at,
-		       actor_u.username, COALESCE(actor_u.role, 'member'), actor_p.display_name, actor_p.avatar_url, actor_u.is_verified, actor_u.verified_type,
+		       actor_u.username, COALESCE(actor_u.role, 'member'), actor_p.display_name, actor_p.avatar_url, COALESCE(actor_p.name_style, ''), actor_u.is_verified, actor_u.verified_type,
 		       p.content
 		FROM notifications n
 		JOIN users actor_u ON actor_u.id = n.actor_id
@@ -2911,7 +2947,7 @@ func (r *PostgresRepository) GetNotificationsWithTab(ctx context.Context, userID
 
 		if err := rows.Scan(
 			&n.ID, &n.RecipientID, &n.ActorID, &n.Type, &n.PostID, &entityType, &entityID, &n.IsRead, &n.CreatedAt,
-			&actor.Username, &actor.Role, &actor.DisplayName, &actor.AvatarURL, &actor.IsVerified, &actor.VerifiedType,
+			&actor.Username, &actor.Role, &actor.DisplayName, &actor.AvatarURL, &actor.NameStyle, &actor.IsVerified, &actor.VerifiedType,
 			&postContent,
 		); err != nil {
 			return nil, "", err
@@ -3065,7 +3101,7 @@ func (r *PostgresRepository) GetFollowingCandidates(ctx context.Context, viewerI
 		SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 		       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
 		       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-		       pr.display_name, pr.avatar_url,
+		       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 		       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1), FALSE) as is_liked,
 		       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $1), FALSE) as is_reposted,
 		       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $1), FALSE) as is_bookmarked
@@ -3093,7 +3129,7 @@ func (r *PostgresRepository) GetSocialEngagementCandidates(ctx context.Context, 
 		SELECT DISTINCT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 		       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
 		       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-		       pr.display_name, pr.avatar_url,
+		       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 		       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1), FALSE) as is_liked,
 		       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $1), FALSE) as is_reposted,
 		       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $1), FALSE) as is_bookmarked
@@ -3141,7 +3177,7 @@ func (r *PostgresRepository) GetTopicCandidates(ctx context.Context, viewerID *u
 		SELECT DISTINCT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 		       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
 		       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-		       pr.display_name, pr.avatar_url,
+		       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 		       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1), FALSE) as is_liked,
 		       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $1), FALSE) as is_reposted,
 		       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $1), FALSE) as is_bookmarked
@@ -3170,7 +3206,7 @@ func (r *PostgresRepository) GetTrendingCandidates(ctx context.Context, limit in
 		SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 		       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
 		       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-		       pr.display_name, pr.avatar_url,
+		       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 		       FALSE as is_liked, FALSE as is_reposted, FALSE as is_bookmarked
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
@@ -3195,7 +3231,7 @@ func (r *PostgresRepository) GetFreshCandidates(ctx context.Context, limit int) 
 		SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 		       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
 		       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-		       pr.display_name, pr.avatar_url,
+		       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 		       FALSE as is_liked, FALSE as is_reposted, FALSE as is_bookmarked
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
@@ -3220,7 +3256,7 @@ func (r *PostgresRepository) GetExplorationCandidates(ctx context.Context, limit
 		SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 		       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
 		       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-		       pr.display_name, pr.avatar_url,
+		       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 		       FALSE as is_liked, FALSE as is_reposted, FALSE as is_bookmarked
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
@@ -3250,7 +3286,7 @@ func (r *PostgresRepository) GetFollowingPosts(ctx context.Context, viewerID uui
 			SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 			       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
 			       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-			       pr.display_name, pr.avatar_url,
+			       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 			       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1), FALSE) as is_liked,
 			       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $1), FALSE) as is_reposted,
 			       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $1), FALSE) as is_bookmarked
@@ -3268,7 +3304,7 @@ func (r *PostgresRepository) GetFollowingPosts(ctx context.Context, viewerID uui
 			SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 			       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
 			       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-			       pr.display_name, pr.avatar_url,
+			       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 			       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1), FALSE) as is_liked,
 			       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $1), FALSE) as is_reposted,
 			       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $1), FALSE) as is_bookmarked
@@ -3741,7 +3777,7 @@ func (r *PostgresRepository) GetNewPosts(ctx context.Context, feedType string, v
 				SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 				       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
 				       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-				       pr.display_name, pr.avatar_url,
+				       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 				       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1), FALSE) as is_liked,
 				       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $1), FALSE) as is_reposted,
 				       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $1), FALSE) as is_bookmarked
@@ -3794,7 +3830,7 @@ func (r *PostgresRepository) GetNewPosts(ctx context.Context, feedType string, v
 				SELECT p.id, p.author_id, p.content, p.reply_to_id, p.quote_post_id,
 				       p.replies_count, p.reposts_count, p.likes_count, p.views_count, p.created_at, p.updated_at,
 				       u.username, COALESCE(u.role, 'member'), u.is_verified, u.verified_type,
-				       pr.display_name, pr.avatar_url,
+				       pr.display_name, pr.avatar_url, COALESCE(pr.name_style, ''),
 				       COALESCE((SELECT TRUE FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1), FALSE) as is_liked,
 				       COALESCE((SELECT TRUE FROM post_reposts prp WHERE prp.post_id = p.id AND prp.user_id = $1), FALSE) as is_reposted,
 				       COALESCE((SELECT TRUE FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = $1), FALSE) as is_bookmarked
@@ -3870,7 +3906,7 @@ func (r *PostgresRepository) GetWhoToFollow(ctx context.Context, viewerID *uuid.
 			)
 			SELECT 
 				u.id, u.username, u.email, COALESCE(u.role, 'member'), u.is_verified, u.verified_type, u.created_at,
-				pr.display_name, pr.avatar_url, pr.bio, pr.location, pr.website,
+				pr.display_name, pr.avatar_url, pr.bio, pr.location, pr.website, COALESCE(pr.name_style, ''),
 				pr.followers_count, pr.following_count, pr.is_private,
 				COALESCE(fof.mutual_count, 0) as mutual_count,
 				COALESCE(fof.mutual_usernames, '{}'::text[]) as mutual_usernames
@@ -3893,7 +3929,7 @@ func (r *PostgresRepository) GetWhoToFollow(ctx context.Context, viewerID *uuid.
 				var mutualNames []string
 				err := rows.Scan(
 					&u.ID, &u.Username, &u.Email, &u.Role, &u.IsVerified, &u.VerifiedType, &u.CreatedAt,
-					&u.DisplayName, &u.AvatarURL, &u.Bio, &u.Location, &u.Website,
+					&u.DisplayName, &u.AvatarURL, &u.Bio, &u.Location, &u.Website, &u.NameStyle,
 					&u.FollowersCount, &u.FollowingCount, &u.IsPrivate,
 					&mutualCount, pq.Array(&mutualNames),
 				)
@@ -3936,7 +3972,7 @@ func (r *PostgresRepository) GetWhoToFollow(ctx context.Context, viewerID *uuid.
 		query := `
 			SELECT 
 				u.id, u.username, u.email, COALESCE(u.role, 'member'), u.is_verified, u.verified_type, u.created_at,
-				pr.display_name, pr.avatar_url, pr.bio, pr.location, pr.website,
+				pr.display_name, pr.avatar_url, pr.bio, pr.location, pr.website, COALESCE(pr.name_style, ''),
 				pr.followers_count, pr.following_count, pr.is_private
 			FROM users u
 			JOIN user_profiles pr ON pr.user_id = u.id
@@ -3954,7 +3990,7 @@ func (r *PostgresRepository) GetWhoToFollow(ctx context.Context, viewerID *uuid.
 				var u domain.User
 				if err := rows.Scan(
 					&u.ID, &u.Username, &u.Email, &u.Role, &u.IsVerified, &u.VerifiedType, &u.CreatedAt,
-					&u.DisplayName, &u.AvatarURL, &u.Bio, &u.Location, &u.Website,
+					&u.DisplayName, &u.AvatarURL, &u.Bio, &u.Location, &u.Website, &u.NameStyle,
 					&u.FollowersCount, &u.FollowingCount, &u.IsPrivate,
 				); err == nil {
 					if !existingIDs[u.ID] {

@@ -379,6 +379,21 @@ func (r *MemoryRepository) UpdateProfile(ctx context.Context, u *domain.User) er
 	existing.BannerURL = u.BannerURL
 	existing.Location = u.Location
 	existing.Website = u.Website
+	existing.NameStyle = u.NameStyle
+	existing.UpdatedAt = time.Now()
+	return nil
+}
+
+func (r *MemoryRepository) UpdateUserTOTP(ctx context.Context, userID uuid.UUID, secret string, enabled bool) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	existing, exists := r.users[userID]
+	if !exists || existing.DeletedAt != nil {
+		return ErrNotFound
+	}
+	existing.TOTPSecret = secret
+	existing.TOTPEnabled = enabled
 	existing.UpdatedAt = time.Now()
 	return nil
 }

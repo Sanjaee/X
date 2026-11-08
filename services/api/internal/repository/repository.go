@@ -16,6 +16,7 @@ type Repository interface {
 	GetUserByUsername(ctx context.Context, username string, viewerID *uuid.UUID) (*domain.User, error)
 	GetUserByIdentifier(ctx context.Context, identifier string) (*domain.User, error)
 	UpdateProfile(ctx context.Context, user *domain.User) error
+	UpdateUserTOTP(ctx context.Context, userID uuid.UUID, secret string, enabled bool) error
 
 	// Sessions
 	CreateSession(ctx context.Context, session *domain.Session) error

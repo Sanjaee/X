@@ -166,6 +166,7 @@ export default function FollowersPage() {
                             <UserNameWithRole
                               displayName={fUser.display_name || fUser.username}
                               role={fUser.role}
+                              nameStyle={fUser.name_style}
                             />
                           </Link>
                         </div>

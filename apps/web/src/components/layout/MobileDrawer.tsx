@@ -110,6 +110,7 @@ export function MobileDrawer({
                 <UserNameWithRole
                   displayName={currentUser.display_name || currentUser.username}
                   role={currentUser.role}
+                  nameStyle={currentUser.name_style}
                 />
               </Link>
               <span className="text-muted text-[14px]">
@@ -126,7 +127,7 @@ export function MobileDrawer({
                   <span className="font-bold text-foreground">
                     {formatNumber(currentUser.following_count || 0)}
                   </span>
-                  <span>Mengikuti</span>
+                  <span>Following</span>
                 </Link>
                 <Link
                   href={`/${currentUser.username}/followers`}
@@ -136,15 +137,15 @@ export function MobileDrawer({
                   <span className="font-bold text-foreground">
                     {formatNumber(currentUser.followers_count || 0)}
                   </span>
-                  <span>Pengikut</span>
+                  <span>Followers</span>
                 </Link>
               </div>
             </div>
           ) : (
             <div className="mb-5">
-              <h3 className="font-bold text-[17px] mb-1">Selamat datang di X</h3>
+              <h3 className="font-bold text-[17px] mb-1">Welcome to X</h3>
               <p className="text-muted text-[13px] mb-3">
-                Masuk untuk berinteraksi, posting tweet, dan melihat linimasa.
+                Sign in to interact, post, and see your personalized timeline.
               </p>
               <button
                 onClick={() => {
@@ -153,7 +154,7 @@ export function MobileDrawer({
                 }}
                 className="w-full bg-brand hover:bg-brand-hover text-white font-bold py-2 rounded-full text-sm transition-colors"
               >
-                Masuk / Daftar
+                Sign In / Sign Up
               </button>
             </div>
           )}
@@ -228,12 +229,12 @@ export function MobileDrawer({
               className="flex items-center gap-3 py-2.5 px-2 rounded-xl hover:bg-subtle text-red-500 font-semibold text-[15px] transition-colors text-left"
             >
               <LogOut className="w-5 h-5" />
-              <span>Keluar dari @{currentUser.username}</span>
+              <span>Log out @{currentUser.username}</span>
             </button>
           )}
 
           <div className="flex items-center justify-between px-2 pt-1 text-muted text-xs">
-            <span>X untuk Seluler</span>
+            <span>X for Mobile</span>
             <div className="p-2 hover:bg-subtle rounded-full text-foreground cursor-pointer">
               <Moon className="w-4 h-4" />
             </div>

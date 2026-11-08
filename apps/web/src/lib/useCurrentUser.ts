@@ -62,6 +62,9 @@ export function useCurrentUser() {
       const { signOut } = await import("next-auth/react");
       await signOut({ redirect: false });
     } catch {}
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.removeItem("x_handled_mfa_token");
+    }
     setStoredToken(null);
     setStoredUser(null);
     queryClient.setQueryData(["currentUser"], null);

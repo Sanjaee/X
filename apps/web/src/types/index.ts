@@ -1,3 +1,17 @@
+export interface CustomNameStyle {
+  enabled?: boolean;
+  color?: string;
+  text_shadow?: string;
+  shadow_color?: string;
+  shadow_blur?: number;
+  shadow_x?: number;
+  shadow_y?: number;
+  bg_image?: string;
+  bg_color?: string;
+  font_weight?: string;
+  font_family?: string;
+}
+
 export interface User {
   id: string;
   username: string;
@@ -8,8 +22,10 @@ export interface User {
   banner_url?: string;
   location?: string;
   website?: string;
+  name_style?: string;
   is_verified: boolean;
   verified_type: 'none' | 'blue' | 'business' | 'government';
+  totp_enabled?: boolean;
   followers_count: number;
   following_count: number;
   posts_count?: number;
@@ -120,8 +136,19 @@ export interface Message {
 }
 
 export interface AuthResponse {
-  user: User;
-  session_token: string;
+  user?: User;
+  session_token?: string;
+  requires_totp?: boolean;
+  mfa_token?: string;
+  username?: string;
+}
+
+export interface TOTPSetupResponse {
+  secret: string;
+  otpauth_url: string;
+  seed_phrase?: string;
+  backup_codes?: string[];
+  totp_enabled: boolean;
 }
 
 export interface SubscriptionPlan {

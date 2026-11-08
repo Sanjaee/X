@@ -128,6 +128,8 @@ services:
       - ../../services/api/migrations/000007_trending_and_user_recommendations.up.sql:/docker-entrypoint-initdb.d/07_trending.sql:ro
       - ../../services/api/migrations/000008_post_interactions_and_reposts.up.sql:/docker-entrypoint-initdb.d/08_interactions.sql:ro
       - ../../services/api/migrations/000009_outbox_resilience_and_dlq.up.sql:/docker-entrypoint-initdb.d/09_outbox_resilience.sql:ro
+      - ../../services/api/migrations/000010_totp_two_factor_auth.up.sql:/docker-entrypoint-initdb.d/10_totp_2fa.sql:ro
+      - ../../services/api/migrations/000011_custom_name_style.up.sql:/docker-entrypoint-initdb.d/11_custom_name_style.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
