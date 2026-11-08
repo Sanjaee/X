@@ -517,53 +517,6 @@
       "values"
     ],
     "7": [
-      "domain_feedfeedback",
-      "domain_feedimpression",
-      "domain_outboxevent",
-      "domain_recentsearch",
-      "domain_session",
-      "domain_usertopicpreference",
-      "domain_verificationapplication",
-      "repository_memoryrepository",
-      "repository_memoryrepository_assignverificationbadge",
-      "repository_memoryrepository_clearrecentsearches",
-      "repository_memoryrepository_createauditlog",
-      "repository_memoryrepository_createfollowrequest",
-      "repository_memoryrepository_createmediaobject",
-      "repository_memoryrepository_createmessage",
-      "repository_memoryrepository_createoutboxevent",
-      "repository_memoryrepository_createsession",
-      "repository_memoryrepository_createverificationapplication",
-      "repository_memoryrepository_getallpermissions",
-      "repository_memoryrepository_getauditlogs",
-      "repository_memoryrepository_getfollowrequests",
-      "repository_memoryrepository_getmediaobjectbyid",
-      "repository_memoryrepository_getmessages",
-      "repository_memoryrepository_getpendingoutboxevents",
-      "repository_memoryrepository_getrecentsearches",
-      "repository_memoryrepository_getrolepermissions",
-      "repository_memoryrepository_getsecurityauditlogs",
-      "repository_memoryrepository_getsessionbytokenhash",
-      "repository_memoryrepository_getsubscriptionplanbyid",
-      "repository_memoryrepository_getsubscriptionplans",
-      "repository_memoryrepository_getuserbadges",
-      "repository_memoryrepository_getusertopicpreferences",
-      "repository_memoryrepository_getverificationapplication",
-      "repository_memoryrepository_markoutboxeventfailed",
-      "repository_memoryrepository_recordfeedfeedback",
-      "repository_memoryrepository_recordfeedimpressions",
-      "repository_memoryrepository_updateusertopicpreference",
-      "rwmutex",
-      "services_api_internal_repository_memory_go_auditlog",
-      "services_api_internal_repository_memory_go_followrequest",
-      "services_api_internal_repository_memory_go_mediaobject",
-      "services_api_internal_repository_memory_go_message",
-      "services_api_internal_repository_memory_go_permission",
-      "services_api_internal_repository_memory_go_subscriptionplan",
-      "services_api_internal_repository_memory_go_time",
-      "services_api_internal_repository_memory_go_verificationbadge"
-    ],
-    "8": [
       "repository_postgresrepository_admindeletepost",
       "repository_postgresrepository_assignroletouser",
       "repository_postgresrepository_assignusermembership",
@@ -612,6 +565,45 @@
       "services_api_internal_repository_postgres_rbac_go_user",
       "services_api_internal_repository_postgres_rbac_go_usermembership",
       "services_api_internal_repository_postgres_rbac_go_uuid"
+    ],
+    "8": [
+      "apps_web_src_app_bookmarks_page",
+      "apps_web_src_app_bookmarks_page_bookmarkspage",
+      "apps_web_src_app_explore_page",
+      "apps_web_src_app_explore_page_explorepage",
+      "apps_web_src_app_messages_page",
+      "apps_web_src_app_messages_page_messagescontent",
+      "apps_web_src_app_messages_page_messagespage",
+      "apps_web_src_app_notifications_page",
+      "apps_web_src_app_notifications_page_notificationspage",
+      "apps_web_src_app_page",
+      "apps_web_src_app_page_feedresponse",
+      "apps_web_src_app_settings_page",
+      "apps_web_src_app_settings_page_settingspage",
+      "apps_web_src_app_settings_page_settingssection",
+      "apps_web_src_app_username_followers_page",
+      "apps_web_src_app_username_followers_page_followerspage",
+      "apps_web_src_components_composer_composercontext_usecomposer",
+      "apps_web_src_components_composer_mobilecomposermodal",
+      "apps_web_src_components_composer_mobilecomposermodal_mobilecomposermodal",
+      "apps_web_src_components_composer_mobilecomposermodal_mobilecomposermodalprops",
+      "apps_web_src_components_composer_mobilecomposermodal_stagedattachment",
+      "apps_web_src_components_layout_appshell",
+      "apps_web_src_components_layout_leftnavrail",
+      "apps_web_src_components_layout_leftnavrail_leftnavrail",
+      "apps_web_src_components_layout_mobilebottomnav",
+      "apps_web_src_components_layout_mobilebottomnav_mobilebottomnav",
+      "apps_web_src_components_layout_mobilebottomnav_mobilebottomnavprops",
+      "apps_web_src_components_layout_mobiledrawer",
+      "apps_web_src_components_layout_mobiledrawer_mobiledrawer",
+      "apps_web_src_components_layout_mobiledrawer_mobiledrawerprops",
+      "apps_web_src_components_layout_rightsidebar_rightsidebar",
+      "apps_web_src_components_layout_routetransition",
+      "apps_web_src_components_layout_routetransition_routetransition",
+      "apps_web_src_lib_usecurrentuser_usecurrentuser",
+      "apps_web_src_lib_userealtime_userealtime",
+      "apps_web_src_lib_utils",
+      "apps_web_src_lib_utils_cn"
     ],
     "9": [
       "cryptoinvoice",
@@ -662,6 +654,53 @@
       "services_api_internal_middleware_middleware_recoverymiddleware"
     ],
     "10": [
+      "domain_feedfeedback",
+      "domain_feedimpression",
+      "domain_outboxevent",
+      "domain_recentsearch",
+      "domain_session",
+      "domain_usertopicpreference",
+      "domain_verificationapplication",
+      "repository_memoryrepository",
+      "repository_memoryrepository_assignverificationbadge",
+      "repository_memoryrepository_clearrecentsearches",
+      "repository_memoryrepository_createauditlog",
+      "repository_memoryrepository_createfollowrequest",
+      "repository_memoryrepository_createmediaobject",
+      "repository_memoryrepository_createmessage",
+      "repository_memoryrepository_createoutboxevent",
+      "repository_memoryrepository_createsession",
+      "repository_memoryrepository_createverificationapplication",
+      "repository_memoryrepository_getallpermissions",
+      "repository_memoryrepository_getauditlogs",
+      "repository_memoryrepository_getfollowrequests",
+      "repository_memoryrepository_getmediaobjectbyid",
+      "repository_memoryrepository_getmessages",
+      "repository_memoryrepository_getpendingoutboxevents",
+      "repository_memoryrepository_getrecentsearches",
+      "repository_memoryrepository_getrolepermissions",
+      "repository_memoryrepository_getsecurityauditlogs",
+      "repository_memoryrepository_getsessionbytokenhash",
+      "repository_memoryrepository_getsubscriptionplanbyid",
+      "repository_memoryrepository_getsubscriptionplans",
+      "repository_memoryrepository_getuserbadges",
+      "repository_memoryrepository_getusertopicpreferences",
+      "repository_memoryrepository_getverificationapplication",
+      "repository_memoryrepository_markoutboxeventfailed",
+      "repository_memoryrepository_recordfeedfeedback",
+      "repository_memoryrepository_recordfeedimpressions",
+      "repository_memoryrepository_updateusertopicpreference",
+      "rwmutex",
+      "services_api_internal_repository_memory_go_auditlog",
+      "services_api_internal_repository_memory_go_followrequest",
+      "services_api_internal_repository_memory_go_mediaobject",
+      "services_api_internal_repository_memory_go_message",
+      "services_api_internal_repository_memory_go_permission",
+      "services_api_internal_repository_memory_go_subscriptionplan",
+      "services_api_internal_repository_memory_go_time",
+      "services_api_internal_repository_memory_go_verificationbadge"
+    ],
+    "11": [
       "apps_web_package",
       "apps_web_package_dependencies",
       "apps_web_package_dependencies_clsx",
@@ -706,8 +745,7 @@
       "types_react_dom",
       "typescript"
     ],
-    "11": [
-      "apps_web_src_app_search_page_searchpostsresponse",
+    "12": [
       "apps_web_src_app_status_postid_photo_photoindex_page",
       "apps_web_src_app_status_postid_photo_photoindex_page_page",
       "apps_web_src_app_username_status_postid_page",
@@ -717,10 +755,12 @@
       "apps_web_src_app_username_status_postid_photo_photoindex_page_page",
       "apps_web_src_app_username_status_postid_video_videoindex_page",
       "apps_web_src_app_username_status_postid_video_videoindex_page_page",
+      "apps_web_src_components_composer_postmodal",
       "apps_web_src_components_composer_postmodal_postmodal",
+      "apps_web_src_components_composer_postmodal_postmodalprops",
+      "apps_web_src_components_composer_postmodal_stagedattachment",
       "apps_web_src_components_feed_postcard",
       "apps_web_src_components_feed_postcard_postcard",
-      "apps_web_src_components_feed_postcard_postcardprops",
       "apps_web_src_components_media_mediadetailsidebar",
       "apps_web_src_components_media_mediadetailsidebar_mediadetailsidebar",
       "apps_web_src_components_media_mediadetailsidebar_mediadetailsidebarprops",
@@ -742,60 +782,13 @@
       "apps_web_src_components_media_videoplayer_videoplayer",
       "apps_web_src_components_media_videoplayer_videoplayerprops",
       "apps_web_src_components_virtualized_list_virtualizedfeed",
+      "apps_web_src_components_virtualized_list_virtualizedfeed_virtualizedfeed",
       "apps_web_src_components_virtualized_list_virtualizedfeed_virtualizedfeedprops",
       "apps_web_src_lib_utils_formatfulltimestamp",
       "apps_web_src_lib_utils_formatnumber",
       "apps_web_src_lib_utils_formatrelativetime",
       "apps_web_src_types_index_mediaobject",
       "apps_web_src_types_index_post"
-    ],
-    "12": [
-      "apps_web_src_app_bookmarks_page",
-      "apps_web_src_app_bookmarks_page_bookmarkspage",
-      "apps_web_src_app_explore_page",
-      "apps_web_src_app_explore_page_explorepage",
-      "apps_web_src_app_messages_page",
-      "apps_web_src_app_messages_page_messagescontent",
-      "apps_web_src_app_messages_page_messagespage",
-      "apps_web_src_app_notifications_page",
-      "apps_web_src_app_notifications_page_notificationspage",
-      "apps_web_src_app_page",
-      "apps_web_src_app_page_feedresponse",
-      "apps_web_src_app_search_page",
-      "apps_web_src_app_search_page_explorecategory",
-      "apps_web_src_app_search_page_searchpage",
-      "apps_web_src_app_search_page_searchpagecontent",
-      "apps_web_src_app_search_page_searchtab",
-      "apps_web_src_app_settings_page",
-      "apps_web_src_app_settings_page_settingspage",
-      "apps_web_src_app_settings_page_settingssection",
-      "apps_web_src_app_username_followers_page",
-      "apps_web_src_app_username_followers_page_followerspage",
-      "apps_web_src_components_composer_composercontext_usecomposer",
-      "apps_web_src_components_composer_mobilecomposermodal",
-      "apps_web_src_components_composer_mobilecomposermodal_mobilecomposermodal",
-      "apps_web_src_components_composer_mobilecomposermodal_mobilecomposermodalprops",
-      "apps_web_src_components_composer_mobilecomposermodal_stagedattachment",
-      "apps_web_src_components_layout_appshell",
-      "apps_web_src_components_layout_leftnavrail",
-      "apps_web_src_components_layout_leftnavrail_leftnavrail",
-      "apps_web_src_components_layout_mobilebottomnav",
-      "apps_web_src_components_layout_mobilebottomnav_mobilebottomnav",
-      "apps_web_src_components_layout_mobilebottomnav_mobilebottomnavprops",
-      "apps_web_src_components_layout_mobiledrawer",
-      "apps_web_src_components_layout_mobiledrawer_mobiledrawer",
-      "apps_web_src_components_layout_mobiledrawer_mobiledrawerprops",
-      "apps_web_src_components_layout_rightsidebar_rightsidebar",
-      "apps_web_src_components_layout_routetransition",
-      "apps_web_src_components_layout_routetransition_routetransition",
-      "apps_web_src_components_virtualized_list_virtualizedfeed_virtualizedfeed",
-      "apps_web_src_lib_query_keys",
-      "apps_web_src_lib_query_keys_feedkeys",
-      "apps_web_src_lib_query_keys_searchkeys",
-      "apps_web_src_lib_usecurrentuser_usecurrentuser",
-      "apps_web_src_lib_userealtime_userealtime",
-      "apps_web_src_lib_utils",
-      "apps_web_src_lib_utils_cn"
     ],
     "13": [
       "apps_web_src_app_admin_page",
@@ -834,6 +827,32 @@
       "apps_web_src_types_index_verificationbadge"
     ],
     "14": [
+      "apps_web_src_app_username_page",
+      "apps_web_src_app_username_page_userprofilepage",
+      "apps_web_src_components_profile_editprofilemodal",
+      "apps_web_src_components_profile_editprofilemodal_editprofilemodal",
+      "apps_web_src_components_profile_editprofilemodal_editprofilemodalprops",
+      "apps_web_src_components_profile_editprofilemodal_name_style_presets",
+      "apps_web_src_components_profile_twofactormanager",
+      "apps_web_src_components_profile_twofactormanager_twofactormanager",
+      "apps_web_src_components_profile_twofactormanager_twofactormanagerprops",
+      "apps_web_src_components_ui_usernamewithrole",
+      "apps_web_src_components_ui_usernamewithrole_buildcustomnameinlinestyle",
+      "apps_web_src_components_ui_usernamewithrole_parsecustomnamestyle",
+      "apps_web_src_components_ui_usernamewithrole_usernamewithrole",
+      "apps_web_src_components_ui_usernamewithrole_usernamewithroleprops",
+      "apps_web_src_types_index_customnamestyle",
+      "apps_web_src_types_index_socialrelationship",
+      "apps_web_src_types_index_totpsetupresponse",
+      "apps_web_src_utils_rolestyles",
+      "apps_web_src_utils_rolestyles_getrolebadge",
+      "apps_web_src_utils_rolestyles_getroledisplayname",
+      "apps_web_src_utils_rolestyles_getrolenameclass"
+    ],
+    "15": [
+      "apps_web_src_app_layout",
+      "apps_web_src_app_layout_metadata",
+      "apps_web_src_app_layout_rootlayout",
       "apps_web_src_app_username_following_page",
       "apps_web_src_app_username_following_page_followingpage",
       "apps_web_src_components_auth_authmodal",
@@ -843,8 +862,10 @@
       "apps_web_src_components_composer_composercontext_composercontext",
       "apps_web_src_components_composer_composercontext_composercontextvalue",
       "apps_web_src_components_composer_composercontext_composerprovider",
+      "apps_web_src_components_layout_appshell_appshell",
       "apps_web_src_components_media_photoviewermodal_photoviewermodal",
       "apps_web_src_components_providers_appproviders",
+      "apps_web_src_components_providers_appproviders_appproviders",
       "apps_web_src_components_providers_appproviders_globalauthmodal",
       "apps_web_src_components_providers_appproviders_nextauthsync",
       "apps_web_src_components_subscription_upgrademodal",
@@ -864,7 +885,7 @@
       "apps_web_src_lib_usecurrentuser",
       "apps_web_src_lib_userealtime_realtimeprovider"
     ],
-    "15": [
+    "16": [
       "handler_handler",
       "handler_handler_disabletotp",
       "handler_handler_enabletotp",
@@ -895,7 +916,7 @@
       "user",
       "uuid"
     ],
-    "16": [
+    "17": [
       "apps_web_tsconfig",
       "apps_web_tsconfig_compileroptions",
       "apps_web_tsconfig_compileroptions_allowjs",
@@ -924,7 +945,7 @@
       "ref_ts",
       "ref_tsx"
     ],
-    "17": [
+    "18": [
       "repository_postgresrepository_attachmediatoposts",
       "repository_postgresrepository_attachparentposts",
       "repository_postgresrepository_attachquotestoposts",
@@ -950,50 +971,26 @@
       "services_api_internal_repository_postgres_go_feedcursor",
       "services_api_internal_repository_postgres_go_post"
     ],
-    "18": [
-      "domain_invoice",
-      "domain_paymentorder",
-      "repository_memoryrepository_createinvoice",
-      "repository_memoryrepository_createpaymentorder",
-      "repository_memoryrepository_getactivepaymentorder",
-      "repository_memoryrepository_getbillinghistory",
-      "repository_memoryrepository_getpaymentorderbyid"
-    ],
     "19": [
-      "apps_web_src_app_search_page_searchusersresponse",
-      "apps_web_src_app_username_page",
-      "apps_web_src_app_username_page_userprofilepage",
-      "apps_web_src_components_layout_leftnavrail_leftnavrailprops",
-      "apps_web_src_components_layout_rightsidebar",
-      "apps_web_src_components_layout_rightsidebar_rightsidebarprops",
-      "apps_web_src_components_profile_editprofilemodal",
-      "apps_web_src_components_profile_editprofilemodal_editprofilemodal",
-      "apps_web_src_components_profile_editprofilemodal_editprofilemodalprops",
-      "apps_web_src_components_profile_editprofilemodal_name_style_presets",
-      "apps_web_src_components_profile_twofactormanager",
-      "apps_web_src_components_profile_twofactormanager_twofactormanager",
-      "apps_web_src_components_profile_twofactormanager_twofactormanagerprops",
-      "apps_web_src_components_search_searchbardropdown",
-      "apps_web_src_components_search_searchbardropdown_recentsearchitem",
-      "apps_web_src_components_search_searchbardropdown_searchbardropdown",
-      "apps_web_src_components_search_searchbardropdown_searchbardropdownprops",
-      "apps_web_src_components_search_searchbardropdown_suggestiondata",
-      "apps_web_src_components_ui_usernamewithrole",
-      "apps_web_src_components_ui_usernamewithrole_buildcustomnameinlinestyle",
-      "apps_web_src_components_ui_usernamewithrole_parsecustomnamestyle",
-      "apps_web_src_components_ui_usernamewithrole_usernamewithrole",
-      "apps_web_src_components_ui_usernamewithrole_usernamewithroleprops",
-      "apps_web_src_types_index_authresponse",
-      "apps_web_src_types_index_customnamestyle",
-      "apps_web_src_types_index_socialrelationship",
-      "apps_web_src_types_index_totpsetupresponse",
-      "apps_web_src_types_index_trendingtopic",
-      "apps_web_src_types_index_user",
-      "apps_web_src_types_index_userrecommendation",
-      "apps_web_src_utils_rolestyles",
-      "apps_web_src_utils_rolestyles_getrolebadge",
-      "apps_web_src_utils_rolestyles_getroledisplayname",
-      "apps_web_src_utils_rolestyles_getrolenameclass"
+      "apps_web_src_app_page_encodefeedcursor",
+      "apps_web_src_app_page_homepage",
+      "apps_web_src_components_common_verifiedbadge",
+      "apps_web_src_components_common_verifiedbadge_verifiedbadge",
+      "apps_web_src_components_common_verifiedbadge_verifiedbadgeprops",
+      "apps_web_src_components_composer_postcomposer",
+      "apps_web_src_components_composer_postcomposer_postcomposer",
+      "apps_web_src_components_composer_postcomposer_postcomposerprops",
+      "apps_web_src_components_composer_postcomposer_stagedattachment",
+      "apps_web_src_components_subscription_upgrademodalcontext",
+      "apps_web_src_components_subscription_upgrademodalcontext_upgrademodalcontext",
+      "apps_web_src_components_subscription_upgrademodalcontext_upgrademodalcontexttype",
+      "apps_web_src_components_subscription_upgrademodalcontext_upgrademodalprovider",
+      "apps_web_src_components_subscription_upgrademodalcontext_useupgrademodal",
+      "apps_web_src_lib_mediavalidation",
+      "apps_web_src_lib_mediavalidation_filtervalidmediafiles",
+      "apps_web_src_lib_mediavalidation_isvalidmediafile",
+      "apps_web_src_lib_mediavalidation_x_allowed_media_accept",
+      "apps_web_src_lib_mediavalidation_x_allowed_media_extensions"
     ],
     "20": [
       "repository_memoryrepository_createpost",
@@ -1019,30 +1016,6 @@
       "services_api_internal_repository_memory_go_post"
     ],
     "21": [
-      "apps_web_src_app_page_encodefeedcursor",
-      "apps_web_src_app_page_homepage",
-      "apps_web_src_components_common_verifiedbadge",
-      "apps_web_src_components_common_verifiedbadge_verifiedbadge",
-      "apps_web_src_components_common_verifiedbadge_verifiedbadgeprops",
-      "apps_web_src_components_composer_postcomposer",
-      "apps_web_src_components_composer_postcomposer_postcomposer",
-      "apps_web_src_components_composer_postcomposer_postcomposerprops",
-      "apps_web_src_components_composer_postcomposer_stagedattachment",
-      "apps_web_src_components_composer_postmodal",
-      "apps_web_src_components_composer_postmodal_postmodalprops",
-      "apps_web_src_components_composer_postmodal_stagedattachment",
-      "apps_web_src_components_subscription_upgrademodalcontext",
-      "apps_web_src_components_subscription_upgrademodalcontext_upgrademodalcontext",
-      "apps_web_src_components_subscription_upgrademodalcontext_upgrademodalcontexttype",
-      "apps_web_src_components_subscription_upgrademodalcontext_upgrademodalprovider",
-      "apps_web_src_components_subscription_upgrademodalcontext_useupgrademodal",
-      "apps_web_src_lib_mediavalidation",
-      "apps_web_src_lib_mediavalidation_filtervalidmediafiles",
-      "apps_web_src_lib_mediavalidation_isvalidmediafile",
-      "apps_web_src_lib_mediavalidation_x_allowed_media_accept",
-      "apps_web_src_lib_mediavalidation_x_allowed_media_extensions"
-    ],
-    "22": [
       "repository_memoryrepository_bootstrapowner",
       "repository_memoryrepository_createuser",
       "repository_memoryrepository_getallusersadmin",
@@ -1062,7 +1035,7 @@
       "repository_memoryrepository_updateprofile",
       "services_api_internal_repository_memory_go_user"
     ],
-    "23": [
+    "22": [
       "apps_web_src_app_bookmarks_loading",
       "apps_web_src_app_bookmarks_loading_loading",
       "apps_web_src_app_loading",
@@ -1079,7 +1052,7 @@
       "apps_web_src_components_skeletons_profileskeleton",
       "apps_web_src_components_skeletons_profileskeleton_profileskeleton"
     ],
-    "24": [
+    "23": [
       "handler_admindeletepostrequest",
       "handler_assignmembershiprequest",
       "handler_createrolerequest",
@@ -1095,7 +1068,7 @@
       "services_api_internal_handler_admin_go_time",
       "services_api_internal_handler_admin_go_uuid"
     ],
-    "25": [
+    "24": [
       "apps_web_src_app_explore_loading",
       "apps_web_src_app_explore_loading_loading",
       "apps_web_src_app_messages_loading",
@@ -1109,7 +1082,7 @@
       "apps_web_src_components_skeletons_otherskeletons_messagesskeleton",
       "apps_web_src_components_skeletons_otherskeletons_notificationsskeleton"
     ],
-    "26": [
+    "25": [
       "apps_web_src_lib_qrcode",
       "apps_web_src_lib_qrcode_alignment_patterns",
       "apps_web_src_lib_qrcode_ec_codewords_l",
@@ -1123,7 +1096,7 @@
       "apps_web_src_lib_qrcode_rsgeneratorpoly",
       "apps_web_src_lib_qrcode_total_codewords"
     ],
-    "27": [
+    "26": [
       "repository_postgresrepository_createuser",
       "repository_postgresrepository_getfollowers",
       "repository_postgresrepository_getfollowing",
@@ -1137,7 +1110,7 @@
       "repository_postgresrepository_updateprofile",
       "services_api_internal_repository_postgres_go_user"
     ],
-    "28": [
+    "27": [
       "handler_createpostrequest",
       "handler_feedfeedbackrequest",
       "handler_feedimpressionsrequest",
@@ -1150,7 +1123,7 @@
       "services_api_internal_handler_handler",
       "services_api_internal_handler_handler_go_uuid"
     ],
-    "29": [
+    "28": [
       "apps_web_src_components_media_videocontrols",
       "apps_web_src_components_media_videocontrols_formattime",
       "apps_web_src_components_media_videocontrols_speed_options",
@@ -1161,7 +1134,7 @@
       "apps_web_src_components_media_videoprogressbar_videoprogressbar",
       "apps_web_src_components_media_videoprogressbar_videoprogressbarprops"
     ],
-    "30": [
+    "29": [
       "repository_memoryrepository_assignusermembership",
       "repository_memoryrepository_createsubscription",
       "repository_memoryrepository_getactivesubscription",
@@ -1172,7 +1145,7 @@
       "services_api_internal_repository_memory_go_subscription",
       "services_api_internal_repository_memory_go_usermembership"
     ],
-    "31": [
+    "30": [
       "repository_memoryrepository_createrole",
       "repository_memoryrepository_getallroles",
       "repository_memoryrepository_getrolebyid",
@@ -1182,6 +1155,15 @@
       "repository_memoryrepository_haspermission",
       "repository_memoryrepository_updaterole",
       "services_api_internal_repository_memory_go_role"
+    ],
+    "31": [
+      "domain_invoice",
+      "domain_paymentorder",
+      "repository_memoryrepository_createinvoice",
+      "repository_memoryrepository_createpaymentorder",
+      "repository_memoryrepository_getactivepaymentorder",
+      "repository_memoryrepository_getbillinghistory",
+      "repository_memoryrepository_getpaymentorderbyid"
     ],
     "32": [
       "repository_memoryrepository_getallmembershipplans",
@@ -1209,415 +1191,433 @@
       "apps_web_src_lib_auth_authoptions"
     ],
     "35": [
+      "apps_web_src_app_search_page",
+      "apps_web_src_app_search_page_explorecategory",
+      "apps_web_src_app_search_page_searchpage",
+      "apps_web_src_app_search_page_searchpagecontent",
+      "apps_web_src_app_search_page_searchpostsresponse",
+      "apps_web_src_app_search_page_searchtab",
+      "apps_web_src_app_search_page_searchusersresponse",
+      "apps_web_src_components_feed_postcard_postcardprops",
+      "apps_web_src_components_layout_leftnavrail_leftnavrailprops",
+      "apps_web_src_components_layout_rightsidebar",
+      "apps_web_src_components_layout_rightsidebar_rightsidebarprops",
+      "apps_web_src_components_search_searchbardropdown",
+      "apps_web_src_components_search_searchbardropdown_recentsearchitem",
+      "apps_web_src_components_search_searchbardropdown_searchbardropdown",
+      "apps_web_src_components_search_searchbardropdown_searchbardropdownprops",
+      "apps_web_src_components_search_searchbardropdown_suggestiondata",
+      "apps_web_src_lib_query_keys",
+      "apps_web_src_lib_query_keys_feedkeys",
+      "apps_web_src_lib_query_keys_searchkeys",
+      "apps_web_src_types_index_authresponse",
+      "apps_web_src_types_index_trendingtopic",
+      "apps_web_src_types_index_user",
+      "apps_web_src_types_index_userrecommendation"
+    ],
+    "36": [
       "apps_web_src_components_layout_toploadingbar",
       "apps_web_src_components_layout_toploadingbar_routespinner",
       "apps_web_src_components_layout_toploadingbar_routespinnerprops",
       "apps_web_src_components_layout_toploadingbar_toploadingbar",
       "apps_web_src_components_layout_toploadingbar_toploadingbarinner"
     ],
-    "36": [
+    "37": [
       "repository_postgresrepository_createsubscription",
       "repository_postgresrepository_getactivesubscription",
       "repository_postgresrepository_getuserentitlements",
       "services_api_internal_repository_postgres_go_entitlements",
       "services_api_internal_repository_postgres_go_subscription"
     ],
-    "37": [
+    "38": [
       "services_api_internal_middleware_concurrency",
       "services_api_internal_middleware_concurrency_concurrencylimiter",
       "services_api_internal_middleware_concurrency_getactiverequests",
       "services_api_internal_middleware_concurrency_maxbodysizemiddleware",
       "services_api_internal_middleware_concurrency_requesttimeoutmiddleware"
     ],
-    "38": [
+    "39": [
       "repository_memoryrepository_createnotification",
       "repository_memoryrepository_getnotifications",
       "repository_memoryrepository_getnotificationswithtab",
       "services_api_internal_repository_memory_go_notification"
     ],
-    "39": [
+    "40": [
       "repository_postgresrepository_createnotification",
       "repository_postgresrepository_getnotifications",
       "repository_postgresrepository_getnotificationswithtab",
       "services_api_internal_repository_postgres_go_notification"
     ],
-    "40": [
+    "41": [
       "apps_web_src_middleware",
       "apps_web_src_middleware_config",
       "apps_web_src_middleware_middleware"
     ],
-    "41": [
+    "42": [
       "repository_memoryrepository_cleanupoldoutboxevents",
       "repository_memoryrepository_dismissuserrecommendation",
       "services_api_internal_repository_memory_go_duration"
     ],
-    "42": [
+    "43": [
       "repository_postgresrepository_assignverificationbadge",
       "repository_postgresrepository_getuserbadges",
       "services_api_internal_repository_postgres_go_verificationbadge"
     ],
-    "43": [
+    "44": [
       "repository_postgresrepository_cleanupoldoutboxevents",
       "repository_postgresrepository_dismissuserrecommendation",
       "services_api_internal_repository_postgres_go_duration"
     ],
-    "44": [
+    "45": [
       "repository_postgresrepository_createfollowrequest",
       "repository_postgresrepository_getfollowrequests",
       "services_api_internal_repository_postgres_go_followrequest"
     ],
-    "45": [
+    "46": [
       "repository_postgresrepository_createmediaobject",
       "repository_postgresrepository_getmediaobjectbyid",
       "services_api_internal_repository_postgres_go_mediaobject"
     ],
-    "46": [
+    "47": [
       "repository_postgresrepository_createmessage",
       "repository_postgresrepository_getmessages",
       "services_api_internal_repository_postgres_go_message"
     ],
-    "47": [
+    "48": [
       "repository_postgresrepository_getsubscriptionplanbyid",
       "repository_postgresrepository_getsubscriptionplans",
       "services_api_internal_repository_postgres_go_subscriptionplan"
     ],
-    "48": [
+    "49": [
       "scripts_test_all_apis",
       "scripts_test_all_apis_call_api",
       "scripts_test_all_apis_run"
     ],
-    "49": [
+    "50": [
       "apps_web_next_config",
       "apps_web_next_config_nextconfig"
     ],
-    "50": [
+    "51": [
       "apps_web_next_env_d",
       "apps_web_next_env_d_rationale_4"
     ],
-    "51": [
+    "52": [
       "apps_web_tailwind_config",
       "apps_web_tailwind_config_config"
     ],
-    "52": [
+    "53": [
       "repository_memoryrepository_getadminoverview",
       "services_api_internal_repository_memory_go_adminoverview"
     ],
-    "53": [
+    "54": [
       "repository_memoryrepository_gettrendingtopics",
       "services_api_internal_repository_memory_go_trendingtopic"
     ],
-    "54": [
+    "55": [
       "scripts_backup_db",
       "scripts_backup_db_sh__entry"
     ],
-    "55": [
+    "56": [
       "scripts_benchmark_search",
       "scripts_benchmark_search_measure_endpoint"
     ],
-    "56": [
+    "57": [
       "scripts_monitoring",
       "scripts_monitoring_sh__entry"
     ],
-    "57": [
+    "58": [
       "adminoverview"
     ],
-    "58": [
+    "59": [
       "adminpostfilter"
     ],
-    "59": [
+    "60": [
       "apps_web_postcss_config"
     ],
-    "60": [
+    "61": [
       "auditlog"
     ],
-    "61": [
+    "62": [
       "conn"
     ],
-    "62": [
+    "63": [
       "conversation"
     ],
-    "63": [
+    "64": [
       "counterreconciliationresult"
     ],
-    "64": [
+    "65": [
       "entitlements"
     ],
-    "65": [
+    "66": [
       "feedcursor"
     ],
-    "66": [
+    "67": [
       "feedfeedback"
     ],
-    "67": [
+    "68": [
       "feedimpression"
     ],
-    "68": [
+    "69": [
       "followrequest"
     ],
-    "69": [
+    "70": [
       "invoice"
     ],
-    "70": [
+    "71": [
       "mediaobject"
     ],
-    "71": [
+    "72": [
       "membershipentitlement"
     ],
-    "72": [
+    "73": [
       "membershipplan"
     ],
-    "73": [
+    "74": [
       "message"
     ],
-    "74": [
+    "75": [
       "notification"
     ],
-    "75": [
+    "76": [
       "outboxevent"
     ],
-    "76": [
+    "77": [
       "permission"
     ],
-    "77": [
+    "78": [
       "pkg_github_com_x_reconstruction_api"
     ],
-    "78": [
+    "79": [
       "plisioservice"
     ],
-    "79": [
+    "80": [
       "post"
     ],
-    "80": [
+    "81": [
       "rankingweights"
     ],
-    "81": [
+    "82": [
       "recentsearch"
     ],
-    "82": [
+    "83": [
       "role"
     ],
-    "83": [
+    "84": [
       "scripts_dev"
     ],
-    "84": [
+    "85": [
       "scripts_load_test_spike"
     ],
-    "85": [
+    "86": [
       "scripts_test"
     ],
-    "86": [
+    "87": [
       "scripts_test_auth"
     ],
-    "87": [
+    "88": [
       "scripts_test_auth_flow"
     ],
-    "88": [
+    "89": [
       "scripts_test_media_viewer"
     ],
-    "89": [
+    "90": [
       "searchfilterparams"
     ],
-    "90": [
+    "91": [
       "services_api_internal_handler_handler_go_client"
     ],
-    "91": [
+    "92": [
       "services_api_internal_handler_handler_go_context"
     ],
-    "92": [
+    "93": [
       "services_api_internal_handler_handler_go_mediaobject"
     ],
-    "93": [
+    "94": [
       "services_api_internal_handler_handler_go_paymentorder"
     ],
-    "94": [
+    "95": [
       "services_api_internal_handler_handler_go_repository"
     ],
-    "95": [
+    "96": [
       "services_api_internal_handler_handler_go_subscription"
     ],
-    "96": [
+    "97": [
       "services_api_internal_handler_payments_go_paymentorder"
     ],
-    "97": [
+    "98": [
       "services_api_internal_handler_recommendation_test_go_mux"
     ],
-    "98": [
+    "99": [
       "services_api_internal_handler_recommendation_test_go_t"
     ],
-    "99": [
+    "100": [
       "services_api_internal_handler_totp_go_request"
     ],
-    "100": [
+    "101": [
       "services_api_internal_handler_totp_go_responsewriter"
     ],
-    "101": [
+    "102": [
       "services_api_internal_handler_totp_go_time"
     ],
-    "102": [
+    "103": [
       "services_api_internal_handler_totp_go_user"
     ],
-    "103": [
+    "104": [
       "services_api_internal_handler_totp_go_uuid"
     ],
-    "104": [
+    "105": [
       "services_api_internal_media_media_go_mediaobject"
     ],
-    "105": [
+    "106": [
       "services_api_internal_middleware_authorization_go_handler"
     ],
-    "106": [
+    "107": [
       "services_api_internal_middleware_middleware_go_client"
     ],
-    "107": [
+    "108": [
       "services_api_internal_middleware_middleware_go_repository"
     ],
-    "108": [
+    "109": [
       "services_api_internal_payment_gateway_go_client"
     ],
-    "109": [
+    "110": [
       "services_api_internal_payment_gateway_go_context"
     ],
-    "110": [
+    "111": [
       "services_api_internal_payment_gateway_go_time"
     ],
-    "111": [
+    "112": [
       "services_api_internal_payment_gateway_go_uuid"
     ],
-    "112": [
+    "113": [
       "services_api_internal_payment_plisio_go_client"
     ],
-    "113": [
+    "114": [
       "services_api_internal_payment_plisio_go_context"
     ],
-    "114": [
+    "115": [
       "services_api_internal_payment_plisio_go_rawmessage"
     ],
-    "115": [
+    "116": [
       "services_api_internal_payment_plisio_go_uuid"
     ],
-    "116": [
+    "117": [
       "services_api_internal_realtime_hub_go_rawmessage"
     ],
-    "117": [
+    "118": [
       "services_api_internal_repository_memory_go_adminpostfilter"
     ],
-    "118": [
+    "119": [
       "services_api_internal_repository_memory_go_counterreconciliationresult"
     ],
-    "119": [
+    "120": [
       "services_api_internal_repository_memory_go_feedfeedback"
     ],
-    "120": [
+    "121": [
       "services_api_internal_repository_memory_go_feedimpression"
     ],
-    "121": [
+    "122": [
       "services_api_internal_repository_memory_go_invoice"
     ],
-    "122": [
+    "123": [
       "services_api_internal_repository_memory_go_outboxevent"
     ],
-    "123": [
+    "124": [
       "services_api_internal_repository_memory_go_paymentorder"
     ],
-    "124": [
+    "125": [
       "services_api_internal_repository_memory_go_rankingweights"
     ],
-    "125": [
+    "126": [
       "services_api_internal_repository_memory_go_recentsearch"
     ],
-    "126": [
+    "127": [
       "services_api_internal_repository_memory_go_rwmutex"
     ],
-    "127": [
+    "128": [
       "services_api_internal_repository_memory_go_searchfilterparams"
     ],
-    "128": [
+    "129": [
       "services_api_internal_repository_memory_go_session"
     ],
-    "129": [
+    "130": [
       "services_api_internal_repository_memory_go_usertopicpreference"
     ],
-    "130": [
+    "131": [
       "services_api_internal_repository_memory_go_verificationapplication"
     ],
-    "131": [
+    "132": [
       "services_api_internal_repository_postgres_go_counterreconciliationresult"
     ],
-    "132": [
+    "133": [
       "services_api_internal_repository_postgres_go_feedfeedback"
     ],
-    "133": [
+    "134": [
       "services_api_internal_repository_postgres_go_feedimpression"
     ],
-    "134": [
+    "135": [
       "services_api_internal_repository_postgres_go_invoice"
     ],
-    "135": [
+    "136": [
       "services_api_internal_repository_postgres_go_outboxevent"
     ],
-    "136": [
+    "137": [
       "services_api_internal_repository_postgres_go_paymentorder"
     ],
-    "137": [
+    "138": [
       "services_api_internal_repository_postgres_go_rankingweights"
     ],
-    "138": [
+    "139": [
       "services_api_internal_repository_postgres_go_recentsearch"
     ],
-    "139": [
+    "140": [
       "services_api_internal_repository_postgres_go_searchfilterparams"
     ],
-    "140": [
+    "141": [
       "services_api_internal_repository_postgres_go_session"
     ],
-    "141": [
+    "142": [
       "services_api_internal_repository_postgres_go_usertopicpreference"
     ],
-    "142": [
+    "143": [
       "services_api_internal_repository_postgres_go_verificationapplication"
     ],
-    "143": [
+    "144": [
       "services_api_internal_repository_postgres_rbac"
     ],
-    "144": [
+    "145": [
       "services_api_internal_repository_postgres_rbac_go_adminpostfilter"
     ],
-    "145": [
+    "146": [
       "session"
     ],
-    "146": [
+    "147": [
       "socialrelationship"
     ],
-    "147": [
+    "148": [
       "subscription"
     ],
-    "148": [
+    "149": [
       "subscriptionplan"
     ],
-    "149": [
+    "150": [
       "trendingtopic"
     ],
-    "150": [
+    "151": [
       "usermembership"
     ],
-    "151": [
+    "152": [
       "userrecommendation"
     ],
-    "152": [
+    "153": [
       "usertopicpreference"
     ],
-    "153": [
+    "154": [
       "verificationapplication"
     ],
-    "154": [
-      "verificationbadge"
-    ],
     "155": [
-      "apps_web_src_app_layout",
-      "apps_web_src_app_layout_metadata",
-      "apps_web_src_app_layout_rootlayout",
-      "apps_web_src_components_layout_appshell_appshell",
-      "apps_web_src_components_providers_appproviders_appproviders"
+      "verificationbadge"
     ]
   },
   "cohesion": {
@@ -1628,40 +1628,40 @@
     "4": 0.05048076923076923,
     "5": 0.06801346801346801,
     "6": 0.07111756168359942,
-    "7": 0.07171717171717172,
-    "8": 0.10815602836879433,
+    "7": 0.10815602836879433,
+    "8": 0.16816816816816818,
     "9": 0.10338164251207729,
-    "10": 0.046511627906976744,
-    "11": 0.10365853658536585,
-    "12": 0.1323671497584541,
+    "10": 0.07171717171717172,
+    "11": 0.046511627906976744,
+    "12": 0.10077519379844961,
     "13": 0.08021390374331551,
-    "14": 0.15024630541871922,
-    "15": 0.16009852216748768,
-    "16": 0.07407407407407407,
-    "17": 0.17391304347826086,
-    "18": 0.2857142857142857,
-    "19": 0.10338680926916222,
+    "14": 0.1523809523809524,
+    "15": 0.11942959001782531,
+    "16": 0.15517241379310345,
+    "17": 0.07407407407407407,
+    "18": 0.17391304347826086,
+    "19": 0.15204678362573099,
     "20": 0.18571428571428572,
-    "21": 0.1341991341991342,
-    "22": 0.13725490196078433,
-    "23": 0.19047619047619047,
-    "24": 0.16483516483516483,
-    "25": 0.22727272727272727,
-    "26": 0.24242424242424243,
-    "27": 0.19696969696969696,
-    "28": 0.21818181818181817,
-    "29": 0.3055555555555556,
-    "30": 0.2222222222222222,
-    "31": 0.25,
+    "21": 0.13725490196078433,
+    "22": 0.19047619047619047,
+    "23": 0.16483516483516483,
+    "24": 0.22727272727272727,
+    "25": 0.24242424242424243,
+    "26": 0.19696969696969696,
+    "27": 0.21818181818181817,
+    "28": 0.3055555555555556,
+    "29": 0.2222222222222222,
+    "30": 0.25,
+    "31": 0.2857142857142857,
     "32": 0.3333333333333333,
     "33": 0.2857142857142857,
     "34": 0.6,
-    "35": 0.4,
+    "35": 0.13438735177865613,
     "36": 0.4,
     "37": 0.4,
-    "38": 0.6666666666666666,
-    "39": 0.5,
-    "40": 0.6666666666666666,
+    "38": 0.4,
+    "39": 0.6666666666666666,
+    "40": 0.5,
     "41": 0.6666666666666666,
     "42": 0.6666666666666666,
     "43": 0.6666666666666666,
@@ -1669,7 +1669,7 @@
     "45": 0.6666666666666666,
     "46": 0.6666666666666666,
     "47": 0.6666666666666666,
-    "48": 1.0,
+    "48": 0.6666666666666666,
     "49": 1.0,
     "50": 1.0,
     "51": 1.0,
@@ -1776,7 +1776,7 @@
     "152": 1.0,
     "153": 1.0,
     "154": 1.0,
-    "155": 0.4
+    "155": 1.0
   },
   "gods": [
     {
@@ -1890,18 +1890,18 @@
   "questions": [
     {
       "type": "bridge_node",
-      "question": "Why does `MemoryRepository` connect `MemoryRepository` to `.GetPlanEntitlements`, `T`, `MockCandidateProvider`, `Context`, `.GetNotifications`, `.DismissUserRecommendation`, `PaymentOrder`, `Post`, `.GetAdminOverview`, `User`, `.GetTrendingTopics`, `.GetActiveSubscription`, `Role`?",
+      "question": "Why does `MemoryRepository` connect `MemoryRepository` to `.GetPlanEntitlements`, `T`, `MockCandidateProvider`, `Context`, `.GetNotifications`, `.DismissUserRecommendation`, `Post`, `User`, `.GetAdminOverview`, `.GetTrendingTopics`, `.GetActiveSubscription`, `Role`, `PaymentOrder`?",
       "why": "High betweenness centrality (0.153) - this node is a cross-community bridge."
     },
     {
       "type": "bridge_node",
-      "question": "Why does `NewMemoryRepository()` connect `T` to `.CheckoutSubscription`, `MockCandidateProvider`, `MemoryRepository`?",
-      "why": "High betweenness centrality (0.108) - this node is a cross-community bridge."
+      "question": "Why does `NewMemoryRepository()` connect `T` to `.CheckoutSubscription`, `MemoryRepository`, `MockCandidateProvider`?",
+      "why": "High betweenness centrality (0.111) - this node is a cross-community bridge."
     },
     {
       "type": "bridge_node",
       "question": "Why does `NewHandler()` connect `T` to `writeJSON`, `.CheckoutSubscription`, `handler.go`?",
-      "why": "High betweenness centrality (0.089) - this node is a cross-community bridge."
+      "why": "High betweenness centrality (0.087) - this node is a cross-community bridge."
     },
     {
       "type": "verify_inferred",

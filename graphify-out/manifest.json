@@ -695,9 +695,9 @@
     "semantic_hash": "79beb404c4fe22e6c5408c7e8eae4a9f"
   },
   "apps/web/src/components/profile/TwoFactorManager.tsx": {
-    "mtime": 1794156534.5560992,
-    "ast_hash": "983e7cf772e1b862ef4cf38f88e1ce3d",
-    "semantic_hash": "983e7cf772e1b862ef4cf38f88e1ce3d"
+    "mtime": 1794157653.635759,
+    "ast_hash": "f46a65908f6416ca47289ca448f48315",
+    "semantic_hash": "f46a65908f6416ca47289ca448f48315"
   },
   "apps/web/src/lib/qrcode.tsx": {
     "mtime": 1794151619.7155893,
@@ -705,9 +705,9 @@
     "semantic_hash": "6c543efde391ed9b17a25939faf678ae"
   },
   "services/api/internal/handler/totp.go": {
-    "mtime": 1794156478.4172137,
-    "ast_hash": "40fda52d0bee6cb0ab28f50c3b03d12c",
-    "semantic_hash": "40fda52d0bee6cb0ab28f50c3b03d12c"
+    "mtime": 1794157601.3532495,
+    "ast_hash": "becaba532251e52899b5d697a6cb2093",
+    "semantic_hash": "becaba532251e52899b5d697a6cb2093"
   },
   "services/api/internal/handler/totp_test.go": {
     "mtime": 1794146226.0864637,

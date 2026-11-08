@@ -286,14 +286,9 @@ func (h *Handler) GetTOTPStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := map[string]interface{}{
+	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"totp_enabled": freshUser.TOTPEnabled,
-	}
-	if freshUser.TOTPEnabled && freshUser.TOTPSecret != "" {
-		resp["seed_phrase"] = generateRecoverySeedPhrase(freshUser.TOTPSecret)
-		resp["backup_codes"] = generateDeterministicBackupCodes(freshUser.TOTPSecret)
-	}
-	writeJSON(w, http.StatusOK, resp)
+	})
 }
 
 // SetupTOTP generates a new TOTP secret and otpauth URL so the user can scan the QR code.
