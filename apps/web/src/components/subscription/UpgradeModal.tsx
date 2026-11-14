@@ -76,7 +76,7 @@ const ROLE_METADATA: Record<
     badgeText: '25% off 6 months',
     packageHeading: 'Introductory package:',
     fallbackHighlights: [
-      'VIP Role Badge & Styled Username',
+      'VIP Role & Styled Username',
       'Basic analytics & dashboard',
       'Custom profile colors & theme',
       'Fewer ads in timeline',
@@ -197,10 +197,12 @@ export function UpgradeModal() {
                     ? [meta.fallbackHighlights[0], ...quotaFeatures]
                     : meta.fallbackHighlights;
 
+                const displayName = p.key === 'vip' ? 'VIP' : p.name;
+
                 return {
                   id: p.id,
                   key: p.key,
-                  name: p.name,
+                  name: displayName,
                   badgeText: meta.badgeText,
                   popular: meta.popular,
                   monthlyPriceCents: p.price_amount_cents,
@@ -444,9 +446,7 @@ export function UpgradeModal() {
               {/* Header Bar */}
               <div className="flex items-center justify-between border-b border-[#2f3336] pb-4">
                 <div className="flex items-center gap-3">
-                  <svg viewBox="0 0 24 24" className="w-6 h-6 fill-white">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                  </svg>
+                  <img src="/LM.png" alt="LM Logo" className="w-7 h-7 object-contain" />
                 </div>
 
                 <div className="text-center font-extrabold text-base sm:text-xl hidden md:block">
@@ -656,9 +656,7 @@ export function UpgradeModal() {
 
               {/* Interlocking Logos */}
               <div className="flex items-center justify-center gap-4 py-2">
-                <svg viewBox="0 0 24 24" className="w-10 h-10 fill-white">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                </svg>
+                <img src="/LM.png" alt="LM Logo" className="w-10 h-10 object-contain" />
                 <svg viewBox="0 0 24 24" className="w-9 h-9 stroke-white fill-none stroke-[2]">
                   <circle cx="12" cy="12" r="9" />
                   <line x1="5.5" y1="18.5" x2="18.5" y2="5.5" />

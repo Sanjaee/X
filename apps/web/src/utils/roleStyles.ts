@@ -54,7 +54,7 @@ export function getRoleDisplayName(role: string): string {
     case "mod":
       return "Moderator";
     case "vip":
-      return "VIP Member";
+      return "VIP";
     case "admin":
       return "Admin";
     case "mvp":

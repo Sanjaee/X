@@ -179,16 +179,8 @@ body {
   display: inline-block;
 }
 .vip_badge::before {
-  content: "\f521";
-  color: #f1c40f;
-  font-family: "Font Awesome 6 Free";
-  font-weight: 900;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-font-smoothing: antialiased;
-  display: inline-block;
-  font-size: 0.9em;
-  line-height: 1.25;
-  margin-right: 2px;
+  content: "";
+  display: none;
 }
 
 .member_name {

@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { X, Camera, Sparkles, ChevronRight, Loader2, Palette, RotateCcw } from "lucide-react";
+import { X, Camera, Sparkles, ChevronRight, Loader2, Palette, RotateCcw, Lock } from "lucide-react";
 import { User, CustomNameStyle } from "@/types";
 import { apiRequest } from "@/lib/api";
 import { TwoFactorManager } from "@/components/profile/TwoFactorManager";
 import { UserNameWithRole, parseCustomNameStyle } from "@/components/ui/UserNameWithRole";
+import { useUpgradeModal } from "@/components/subscription/UpgradeModalContext";
 
 const NAME_STYLE_PRESETS: Array<{ label: string; style: CustomNameStyle }> = [
   {
@@ -132,6 +133,15 @@ export function EditProfileModal({
     if (preset.font_weight) setFontWeight(preset.font_weight);
     if (preset.font_family) setFontFamily(preset.font_family);
   };
+
+  const { openUpgradeModal } = useUpgradeModal();
+
+  // Premium roles that have access to Username Style & Effects
+  const userRole = (currentUser.role || "").toLowerCase();
+  const isPremiumUser =
+    Boolean(currentUser.is_owner) ||
+    ["vip", "mvp", "god", "mod", "admin", "owner"].includes(userRole) ||
+    Boolean(currentUser.is_verified);
 
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -378,32 +388,33 @@ export function EditProfileModal({
                 />
               </div>
 
-              {/* Username Style Customizer */}
-              <div className="border border-neutral-800 rounded-xl p-3.5 bg-neutral-950/60 space-y-3.5">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <Palette className="w-4 h-4 text-brand" />
-                    <div>
-                      <div className="text-[14px] font-bold text-foreground leading-tight">
-                        Username Style &amp; Effects
-                      </div>
-                      <div className="text-[12px] text-muted leading-tight mt-0.5">
-                        Customize text color, glow shadow, animated GIF background, and font regardless of role
+              {/* Username Style Customizer - Restricted to Premium Roles */}
+              {isPremiumUser ? (
+                <div className="border border-neutral-800 rounded-xl p-3.5 bg-neutral-950/60 space-y-3.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Palette className="w-4 h-4 text-brand" />
+                      <div>
+                        <div className="text-[14px] font-bold text-foreground leading-tight">
+                          Username Style &amp; Effects
+                        </div>
+                        <div className="text-[12px] text-muted leading-tight mt-0.5">
+                          Customize text color, glow shadow, animated GIF background, and font regardless of role
+                        </div>
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setCustomStyleEnabled(!customStyleEnabled)}
+                      className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                        customStyleEnabled
+                          ? "bg-brand text-white"
+                          : "bg-neutral-800 text-muted hover:text-foreground"
+                      }`}
+                    >
+                      {customStyleEnabled ? "Custom Active" : "Role Default"}
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setCustomStyleEnabled(!customStyleEnabled)}
-                    className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
-                      customStyleEnabled
-                        ? "bg-brand text-white"
-                        : "bg-neutral-800 text-muted hover:text-foreground"
-                    }`}
-                  >
-                    {customStyleEnabled ? "Custom Active" : "Role Default"}
-                  </button>
-                </div>
 
                 {/* Live Preview Box */}
                 <div className="rounded-lg border border-neutral-800 bg-black px-3.5 py-2.5 flex items-center justify-between">
@@ -621,6 +632,31 @@ export function EditProfileModal({
                   </div>
                 )}
               </div>
+            ) : (
+              /* Non-Premium Upsell Card */
+              <div className="border border-neutral-800/80 rounded-xl p-4 bg-neutral-950/40 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0">
+                    <Lock className="w-4 h-4 text-brand" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[14px] font-bold text-foreground leading-tight">
+                      Username Style &amp; Effects
+                    </div>
+                    <div className="text-[12px] text-muted leading-tight mt-0.5">
+                      Upgrade to Premium or VIP to unlock custom colors, shadows, GIF effects, and fonts.
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openUpgradeModal('vip')}
+                  className="px-3.5 py-1.5 rounded-full bg-brand hover:bg-brand/90 text-white text-xs font-bold shrink-0 transition-colors"
+                >
+                  Upgrade
+                </button>
+              </div>
+            )}
 
               {/* Bio Field */}
               <div className="relative border border-neutral-800 focus-within:border-brand rounded-lg p-2.5 transition-colors bg-transparent">

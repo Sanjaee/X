@@ -60,14 +60,14 @@
     "semantic_hash": "1078e7aeca2fff125a78d7bcea8e57f0"
   },
   "apps/web/src/app/notifications/page.tsx": {
-    "mtime": 1794149584.4575472,
-    "ast_hash": "95120985da2aefd4706385e34cd3b742",
-    "semantic_hash": "95120985da2aefd4706385e34cd3b742"
+    "mtime": 1794624701.3593075,
+    "ast_hash": "50e0acfc6a20b32542cf971adc4aeee4",
+    "semantic_hash": "50e0acfc6a20b32542cf971adc4aeee4"
   },
   "apps/web/src/app/page.tsx": {
-    "mtime": 1793528345.445959,
-    "ast_hash": "a5c48043a0815bfa56d240983e08cd6f",
-    "semantic_hash": "a5c48043a0815bfa56d240983e08cd6f"
+    "mtime": 1794625128.6243584,
+    "ast_hash": "a93a7c1951ae4ec8822d72ad3b581e9f",
+    "semantic_hash": "a93a7c1951ae4ec8822d72ad3b581e9f"
   },
   "apps/web/src/app/search/page.tsx": {
     "mtime": 1794149586.122129,
@@ -75,9 +75,9 @@
     "semantic_hash": "b85115385d2e9167a500ecead3ca8441"
   },
   "apps/web/src/components/auth/AuthModal.tsx": {
-    "mtime": 1794157192.3044164,
-    "ast_hash": "cb20d000647e4ed5a635002e08a7c3f7",
-    "semantic_hash": "cb20d000647e4ed5a635002e08a7c3f7"
+    "mtime": 1794628787.3661013,
+    "ast_hash": "dfa5db6a7a35f66f7dcd2c9ffd2ca593",
+    "semantic_hash": "dfa5db6a7a35f66f7dcd2c9ffd2ca593"
   },
   "apps/web/src/components/common/VerifiedBadge.tsx": {
     "mtime": 1793528364.3959117,
@@ -95,14 +95,14 @@
     "semantic_hash": "21208e363e268ff13ce2e1a9a518a18c"
   },
   "apps/web/src/components/layout/LeftNavRail.tsx": {
-    "mtime": 1794149552.249141,
-    "ast_hash": "a33f16c29b6432a4575385095b8bd9a3",
-    "semantic_hash": "a33f16c29b6432a4575385095b8bd9a3"
+    "mtime": 1794627976.2270107,
+    "ast_hash": "1430700ec539758b260be773b8ae7c5d",
+    "semantic_hash": "1430700ec539758b260be773b8ae7c5d"
   },
   "apps/web/src/components/layout/RightSidebar.tsx": {
-    "mtime": 1794155646.7565174,
-    "ast_hash": "8c7718a361558bbcc32cdbf815383c18",
-    "semantic_hash": "8c7718a361558bbcc32cdbf815383c18"
+    "mtime": 1794628795.5936055,
+    "ast_hash": "65e0ebc04dc1d93464f833891b424d34",
+    "semantic_hash": "65e0ebc04dc1d93464f833891b424d34"
   },
   "apps/web/src/components/providers/AppProviders.tsx": {
     "mtime": 1794155547.8199408,
@@ -475,14 +475,14 @@
     "semantic_hash": "7ac26849ee733950aacd00451df9b164"
   },
   "apps/web/src/app/admin/page.tsx": {
-    "mtime": 1794148680.7322521,
-    "ast_hash": "fafd85dbfae4dd6beb504248698bd5de",
-    "semantic_hash": "fafd85dbfae4dd6beb504248698bd5de"
+    "mtime": 1794628779.749082,
+    "ast_hash": "05709b4c78ad8a5a138c70de91a5213b",
+    "semantic_hash": "05709b4c78ad8a5a138c70de91a5213b"
   },
   "apps/web/src/components/common/TierPresentation.tsx": {
-    "mtime": 1792226908.5250542,
-    "ast_hash": "2eb58f58bfd9baab5293f86179d3c37d",
-    "semantic_hash": "2eb58f58bfd9baab5293f86179d3c37d"
+    "mtime": 1794626173.5624385,
+    "ast_hash": "de6b19b948ba00e0f188654295bdace6",
+    "semantic_hash": "de6b19b948ba00e0f188654295bdace6"
   },
   "services/api/internal/handler/admin.go": {
     "mtime": 1794148676.8616498,
@@ -655,9 +655,9 @@
     "semantic_hash": "16f9e17093bbd5566a1737ab5d0ef9db"
   },
   "apps/web/src/components/profile/EditProfileModal.tsx": {
-    "mtime": 1794149673.5202324,
-    "ast_hash": "9073fc52597737664f6dfed5b004bb39",
-    "semantic_hash": "9073fc52597737664f6dfed5b004bb39"
+    "mtime": 1794626504.7677603,
+    "ast_hash": "ce711fffefafb8756f8a9d4ba1a596e4",
+    "semantic_hash": "ce711fffefafb8756f8a9d4ba1a596e4"
   },
   "apps/web/src/app/settings/page.tsx": {
     "mtime": 1794151624.944929,
@@ -670,14 +670,14 @@
     "semantic_hash": "a4385fcb62a683e3facbad2fa34a2574"
   },
   "apps/web/src/utils/roleStyles.ts": {
-    "mtime": 1793505944.247418,
-    "ast_hash": "7d66cbeccee52cf27ecabc18f7e1122b",
-    "semantic_hash": "7d66cbeccee52cf27ecabc18f7e1122b"
+    "mtime": 1794626168.3294377,
+    "ast_hash": "343c6ca25576ca7326a768574e4c8cf9",
+    "semantic_hash": "343c6ca25576ca7326a768574e4c8cf9"
   },
   "apps/web/src/components/subscription/UpgradeModal.tsx": {
-    "mtime": 1793554003.0309005,
-    "ast_hash": "8b78d3720ead0f320cb94c6c392dff26",
-    "semantic_hash": "8b78d3720ead0f320cb94c6c392dff26"
+    "mtime": 1794628812.1995714,
+    "ast_hash": "b5e179820fc15e3fcb52ad809b39f1cb",
+    "semantic_hash": "b5e179820fc15e3fcb52ad809b39f1cb"
   },
   "apps/web/src/components/subscription/UpgradeModalContext.tsx": {
     "mtime": 1793531721.6725962,

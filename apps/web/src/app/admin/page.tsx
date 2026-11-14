@@ -596,10 +596,8 @@ export default function AdminDashboardPage() {
               className="flex items-center gap-2 p-1.5 -ml-1.5 rounded-full hover:bg-subtle transition-colors group"
               title="Return to Main App"
             >
-              <div className="w-9 h-9 rounded-full bg-subtle border border-border flex items-center justify-center font-black group-hover:scale-105 group-hover:border-foreground/30 transition-all">
-                <svg viewBox="0 0 24 24" aria-hidden="true" className="w-4 h-4 fill-current">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                </svg>
+              <div className="w-9 h-9 rounded-full bg-subtle border border-border flex items-center justify-center font-black group-hover:scale-105 group-hover:border-foreground/30 transition-all p-1">
+                <img src="/LM.png" alt="LM Logo" className="w-5 h-5 object-contain" />
               </div>
             </Link>
 

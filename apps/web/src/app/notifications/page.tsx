@@ -13,6 +13,11 @@ import {
   CheckCheck,
   Check,
   Loader2,
+  Bell,
+  Sparkles,
+  MoreHorizontal,
+  Languages,
+  Quote,
 } from "lucide-react";
 import { LeftNavRail } from "@/components/layout/LeftNavRail";
 import { RightSidebar } from "@/components/layout/RightSidebar";
@@ -21,9 +26,10 @@ import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { MobileComposerModal } from "@/components/composer/MobileComposerModal";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { UserNameWithRole } from "@/components/ui/UserNameWithRole";
+import { VerifiedBadge } from "@/components/common/VerifiedBadge";
 import { Notification, User, FollowRequest } from "@/types";
 import { apiRequest } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
 import { useRealtime } from "@/lib/useRealtime";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 
@@ -112,22 +118,26 @@ export default function NotificationsPage() {
   const getIconForType = (type: string) => {
     switch (type) {
       case "like":
-        return <Heart className="w-7 h-7 fill-rose-500 text-rose-500" />;
+        return <Heart className="w-5 h-5 fill-rose-500 text-rose-500" />;
       case "repost":
-        return <Repeat2 className="w-7 h-7 text-emerald-500" />;
+        return <Repeat2 className="w-5 h-5 text-emerald-500" />;
       case "follow":
-        return <UserPlus className="w-7 h-7 fill-brand text-brand" />;
+        return <UserPlus className="w-5 h-5 text-brand" />;
       case "follow_request":
-        return <UserCheck className="w-7 h-7 text-amber-500" />;
+        return <UserCheck className="w-5 h-5 text-amber-500" />;
       case "follow_accept":
-        return <UserCheck className="w-7 h-7 fill-emerald-500 text-emerald-500" />;
+        return <UserCheck className="w-5 h-5 fill-emerald-500 text-emerald-500" />;
       case "dm":
-        return <Mail className="w-7 h-7 fill-blue-400 text-blue-400" />;
+        return <Mail className="w-5 h-5 fill-blue-400 text-blue-400" />;
       case "reply":
       case "mention":
-        return <MessageCircle className="w-7 h-7 fill-brand text-brand" />;
+        return <MessageCircle className="w-5 h-5 fill-brand text-brand" />;
       default:
-        return <Heart className="w-7 h-7 fill-brand text-brand" />;
+        return (
+          <div className="w-5 h-5 flex items-center justify-center text-purple-400">
+            <Sparkles className="w-4 h-4 fill-purple-400 text-purple-400" />
+          </div>
+        );
     }
   };
 
@@ -287,114 +297,210 @@ export default function NotificationsPage() {
               </div>
             ) : (
               <div className="flex flex-col divide-y divide-border">
-                {filteredNotifications.map((n) => (
-                  <div
-                    key={n.id}
-                    className={cn(
-                      "flex gap-4 p-4 hover:bg-subtle/50 transition-colors",
-                      !n.is_read && "bg-brand/5"
-                    )}
-                  >
-                    <div className="shrink-0 pt-0.5">{getIconForType(n.type)}</div>
-                    <div className="flex-1 min-w-0">
-                      <Link href={`/${n.actor?.username || "user"}`} className="block mb-2">
-                        <img
-                          src={
-                            n.actor?.avatar_url ||
-                            "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"
-                          }
-                          alt={n.actor?.display_name || "User"}
-                          className="w-8 h-8 rounded-full object-cover border border-border"
-                        />
-                      </Link>
-                      <div className="text-[15px] leading-5 text-foreground flex flex-wrap items-center gap-1">
-                        <Link
-                          href={`/${n.actor?.username || "user"}`}
-                          className="hover:underline inline-flex items-center"
-                        >
-                          <UserNameWithRole
-                            displayName={n.actor?.display_name || n.actor?.username || "User"}
-                            role={n.actor?.role}
-                            nameStyle={n.actor?.name_style}
-                          />
-                        </Link>
-                        <span>
-                          {n.type === "like" && "liked your post"}
-                          {n.type === "repost" && "reposted your post"}
-                          {n.type === "reply" && "replied to your post"}
-                          {n.type === "quote" && "quoted your post"}
-                          {n.type === "mention" && "mentioned you in a post"}
-                          {n.type === "follow" && "followed you"}
-                          {n.type === "follow_request" && "requested to follow you"}
-                          {n.type === "follow_accept" && "accepted your follow request"}
-                          {n.type === "dm" && "sent you a direct message"}
-                        </span>
+                {filteredNotifications.map((n) => {
+                  const notifType = n.type as string;
+                  const isPostNotif =
+                    notifType === "post" ||
+                    !["like", "repost", "reply", "quote", "mention", "follow", "follow_request", "follow_accept", "dm"].includes(
+                      notifType
+                    );
+                  const postMedia = n.post?.media?.[0]?.url;
+
+                  return (
+                    <div
+                      key={n.id}
+                      className={cn(
+                        "flex gap-3 px-4 py-3.5 hover:bg-subtle/30 transition-colors cursor-pointer",
+                        !n.is_read && "bg-brand/[0.03]"
+                      )}
+                    >
+                      {/* Left Icon (Bell, Sparkles, Heart, Repost, etc.) */}
+                      <div className="shrink-0 pt-0.5 w-7 flex justify-end">
+                        {notifType === "post" ? (
+                          <div className="text-[#1d9bf0]">
+                            <Bell className="w-5 h-5 fill-[#1d9bf0]" />
+                          </div>
+                        ) : (
+                          getIconForType(notifType)
+                        )}
                       </div>
 
-                      {/* Follow Request Action Buttons */}
-                      {n.type === "follow_request" && (
-                        <div className="flex items-center gap-2 mt-3">
-                          {requestStates[n.id] === "accepted" ? (
-                            <span className="text-emerald-500 font-bold text-[13px] flex items-center gap-1.5 bg-emerald-500/10 px-3.5 py-1.5 rounded-full">
-                              <Check className="w-4 h-4" /> Request accepted
-                            </span>
-                          ) : requestStates[n.id] === "rejected" ? (
-                            <span className="text-muted font-bold text-[13px] bg-subtle px-3.5 py-1.5 rounded-full">
-                              Request declined
-                            </span>
+                      {/* Content Area */}
+                      <div className="flex-1 min-w-0">
+                        {/* Top Row: Avatar + More button */}
+                        <div className="flex items-center justify-between mb-1.5">
+                          <Link
+                            href={`/${n.actor?.username || "user"}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-block rounded-full group"
+                          >
+                            <img
+                              src={
+                                n.actor?.avatar_url ||
+                                "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"
+                              }
+                              alt={n.actor?.display_name || "User"}
+                              className="w-8 h-8 rounded-full object-cover border border-border group-hover:opacity-90"
+                            />
+                          </Link>
+
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                            className="p-1 rounded-full text-muted hover:text-foreground hover:bg-subtle transition-colors"
+                            title="More"
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        {/* Title text / Header line */}
+                        <div className="text-[14px] leading-5 text-foreground">
+                          {isPostNotif ? (
+                            <div className="flex flex-wrap items-center gap-1">
+                              <span className="text-muted">New post notification for</span>
+                              <Link
+                                href={`/${n.actor?.username || "user"}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="font-bold hover:underline inline-flex items-center gap-0.5 text-foreground"
+                              >
+                                <span>{n.actor?.display_name || n.actor?.username || "User"}</span>
+                                {n.actor?.is_verified && (
+                                  <VerifiedBadge
+                                    type={n.actor?.verified_type || "blue"}
+                                    size="sm"
+                                    showPopover={false}
+                                  />
+                                )}
+                              </Link>
+                              {n.created_at && (
+                                <>
+                                  <span className="text-muted">·</span>
+                                  <span className="text-muted text-[13px]">{formatRelativeTime(n.created_at)}</span>
+                                </>
+                              )}
+                            </div>
                           ) : (
-                            <>
-                              <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  handleRespondFollowRequest(n, "accept");
-                                }}
-                                className="bg-foreground text-background hover:opacity-90 font-bold px-4 py-1.5 rounded-full text-[13px] transition-all shadow-sm active:scale-95 cursor-pointer"
+                            <div className="flex flex-wrap items-center gap-1">
+                              <Link
+                                href={`/${n.actor?.username || "user"}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="font-bold hover:underline inline-flex items-center gap-0.5 text-foreground"
                               >
-                                Accept
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  handleRespondFollowRequest(n, "reject");
-                                }}
-                                className="border border-border hover:bg-subtle text-foreground font-bold px-4 py-1.5 rounded-full text-[13px] transition-all active:scale-95 cursor-pointer"
-                              >
-                                Decline
-                              </button>
-                            </>
+                                <UserNameWithRole
+                                  displayName={n.actor?.display_name || n.actor?.username || "User"}
+                                  role={n.actor?.role}
+                                  nameStyle={n.actor?.name_style}
+                                />
+                                {n.actor?.is_verified && (
+                                  <VerifiedBadge
+                                    type={n.actor?.verified_type || "blue"}
+                                    size="sm"
+                                    showPopover={false}
+                                  />
+                                )}
+                              </Link>
+                              <span className="text-muted">
+                                {n.type === "like" && "liked your post"}
+                                {n.type === "repost" && "reposted your post"}
+                                {n.type === "reply" && "replied to your post"}
+                                {n.type === "quote" && "quoted your post"}
+                                {n.type === "mention" && "mentioned you in a post"}
+                                {n.type === "follow" && "followed you"}
+                                {n.type === "follow_request" && "requested to follow you"}
+                                {n.type === "follow_accept" && "accepted your follow request"}
+                                {n.type === "dm" && "sent you a direct message"}
+                              </span>
+                              {n.created_at && (
+                                <>
+                                  <span className="text-muted">·</span>
+                                  <span className="text-muted text-[13px]">{formatRelativeTime(n.created_at)}</span>
+                                </>
+                              )}
+                            </div>
                           )}
                         </div>
-                      )}
 
-                      {/* Direct Message Link */}
-                      {n.type === "dm" && (
-                        <div className="mt-1.5">
+                        {/* Follow Request Action Buttons */}
+                        {n.type === "follow_request" && (
+                          <div className="flex items-center gap-2 mt-2.5">
+                            {requestStates[n.id] === "accepted" ? (
+                              <span className="text-emerald-500 font-bold text-[13px] flex items-center gap-1.5 bg-emerald-500/10 px-3.5 py-1.5 rounded-full">
+                                <Check className="w-4 h-4" /> Request accepted
+                              </span>
+                            ) : requestStates[n.id] === "rejected" ? (
+                              <span className="text-muted font-bold text-[13px] bg-subtle px-3.5 py-1.5 rounded-full">
+                                Request declined
+                              </span>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleRespondFollowRequest(n, "accept");
+                                  }}
+                                  className="bg-foreground text-background hover:opacity-90 font-bold px-4 py-1.5 rounded-full text-[13px] transition-all shadow-sm active:scale-95 cursor-pointer"
+                                >
+                                  Accept
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleRespondFollowRequest(n, "reject");
+                                  }}
+                                  className="border border-border hover:bg-subtle text-foreground font-bold px-4 py-1.5 rounded-full text-[13px] transition-all active:scale-95 cursor-pointer"
+                                >
+                                  Decline
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Direct Message Link */}
+                        {n.type === "dm" && (
+                          <div className="mt-1.5">
+                            <Link
+                              href={n.entity_id ? `/messages/${n.entity_id}` : "/messages"}
+                              className="inline-flex items-center gap-1 text-[13px] text-brand hover:underline font-semibold"
+                            >
+                              Open message →
+                            </Link>
+                          </div>
+                        )}
+
+                        {/* Post snippet or content with thumbnail (like in screenshot) */}
+                        {(n.post || n.post_id) && (
                           <Link
-                            href={n.entity_id ? `/messages/${n.entity_id}` : "/messages"}
-                            className="inline-flex items-center gap-1 text-[13px] text-brand hover:underline font-semibold"
+                            href={`/${n.actor?.username || "i"}/status/${n.post_id || n.post?.id}`}
+                            className="block mt-1.5 group/post"
                           >
-                            Open message →
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[14px] text-muted line-clamp-3 leading-snug group-hover/post:text-foreground/90 transition-colors">
+                                  {n.post?.content || "View post →"}
+                                </p>
+                              </div>
+                              {postMedia && (
+                                <div className="w-14 h-14 shrink-0 rounded-xl overflow-hidden border border-border bg-subtle">
+                                  <img
+                                    src={postMedia}
+                                    alt="Media preview"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              )}
+                            </div>
                           </Link>
-                        </div>
-                      )}
-
-                      {/* Post Snippet */}
-                      {(n.post || n.post_id) && (
-                        <Link
-                          href={`/${n.actor?.username || "i"}/status/${n.post_id || n.post?.id}`}
-                          className="block mt-1.5"
-                        >
-                          <p className="text-[14px] text-muted line-clamp-2 bg-subtle/30 hover:bg-subtle/60 p-2.5 rounded-xl border border-border/50 transition-colors">
-                            {n.post?.content || "View post →"}
-                          </p>
-                        </Link>
-                      )}
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

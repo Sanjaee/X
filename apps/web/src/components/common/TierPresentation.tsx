@@ -16,7 +16,7 @@ export const TIER_PRESENTATION = {
     badgeColor: "bg-zinc-800 text-zinc-300 border-zinc-700",
   },
   vip: {
-    name: "VIP Member",
+    name: "VIP",
     icon: Star,
     description: "Enhanced limits, video uploads, and verified badge",
     badgeColor: "bg-blue-500/10 text-blue-400 border-blue-500/30",
