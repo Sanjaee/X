@@ -85,9 +85,9 @@
     "semantic_hash": "d01d4d0e2bec416558789aa168c2064d"
   },
   "apps/web/src/components/composer/PostComposer.tsx": {
-    "mtime": 1793528382.6550646,
-    "ast_hash": "aa1d17ea6ed66dd721886966a41d17a5",
-    "semantic_hash": "aa1d17ea6ed66dd721886966a41d17a5"
+    "mtime": 1794667437.9032626,
+    "ast_hash": "5dec33cd3848fbccfe6565d60706d6b8",
+    "semantic_hash": "5dec33cd3848fbccfe6565d60706d6b8"
   },
   "apps/web/src/components/feed/PostCard.tsx": {
     "mtime": 1794149543.9678807,
@@ -445,9 +445,9 @@
     "semantic_hash": "079c1621b8393c316e7ba6a50957d50c"
   },
   "apps/web/src/components/composer/MobileComposerModal.tsx": {
-    "mtime": 1793375555.2460475,
-    "ast_hash": "5b8cd87fd5180c147d0b0dc43fb31e9a",
-    "semantic_hash": "5b8cd87fd5180c147d0b0dc43fb31e9a"
+    "mtime": 1794667947.8535316,
+    "ast_hash": "48d94d45bcc7b391250d33b00e3d5a67",
+    "semantic_hash": "48d94d45bcc7b391250d33b00e3d5a67"
   },
   "apps/web/src/components/layout/MobileBottomNav.tsx": {
     "mtime": 1792820453.6275156,
@@ -460,9 +460,9 @@
     "semantic_hash": "7d13bbb6f95ebff04b8eb3ef7a6add81"
   },
   "apps/web/src/components/composer/PostModal.tsx": {
-    "mtime": 1793503587.624092,
-    "ast_hash": "f93f9e8996e34e7bd0564ad901c9c88b",
-    "semantic_hash": "f93f9e8996e34e7bd0564ad901c9c88b"
+    "mtime": 1794667709.8199775,
+    "ast_hash": "39390e437fa92d5fe9cd6e3b3391aa0c",
+    "semantic_hash": "39390e437fa92d5fe9cd6e3b3391aa0c"
   },
   "apps/web/next.config.js": {
     "mtime": 1793528953.329775,
@@ -733,5 +733,15 @@
     "mtime": 1794149730.0646193,
     "ast_hash": "27b6c378b194b77638eefc341d4d0666",
     "semantic_hash": "27b6c378b194b77638eefc341d4d0666"
+  },
+  "apps/web/src/components/composer/MediaUrlInputModal.tsx": {
+    "mtime": 1794667264.1869972,
+    "ast_hash": "18fb87b9a67c6bf9cf5feced2f65c65d",
+    "semantic_hash": "18fb87b9a67c6bf9cf5feced2f65c65d"
+  },
+  "apps/web/src/lib/premium.ts": {
+    "mtime": 1794667234.8688958,
+    "ast_hash": "2fdde429458097bc4625c313a24de99a",
+    "semantic_hash": "2fdde429458097bc4625c313a24de99a"
   }
 }

@@ -10,6 +10,8 @@ import {
   MapPin,
   Loader2,
   Globe,
+  ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
 import { User, Post, MediaObject } from "@/types";
 import { apiRequest } from "@/lib/api";
@@ -17,6 +19,8 @@ import {
   X_ALLOWED_MEDIA_ACCEPT,
   filterValidMediaFiles,
 } from "@/lib/mediaValidation";
+import { checkIsPremiumUser } from "@/lib/premium";
+import { MediaUrlInputModal } from "./MediaUrlInputModal";
 
 interface MobileComposerModalProps {
   isOpen: boolean;
@@ -28,7 +32,7 @@ interface MobileComposerModalProps {
 
 interface StagedAttachment {
   id: string;
-  file: File;
+  file?: File;
   previewUrl: string;
   type: "image" | "video" | "gif";
 }
@@ -43,8 +47,11 @@ export function MobileComposerModal({
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stagedFiles, setStagedFiles] = useState<StagedAttachment[]>([]);
+  const [urlModalOpen, setUrlModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const isPremium = checkIsPremiumUser(currentUser);
 
   // Focus textarea when modal opens
   useEffect(() => {
@@ -104,8 +111,44 @@ export function MobileComposerModal({
   const handleRemoveStaged = (index: number) => {
     setStagedFiles((prev) => {
       const target = prev[index];
-      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+      if (target?.file && target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
       return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const handleAddMediaUrl = (media: { url: string; type: "image" | "video" | "gif" }) => {
+    setStagedFiles((prev) => [
+      ...prev,
+      {
+        id: Math.random().toString(36).substring(2, 9),
+        previewUrl: media.url,
+        type: media.type,
+      },
+    ].slice(0, 4));
+  };
+
+  const handleMediaIconClick = () => {
+    if (!currentUser) {
+      onClose();
+      onOpenAuth?.();
+      return;
+    }
+    if (isPremium) {
+      fileInputRef.current?.click();
+    } else {
+      setUrlModalOpen(true);
+    }
+  };
+
+  const handleMoveMedia = (index: number, direction: "left" | "right") => {
+    setStagedFiles((prev) => {
+      const targetIdx = direction === "left" ? index - 1 : index + 1;
+      if (targetIdx < 0 || targetIdx >= prev.length) return prev;
+      const copy = [...prev];
+      const temp = copy[index];
+      copy[index] = copy[targetIdx];
+      copy[targetIdx] = temp;
+      return copy;
     });
   };
 
@@ -121,20 +164,25 @@ export function MobileComposerModal({
     setIsSubmitting(true);
     try {
       const uploadedMediaIds: string[] = [];
+      const inlineMedia: Array<{ url: string; media_type: string }> = [];
 
       if (stagedFiles.length > 0) {
-        const uploadPromises = stagedFiles.map(async (staged) => {
-          const formData = new FormData();
-          formData.append("file", staged.file);
-          const media = await apiRequest<MediaObject>("/media/upload", {
-            method: "POST",
-            body: formData,
-          });
-          return media.id;
-        });
-
-        const ids = await Promise.all(uploadPromises);
-        uploadedMediaIds.push(...ids);
+        for (const staged of stagedFiles) {
+          if (staged.file) {
+            const formData = new FormData();
+            formData.append("file", staged.file);
+            const media = await apiRequest<MediaObject>("/media/upload", {
+              method: "POST",
+              body: formData,
+            });
+            uploadedMediaIds.push(media.id);
+          } else if (staged.previewUrl) {
+            inlineMedia.push({
+              url: staged.previewUrl,
+              media_type: staged.type || "image",
+            });
+          }
+        }
       }
 
       const res = await apiRequest<Post>("/posts", {
@@ -142,6 +190,7 @@ export function MobileComposerModal({
         body: JSON.stringify({
           content: content.trim(),
           media_ids: uploadedMediaIds,
+          media: inlineMedia,
         }),
       });
 
@@ -150,7 +199,9 @@ export function MobileComposerModal({
         author: res.author || currentUser,
       };
 
-      stagedFiles.forEach((f) => URL.revokeObjectURL(f.previewUrl));
+      stagedFiles.forEach((f) => {
+        if (f.file && f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+      });
       setContent("");
       setStagedFiles([]);
       onPostSuccess(completePost);
@@ -241,12 +292,40 @@ export function MobileComposerModal({
                       className="w-full h-full object-cover"
                     />
                   )}
-                  <button
-                    onClick={() => handleRemoveStaged(idx)}
-                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 hover:bg-black text-white flex items-center justify-center transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+
+                  {/* Control buttons: reorder left/right & delete */}
+                  <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
+                    {stagedFiles.length > 1 && (
+                      <div className="flex items-center bg-black/75 rounded-full p-0.5 shadow-md">
+                        <button
+                          type="button"
+                          onClick={() => handleMoveMedia(idx, "left")}
+                          disabled={idx === 0}
+                          className="p-1 hover:bg-white/20 rounded-full disabled:opacity-30 disabled:hover:bg-transparent text-white transition-colors"
+                          title="Move left"
+                        >
+                          <ArrowLeft className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveMedia(idx, "right")}
+                          disabled={idx === stagedFiles.length - 1}
+                          className="p-1 hover:bg-white/20 rounded-full disabled:opacity-30 disabled:hover:bg-transparent text-white transition-colors"
+                          title="Move right"
+                        >
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveStaged(idx)}
+                      className="w-7 h-7 rounded-full bg-black/70 hover:bg-black text-white flex items-center justify-center transition-colors shadow-md"
+                      title="Remove media"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -266,9 +345,10 @@ export function MobileComposerModal({
             className="hidden"
           />
           <button
-            onClick={() => fileInputRef.current?.click()}
+            type="button"
+            onClick={handleMediaIconClick}
             className="p-2 hover:bg-brand/10 rounded-full transition-colors"
-            title="Add photos or video"
+            title={isPremium ? "Add photos or video (Direct Upload)" : "Add media via URL"}
           >
             <ImageIcon className="w-5 h-5" />
           </button>
@@ -296,6 +376,13 @@ export function MobileComposerModal({
           {currentUser?.is_verified ? "4000" : "280"}
         </div>
       </footer>
+
+      {/* URL Media Input Modal for non-premium accounts */}
+      <MediaUrlInputModal
+        isOpen={urlModalOpen}
+        onClose={() => setUrlModalOpen(false)}
+        onAddMedia={handleAddMediaUrl}
+      />
     </div>,
     document.body
   );

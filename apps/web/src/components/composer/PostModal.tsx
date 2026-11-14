@@ -11,6 +11,8 @@ import {
   Loader2,
   Globe,
   BarChart2,
+  ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
 import { User, Post, MediaObject } from "@/types";
 import { apiRequest } from "@/lib/api";
@@ -20,6 +22,8 @@ import {
 } from "@/lib/mediaValidation";
 import { UserNameWithRole } from "@/components/ui/UserNameWithRole";
 import { formatRelativeTime } from "@/lib/utils";
+import { checkIsPremiumUser } from "@/lib/premium";
+import { MediaUrlInputModal } from "./MediaUrlInputModal";
 
 interface PostModalProps {
   isOpen: boolean;
@@ -33,7 +37,7 @@ interface PostModalProps {
 
 interface StagedAttachment {
   id: string;
-  file: File;
+  file?: File;
   previewUrl: string;
   type: "image" | "video" | "gif";
 }
@@ -50,8 +54,11 @@ export function PostModal({
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stagedFiles, setStagedFiles] = useState<StagedAttachment[]>([]);
+  const [urlModalOpen, setUrlModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const isPremium = checkIsPremiumUser(currentUser);
 
   const maxChars = currentUser?.is_verified ? 4000 : 280;
   const charsRemaining = maxChars - content.length;
@@ -122,8 +129,44 @@ export function PostModal({
   const handleRemoveStaged = (index: number) => {
     setStagedFiles((prev) => {
       const target = prev[index];
-      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+      if (target?.file && target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
       return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const handleAddMediaUrl = (media: { url: string; type: "image" | "video" | "gif" }) => {
+    setStagedFiles((prev) => [
+      ...prev,
+      {
+        id: Math.random().toString(36).substring(2, 9),
+        previewUrl: media.url,
+        type: media.type,
+      },
+    ].slice(0, 4));
+  };
+
+  const handleMediaIconClick = () => {
+    if (!currentUser) {
+      onClose();
+      onOpenAuth();
+      return;
+    }
+    if (isPremium) {
+      fileInputRef.current?.click();
+    } else {
+      setUrlModalOpen(true);
+    }
+  };
+
+  const handleMoveMedia = (index: number, direction: "left" | "right") => {
+    setStagedFiles((prev) => {
+      const targetIdx = direction === "left" ? index - 1 : index + 1;
+      if (targetIdx < 0 || targetIdx >= prev.length) return prev;
+      const copy = [...prev];
+      const temp = copy[index];
+      copy[index] = copy[targetIdx];
+      copy[targetIdx] = temp;
+      return copy;
     });
   };
 
@@ -139,25 +182,31 @@ export function PostModal({
     setIsSubmitting(true);
     try {
       const uploadedMediaIds: string[] = [];
+      const inlineMedia: Array<{ url: string; media_type: string }> = [];
 
       if (stagedFiles.length > 0) {
-        const uploadPromises = stagedFiles.map(async (staged) => {
-          const formData = new FormData();
-          formData.append("file", staged.file);
-          const media = await apiRequest<MediaObject>("/media/upload", {
-            method: "POST",
-            body: formData,
-          });
-          return media.id;
-        });
-
-        const ids = await Promise.all(uploadPromises);
-        uploadedMediaIds.push(...ids);
+        for (const staged of stagedFiles) {
+          if (staged.file) {
+            const formData = new FormData();
+            formData.append("file", staged.file);
+            const media = await apiRequest<MediaObject>("/media/upload", {
+              method: "POST",
+              body: formData,
+            });
+            uploadedMediaIds.push(media.id);
+          } else if (staged.previewUrl) {
+            inlineMedia.push({
+              url: staged.previewUrl,
+              media_type: staged.type || "image",
+            });
+          }
+        }
       }
 
       const payload = {
         content: content.trim(),
         media_ids: uploadedMediaIds,
+        media: inlineMedia,
         quote_post_id: quotedPost ? quotedPost.id : null,
         reply_to_id: replyToPost ? replyToPost.id : null,
       };
@@ -167,7 +216,9 @@ export function PostModal({
         body: JSON.stringify(payload),
       });
 
-      stagedFiles.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      stagedFiles.forEach((item) => {
+        if (item.file && item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      });
       setContent("");
       setStagedFiles([]);
       onClose();
@@ -305,13 +356,40 @@ export function PostModal({
                           className="w-full h-full object-cover max-h-[260px]"
                         />
                       )}
-                      <button
-                        onClick={() => handleRemoveStaged(idx)}
-                        className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 hover:bg-black/90 text-white transition-colors"
-                        title="Remove media"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+
+                      {/* Control buttons: reorder left/right & delete */}
+                      <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
+                        {stagedFiles.length > 1 && (
+                          <div className="flex items-center bg-black/75 rounded-full p-0.5 shadow-md">
+                            <button
+                              type="button"
+                              onClick={() => handleMoveMedia(idx, "left")}
+                              disabled={idx === 0}
+                              className="p-1 hover:bg-white/20 rounded-full disabled:opacity-30 disabled:hover:bg-transparent text-white transition-colors"
+                              title="Move left"
+                            >
+                              <ArrowLeft className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveMedia(idx, "right")}
+                              disabled={idx === stagedFiles.length - 1}
+                              className="p-1 hover:bg-white/20 rounded-full disabled:opacity-30 disabled:hover:bg-transparent text-white transition-colors"
+                              title="Move right"
+                            >
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveStaged(idx)}
+                          className="p-1.5 rounded-full bg-black/70 hover:bg-black/90 text-white transition-colors shadow-md"
+                          title="Remove media"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -403,9 +481,9 @@ export function PostModal({
 
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={handleMediaIconClick}
                     className="p-2 hover:bg-brand/10 rounded-full transition-colors"
-                    title="Media"
+                    title={isPremium ? "Media (Direct Upload)" : "Add media via URL"}
                   >
                     <ImageIcon className="w-5 h-5 stroke-[2]" />
                   </button>
@@ -490,6 +568,13 @@ export function PostModal({
           </div>
         </div>
       </div>
+
+      {/* URL Media Input Modal for non-premium accounts */}
+      <MediaUrlInputModal
+        isOpen={urlModalOpen}
+        onClose={() => setUrlModalOpen(false)}
+        onAddMedia={handleAddMediaUrl}
+      />
     </div>,
     document.body
   );
