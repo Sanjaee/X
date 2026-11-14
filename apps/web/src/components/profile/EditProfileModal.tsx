@@ -55,7 +55,7 @@ const NAME_STYLE_PRESETS: Array<{ label: string; style: CustomNameStyle }> = [
       color: "#a855f7",
       shadow_color: "#9b30ff",
       text_shadow: "2px 2px 6px #9b30ff",
-      bg_image: "/vip.gif",
+      bg_image: "/cze5wHs.png",
       bg_color: "#0a0a0a",
       font_weight: "800",
       font_family: "Roboto, Arial, sans-serif",
@@ -532,7 +532,7 @@ export function EditProfileModal({
                       </label>
                       <select
                         value={
-                          ["none", "/admin.gif", "/god.gif", "/mvp.gif", "/vip.gif"].includes(bgImage)
+                          ["none", "/admin.gif", "/god.gif", "/mvp.gif", "/vip.gif", "/cze5wHs.png"].includes(bgImage)
                             ? bgImage
                             : "custom"
                         }
@@ -543,10 +543,11 @@ export function EditProfileModal({
                         }}
                         className="w-full bg-black text-[13px] text-foreground outline-none border border-neutral-800 rounded px-2 py-1 mb-1.5"
                       >
+                        <option value="/cze5wHs.png">/cze5wHs.png (VIP Sparkle)</option>
+                        <option value="/vip.gif">/vip.gif (VIP Matrix)</option>
                         <option value="/admin.gif">/admin.gif (Sparkle Pink/Red)</option>
                         <option value="/god.gif">/god.gif (Fire Particles)</option>
                         <option value="/mvp.gif">/mvp.gif (Blue Sparkle)</option>
-                        <option value="/vip.gif">/vip.gif (VIP Matrix)</option>
                         <option value="none">None (No GIF)</option>
                         <option value="custom">Custom URL...</option>
                       </select>

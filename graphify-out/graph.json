@@ -14102,50 +14102,6 @@
       "id": "apps_web_src_components_common_tierpresentation_tierbadge"
     },
     {
-      "label": "EditProfileModal.tsx",
-      "file_type": "code",
-      "source_file": "apps/web/src/components/profile/EditProfileModal.tsx",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 18,
-      "norm_label": "editprofilemodal.tsx",
-      "community_name": "UserNameWithRole.tsx",
-      "id": "apps_web_src_components_profile_editprofilemodal"
-    },
-    {
-      "label": "NAME_STYLE_PRESETS",
-      "file_type": "code",
-      "source_file": "apps/web/src/components/profile/EditProfileModal.tsx",
-      "source_location": "L11",
-      "_origin": "ast",
-      "community": 18,
-      "norm_label": "name_style_presets",
-      "community_name": "UserNameWithRole.tsx",
-      "id": "apps_web_src_components_profile_editprofilemodal_name_style_presets"
-    },
-    {
-      "label": "EditProfileModalProps",
-      "file_type": "code",
-      "source_file": "apps/web/src/components/profile/EditProfileModal.tsx",
-      "source_location": "L79",
-      "_origin": "ast",
-      "community": 18,
-      "norm_label": "editprofilemodalprops",
-      "community_name": "UserNameWithRole.tsx",
-      "id": "apps_web_src_components_profile_editprofilemodal_editprofilemodalprops"
-    },
-    {
-      "label": "EditProfileModal()",
-      "file_type": "code",
-      "source_file": "apps/web/src/components/profile/EditProfileModal.tsx",
-      "source_location": "L86",
-      "_origin": "ast",
-      "community": 18,
-      "norm_label": "editprofilemodal()",
-      "community_name": "UserNameWithRole.tsx",
-      "id": "apps_web_src_components_profile_editprofilemodal_editprofilemodal"
-    },
-    {
       "label": "roleStyles.ts",
       "file_type": "code",
       "source_file": "apps/web/src/utils/roleStyles.ts",
@@ -14230,8 +14186,8 @@
       "_origin": "ast",
       "community": 12,
       "norm_label": "admin/page.tsx",
-      "id": "apps_web_src_app_admin_page",
-      "community_name": "index.ts"
+      "community_name": "index.ts",
+      "id": "apps_web_src_app_admin_page"
     },
     {
       "label": "AdminTab",
@@ -14241,8 +14197,8 @@
       "_origin": "ast",
       "community": 12,
       "norm_label": "admintab",
-      "id": "apps_web_src_app_admin_page_admintab",
-      "community_name": "index.ts"
+      "community_name": "index.ts",
+      "id": "apps_web_src_app_admin_page_admintab"
     },
     {
       "label": "AdminDashboardPage()",
@@ -14252,8 +14208,8 @@
       "_origin": "ast",
       "community": 12,
       "norm_label": "admindashboardpage()",
-      "id": "apps_web_src_app_admin_page_admindashboardpage",
-      "community_name": "index.ts"
+      "community_name": "index.ts",
+      "id": "apps_web_src_app_admin_page_admindashboardpage"
     },
     {
       "label": "AuthModal.tsx",
@@ -14263,8 +14219,8 @@
       "_origin": "ast",
       "community": 14,
       "norm_label": "authmodal.tsx",
-      "id": "apps_web_src_components_auth_authmodal",
-      "community_name": "api.ts"
+      "community_name": "api.ts",
+      "id": "apps_web_src_components_auth_authmodal"
     },
     {
       "label": "AuthModalProps",
@@ -14274,8 +14230,8 @@
       "_origin": "ast",
       "community": 14,
       "norm_label": "authmodalprops",
-      "id": "apps_web_src_components_auth_authmodal_authmodalprops",
-      "community_name": "api.ts"
+      "community_name": "api.ts",
+      "id": "apps_web_src_components_auth_authmodal_authmodalprops"
     },
     {
       "label": "AuthModal()",
@@ -14285,8 +14241,8 @@
       "_origin": "ast",
       "community": 14,
       "norm_label": "authmodal()",
-      "id": "apps_web_src_components_auth_authmodal_authmodal",
-      "community_name": "api.ts"
+      "community_name": "api.ts",
+      "id": "apps_web_src_components_auth_authmodal_authmodal"
     },
     {
       "label": "RightSidebar.tsx",
@@ -14296,8 +14252,8 @@
       "_origin": "ast",
       "community": 14,
       "norm_label": "rightsidebar.tsx",
-      "id": "apps_web_src_components_layout_rightsidebar",
-      "community_name": "api.ts"
+      "community_name": "api.ts",
+      "id": "apps_web_src_components_layout_rightsidebar"
     },
     {
       "label": "RightSidebarProps",
@@ -14307,8 +14263,8 @@
       "_origin": "ast",
       "community": 14,
       "norm_label": "rightsidebarprops",
-      "id": "apps_web_src_components_layout_rightsidebar_rightsidebarprops",
-      "community_name": "api.ts"
+      "community_name": "api.ts",
+      "id": "apps_web_src_components_layout_rightsidebar_rightsidebarprops"
     },
     {
       "label": "RightSidebar()",
@@ -14318,8 +14274,8 @@
       "_origin": "ast",
       "community": 13,
       "norm_label": "rightsidebar()",
-      "id": "apps_web_src_components_layout_rightsidebar_rightsidebar",
-      "community_name": "app/page.tsx"
+      "community_name": "app/page.tsx",
+      "id": "apps_web_src_components_layout_rightsidebar_rightsidebar"
     },
     {
       "label": "UpgradeModal.tsx",
@@ -14329,8 +14285,8 @@
       "_origin": "ast",
       "community": 20,
       "norm_label": "upgrademodal.tsx",
-      "id": "apps_web_src_components_subscription_upgrademodal",
-      "community_name": "AppProviders.tsx"
+      "community_name": "AppProviders.tsx",
+      "id": "apps_web_src_components_subscription_upgrademodal"
     },
     {
       "label": "CryptoCurrencyOption",
@@ -14340,8 +14296,8 @@
       "_origin": "ast",
       "community": 20,
       "norm_label": "cryptocurrencyoption",
-      "id": "apps_web_src_components_subscription_upgrademodal_cryptocurrencyoption",
-      "community_name": "AppProviders.tsx"
+      "community_name": "AppProviders.tsx",
+      "id": "apps_web_src_components_subscription_upgrademodal_cryptocurrencyoption"
     },
     {
       "label": "PaymentOrderStatus",
@@ -14351,8 +14307,8 @@
       "_origin": "ast",
       "community": 20,
       "norm_label": "paymentorderstatus",
-      "id": "apps_web_src_components_subscription_upgrademodal_paymentorderstatus",
-      "community_name": "AppProviders.tsx"
+      "community_name": "AppProviders.tsx",
+      "id": "apps_web_src_components_subscription_upgrademodal_paymentorderstatus"
     },
     {
       "label": "ParsedRolePlan",
@@ -14362,8 +14318,8 @@
       "_origin": "ast",
       "community": 20,
       "norm_label": "parsedroleplan",
-      "id": "apps_web_src_components_subscription_upgrademodal_parsedroleplan",
-      "community_name": "AppProviders.tsx"
+      "community_name": "AppProviders.tsx",
+      "id": "apps_web_src_components_subscription_upgrademodal_parsedroleplan"
     },
     {
       "label": "ROLE_METADATA",
@@ -14373,8 +14329,8 @@
       "_origin": "ast",
       "community": 20,
       "norm_label": "role_metadata",
-      "id": "apps_web_src_components_subscription_upgrademodal_role_metadata",
-      "community_name": "AppProviders.tsx"
+      "community_name": "AppProviders.tsx",
+      "id": "apps_web_src_components_subscription_upgrademodal_role_metadata"
     },
     {
       "label": "num()",
@@ -14384,8 +14340,8 @@
       "_origin": "ast",
       "community": 20,
       "norm_label": "num()",
-      "id": "apps_web_src_components_subscription_upgrademodal_num",
-      "community_name": "AppProviders.tsx"
+      "community_name": "AppProviders.tsx",
+      "id": "apps_web_src_components_subscription_upgrademodal_num"
     },
     {
       "label": "UpgradeModal()",
@@ -14395,8 +14351,52 @@
       "_origin": "ast",
       "community": 20,
       "norm_label": "upgrademodal()",
-      "id": "apps_web_src_components_subscription_upgrademodal_upgrademodal",
-      "community_name": "AppProviders.tsx"
+      "community_name": "AppProviders.tsx",
+      "id": "apps_web_src_components_subscription_upgrademodal_upgrademodal"
+    },
+    {
+      "label": "EditProfileModal.tsx",
+      "file_type": "code",
+      "source_file": "apps/web/src/components/profile/EditProfileModal.tsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 18,
+      "norm_label": "editprofilemodal.tsx",
+      "id": "apps_web_src_components_profile_editprofilemodal",
+      "community_name": "UserNameWithRole.tsx"
+    },
+    {
+      "label": "NAME_STYLE_PRESETS",
+      "file_type": "code",
+      "source_file": "apps/web/src/components/profile/EditProfileModal.tsx",
+      "source_location": "L11",
+      "_origin": "ast",
+      "community": 18,
+      "norm_label": "name_style_presets",
+      "id": "apps_web_src_components_profile_editprofilemodal_name_style_presets",
+      "community_name": "UserNameWithRole.tsx"
+    },
+    {
+      "label": "EditProfileModalProps",
+      "file_type": "code",
+      "source_file": "apps/web/src/components/profile/EditProfileModal.tsx",
+      "source_location": "L79",
+      "_origin": "ast",
+      "community": 18,
+      "norm_label": "editprofilemodalprops",
+      "id": "apps_web_src_components_profile_editprofilemodal_editprofilemodalprops",
+      "community_name": "UserNameWithRole.tsx"
+    },
+    {
+      "label": "EditProfileModal()",
+      "file_type": "code",
+      "source_file": "apps/web/src/components/profile/EditProfileModal.tsx",
+      "source_location": "L86",
+      "_origin": "ast",
+      "community": 18,
+      "norm_label": "editprofilemodal()",
+      "id": "apps_web_src_components_profile_editprofilemodal_editprofilemodal",
+      "community_name": "UserNameWithRole.tsx"
     }
   ],
   "links": [
@@ -54590,39 +54590,6 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "apps/web/src/components/profile/EditProfileModal.tsx",
-      "source_location": "L86",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "apps_web_src_components_profile_editprofilemodal",
-      "target": "apps_web_src_components_profile_editprofilemodal_editprofilemodal"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "apps/web/src/components/profile/EditProfileModal.tsx",
-      "source_location": "L79",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "apps_web_src_components_profile_editprofilemodal",
-      "target": "apps_web_src_components_profile_editprofilemodal_editprofilemodalprops"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "apps/web/src/components/profile/EditProfileModal.tsx",
-      "source_location": "L11",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "apps_web_src_components_profile_editprofilemodal",
-      "target": "apps_web_src_components_profile_editprofilemodal_name_style_presets"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
       "source_file": "apps/web/src/utils/roleStyles.ts",
       "source_location": "L6",
       "weight": 1.0,
@@ -54866,8 +54833,41 @@
       "confidence_score": 1.0,
       "source": "apps_web_src_components_subscription_upgrademodal_upgrademodal",
       "target": "apps_web_src_components_subscription_upgrademodal_num"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/web/src/components/profile/EditProfileModal.tsx",
+      "source_location": "L86",
+      "weight": 1.0,
+      "_origin": "ast",
+      "confidence_score": 1.0,
+      "source": "apps_web_src_components_profile_editprofilemodal",
+      "target": "apps_web_src_components_profile_editprofilemodal_editprofilemodal"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/web/src/components/profile/EditProfileModal.tsx",
+      "source_location": "L79",
+      "weight": 1.0,
+      "_origin": "ast",
+      "confidence_score": 1.0,
+      "source": "apps_web_src_components_profile_editprofilemodal",
+      "target": "apps_web_src_components_profile_editprofilemodal_editprofilemodalprops"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "apps/web/src/components/profile/EditProfileModal.tsx",
+      "source_location": "L11",
+      "weight": 1.0,
+      "_origin": "ast",
+      "confidence_score": 1.0,
+      "source": "apps_web_src_components_profile_editprofilemodal",
+      "target": "apps_web_src_components_profile_editprofilemodal_name_style_presets"
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "ef78a0e6100c395fa98e0b6f99525d0e3aacfa86"
+  "built_at_commit": "51c6ef3efec75cd97d6c68aa77a0a6bce2ec7e45"
 }
