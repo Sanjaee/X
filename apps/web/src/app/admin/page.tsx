@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   Shield,
   ShieldAlert,
@@ -124,10 +126,56 @@ export default function AdminDashboardPage() {
     price_usd: string;
   }>({ name: '', description: '', price_usd: '1.00' });
 
-  // Users state
-  const [adminUsers, setAdminUsers] = useState<User[]>([]);
+  const queryClient = useQueryClient();
+
+  // Users state with Pagination & TanStack Query
   const [userSearch, setUserSearch] = useState('');
+  const [userSearchInput, setUserSearchInput] = useState('');
   const [userStatusFilter, setUserStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
+  const [userPage, setUserPage] = useState(1);
+  const userPageSize = 50;
+  const usersParentRef = useRef<HTMLDivElement>(null);
+
+  // TanStack Query for Admin Users with server-side pagination & caching
+  const {
+    data: usersQueryData,
+    isLoading: isLoadingUsers,
+    isFetching: isFetchingUsers,
+    refetch: refetchUsers,
+  } = useQuery({
+    queryKey: ['admin_users', userPage, userSearch, userPageSize],
+    queryFn: async () => {
+      const offset = (userPage - 1) * userPageSize;
+      const q = userSearch ? `&search=${encodeURIComponent(userSearch)}` : '';
+      return apiRequest<{ users: User[]; total: number; limit: number; offset: number }>(
+        `/admin/users?limit=${userPageSize}&offset=${offset}${q}`
+      );
+    },
+    enabled: !!currentUser,
+    staleTime: 30000, // 30s cache retention
+  });
+
+  const totalUserCount = usersQueryData?.total || 0;
+  const totalUserPages = Math.max(1, Math.ceil(totalUserCount / userPageSize));
+
+  // Client filter for active/suspended within current loaded page
+  const filteredUsers = useMemo(() => {
+    const list = usersQueryData?.users || [];
+    return list.filter((u) => {
+      if (userStatusFilter === 'active') return !u.deleted_at;
+      if (userStatusFilter === 'suspended') return !!u.deleted_at;
+      return true;
+    });
+  }, [usersQueryData?.users, userStatusFilter]);
+
+  // Virtualizer for smooth rendering of large user lists
+  const rowVirtualizer = useVirtualizer({
+    count: filteredUsers.length,
+    getScrollElement: () => usersParentRef.current,
+    estimateSize: () => 64,
+    overscan: 10,
+  });
+
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userRoleModal, setUserRoleModal] = useState(false);
   const [userSelectedRoleIds, setUserSelectedRoleIds] = useState<string[]>([]);
@@ -246,13 +294,7 @@ export default function AdminDashboardPage() {
   };
 
   const fetchUsers = async () => {
-    try {
-      const q = userSearch ? `&search=${encodeURIComponent(userSearch)}` : '';
-      const res = await apiRequest<{ users: User[] }>(`/admin/users?limit=50${q}`);
-      setAdminUsers(res.users || []);
-    } catch (err: any) {
-      console.error('Failed to load users', err);
-    }
+    refetchUsers();
   };
 
   const fetchPosts = async () => {
@@ -944,7 +986,7 @@ export default function AdminDashboardPage() {
           )}
 
           {/* ============================================================ */}
-          {/* TAB 2: USER DIRECTORY */}
+          {/* TAB 2: USER DIRECTORY (TanStack Query & TanStack Virtual) */}
           {/* ============================================================ */}
           {activeTab === 'users' && (
             <div className="mt-6 space-y-4 animate-in fade-in">
@@ -954,9 +996,14 @@ export default function AdminDashboardPage() {
                   <input
                     type="text"
                     placeholder="Search by username, email, or user ID..."
-                    value={userSearch}
-                    onChange={(e) => setUserSearch(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && fetchUsers()}
+                    value={userSearchInput}
+                    onChange={(e) => setUserSearchInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        setUserPage(1);
+                        setUserSearch(userSearchInput.trim());
+                      }
+                    }}
                     className="w-full pl-9 pr-4 py-2 bg-subtle border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-brand"
                   />
                 </div>
@@ -973,111 +1020,182 @@ export default function AdminDashboardPage() {
                   </select>
 
                   <button
-                    onClick={fetchUsers}
-                    className="px-4 py-2 bg-brand text-white font-bold rounded-xl text-sm hover:bg-brand/90 transition-colors"
+                    onClick={() => {
+                      setUserPage(1);
+                      setUserSearch(userSearchInput.trim());
+                    }}
+                    className="px-4 py-2 bg-brand text-white font-bold rounded-xl text-sm hover:bg-brand/90 transition-colors flex items-center gap-1.5"
                   >
-                    Search
+                    {isFetchingUsers && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                    <span>Search</span>
                   </button>
                 </div>
               </div>
 
-              <div className="border border-border rounded-2xl overflow-hidden bg-card">
+              {/* Table Container with Virtualization & Infinite/Paging support */}
+              <div className="border border-border rounded-2xl overflow-hidden bg-card flex flex-col">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
+                  <table className="w-full text-left text-sm table-fixed min-w-[700px]">
                     <thead className="bg-subtle/60 border-b border-border text-xs uppercase tracking-wider text-muted font-bold">
                       <tr>
-                        <th className="py-3 px-4">User</th>
-                        <th className="py-3 px-4">Email</th>
-                        <th className="py-3 px-4">Role</th>
-                        <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4 w-[280px]">User</th>
+                        <th className="py-3 px-4 w-[220px]">Email</th>
+                        <th className="py-3 px-4 w-[120px]">Role</th>
+                        <th className="py-3 px-4 w-[110px]">Status</th>
                         <th className="py-3 px-4 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-border">
-                      {adminUsers
-                        .filter((u) => {
-                          if (userStatusFilter === 'active') return !u.deleted_at;
-                          if (userStatusFilter === 'suspended') return !!u.deleted_at;
-                          return true;
-                        })
-                        .map((u) => {
-                          const isSuspended = !!u.deleted_at;
-                          const isTargetOwner =
-                            u.is_owner || u.role === 'owner' || u.email === 'afrizaahmad18@gmail.com';
-                          return (
-                            <tr key={u.id} className="hover:bg-subtle/40 transition-colors">
-                              <td className="py-3 px-4 flex items-center gap-3">
-                                <img
-                                  src={
-                                    u.avatar_url ||
-                                    'https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png'
-                                  }
-                                  alt={u.username}
-                                  className="w-8 h-8 rounded-full object-cover border border-border"
-                                />
-                                <div>
-                                  <div className="font-bold text-foreground flex items-center gap-1.5">
-                                    <span>{u.display_name || u.username}</span>
-                                    {isTargetOwner && <Crown className="w-3.5 h-3.5 text-amber-400" />}
-                                  </div>
-                                  <span className="text-xs text-muted">@{u.username}</span>
+                  </table>
+                </div>
+
+                {/* Virtualized Scroll Area */}
+                <div
+                  ref={usersParentRef}
+                  className="max-h-[550px] overflow-y-auto overflow-x-hidden relative divide-y divide-border"
+                >
+                  {isLoadingUsers ? (
+                    <div className="py-12 flex flex-col items-center justify-center text-muted gap-2">
+                      <RefreshCw className="w-6 h-6 animate-spin text-brand" />
+                      <span className="text-xs">Loading directory...</span>
+                    </div>
+                  ) : filteredUsers.length === 0 ? (
+                    <div className="py-12 text-center text-muted text-sm">
+                      No users found matching query
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        height: `${rowVirtualizer.getTotalSize()}px`,
+                        width: '100%',
+                        position: 'relative',
+                      }}
+                    >
+                      {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                        const u = filteredUsers[virtualRow.index];
+                        if (!u) return null;
+                        const isSuspended = !!u.deleted_at;
+                        const isTargetOwner =
+                          u.is_owner || u.role === 'owner' || u.email === 'afrizaahmad18@gmail.com';
+
+                        return (
+                          <div
+                            key={u.id}
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: `${virtualRow.size}px`,
+                              transform: `translateY(${virtualRow.start}px)`,
+                            }}
+                            className="flex items-center px-4 hover:bg-subtle/40 transition-colors border-b border-border text-sm min-w-[700px]"
+                          >
+                            <div className="w-[280px] shrink-0 flex items-center gap-3">
+                              <img
+                                src={
+                                  u.avatar_url ||
+                                  'https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png'
+                                }
+                                alt={u.username}
+                                className="w-8 h-8 rounded-full object-cover border border-border shrink-0"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="font-bold text-foreground flex items-center gap-1.5 truncate">
+                                  <span className="truncate">{u.display_name || u.username}</span>
+                                  {isTargetOwner && <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
                                 </div>
-                              </td>
+                                <span className="text-xs text-muted truncate block">@{u.username}</span>
+                              </div>
+                            </div>
 
-                              <td className="py-3 px-4 font-mono text-xs text-muted">{u.email || '—'}</td>
+                            <div className="w-[220px] shrink-0 font-mono text-xs text-muted truncate px-2">
+                              {u.email || '—'}
+                            </div>
 
-                              <td className="py-3 px-4">
-                                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-brand/10 text-brand">
-                                  {u.role || 'member'}
-                                </span>
-                              </td>
+                            <div className="w-[120px] shrink-0 px-2">
+                              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-brand/10 text-brand capitalize">
+                                {u.role || 'member'}
+                              </span>
+                            </div>
 
-                              <td className="py-3 px-4">
-                                <span
+                            <div className="w-[110px] shrink-0 px-2">
+                              <span
+                                className={cn(
+                                  'px-2.5 py-0.5 rounded-full text-xs font-semibold',
+                                  isSuspended
+                                    ? 'bg-rose-500/10 text-rose-400'
+                                    : 'bg-emerald-500/10 text-emerald-400'
+                                )}
+                              >
+                                {isSuspended ? 'Suspended' : 'Active'}
+                              </span>
+                            </div>
+
+                            <div className="flex-1 flex items-center justify-end gap-2 pr-2">
+                              <button
+                                onClick={() => handleOpenUserRoles(u)}
+                                className="p-1.5 hover:bg-subtle rounded-lg text-muted hover:text-foreground text-xs font-semibold flex items-center gap-1 border border-border"
+                              >
+                                <Key className="w-3.5 h-3.5" />
+                                <span>Roles</span>
+                              </button>
+
+                              {!isTargetOwner && (
+                                <button
+                                  onClick={() => handleToggleUserStatus(u)}
                                   className={cn(
-                                    'px-2.5 py-0.5 rounded-full text-xs font-semibold',
-                                    isSuspended
-                                      ? 'bg-rose-500/10 text-rose-400'
-                                      : 'bg-emerald-500/10 text-emerald-400'
+                                    'p-1.5 hover:bg-subtle rounded-lg text-xs font-semibold flex items-center gap-1 border border-border',
+                                    isSuspended ? 'text-emerald-400' : 'text-rose-400'
                                   )}
                                 >
-                                  {isSuspended ? 'Suspended' : 'Active'}
-                                </span>
-                              </td>
-
-                              <td className="py-3 px-4 text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  <button
-                                    onClick={() => handleOpenUserRoles(u)}
-                                    className="p-1.5 hover:bg-subtle rounded-lg text-muted hover:text-foreground text-xs font-semibold flex items-center gap-1 border border-border"
-                                  >
-                                    <Key className="w-3.5 h-3.5" />
-                                    <span>Roles</span>
-                                  </button>
-
-                                  {!isTargetOwner && (
-                                    <button
-                                      onClick={() => handleToggleUserStatus(u)}
-                                      className={cn(
-                                        'p-1.5 hover:bg-subtle rounded-lg text-xs font-semibold flex items-center gap-1 border border-border',
-                                        isSuspended ? 'text-emerald-400' : 'text-rose-400'
-                                      )}
-                                    >
-                                      {isSuspended ? (
-                                        <Unlock className="w-3.5 h-3.5" />
-                                      ) : (
-                                        <Lock className="w-3.5 h-3.5" />
-                                      )}
-                                      <span>{isSuspended ? 'Restore' : 'Suspend'}</span>
-                                    </button>
+                                  {isSuspended ? (
+                                    <Unlock className="w-3.5 h-3.5" />
+                                  ) : (
+                                    <Lock className="w-3.5 h-3.5" />
                                   )}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                    </tbody>
-                  </table>
+                                  <span>{isSuspended ? 'Restore' : 'Suspend'}</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Pagination Controls */}
+                <div className="px-4 py-3 bg-subtle/40 border-t border-border flex items-center justify-between text-xs text-muted">
+                  <div className="flex items-center gap-2">
+                    <span>
+                      Showing {filteredUsers.length} users (Page {userPage} of {totalUserPages})
+                    </span>
+                    {totalUserCount > 0 && (
+                      <span className="font-semibold text-foreground">
+                        · Total {totalUserCount} registered
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setUserPage((p) => Math.max(1, p - 1))}
+                      disabled={userPage <= 1 || isLoadingUsers}
+                      className="p-1.5 rounded-lg border border-border hover:bg-subtle disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <span>Prev</span>
+                    </button>
+                    <span className="px-2 font-bold text-foreground">{userPage}</span>
+                    <button
+                      onClick={() => setUserPage((p) => Math.min(totalUserPages, p + 1))}
+                      disabled={userPage >= totalUserPages || isLoadingUsers}
+                      className="p-1.5 rounded-lg border border-border hover:bg-subtle disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                    >
+                      <span>Next</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

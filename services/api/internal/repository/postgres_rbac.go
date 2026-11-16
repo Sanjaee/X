@@ -961,7 +961,7 @@ func (r *PostgresRepository) GetAllUsersAdmin(ctx context.Context, limit, offset
 	if limit <= 0 {
 		limit = 20
 	}
-	whereClause := "WHERE u.deleted_at IS NULL"
+	whereClause := "WHERE 1=1"
 	var args []interface{}
 	idx := 1
 
@@ -978,7 +978,7 @@ func (r *PostgresRepository) GetAllUsersAdmin(ctx context.Context, limit, offset
 	}
 
 	query := fmt.Sprintf(`
-		SELECT u.id, u.username, u.email, COALESCE(u.role, 'member'), u.is_verified, u.verified_type, u.is_private, u.created_at, u.updated_at,
+		SELECT u.id, u.username, u.email, COALESCE(u.role, 'member'), u.is_verified, u.verified_type, u.is_private, u.created_at, u.updated_at, u.deleted_at,
 		       COALESCE(p.display_name, u.username), COALESCE(p.avatar_url, ''), COALESCE(p.name_style, '')
 		FROM users u
 		LEFT JOIN user_profiles p ON u.id = p.user_id
@@ -997,7 +997,7 @@ func (r *PostgresRepository) GetAllUsersAdmin(ctx context.Context, limit, offset
 	var users []domain.User
 	for rows.Next() {
 		var u domain.User
-		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Role, &u.IsVerified, &u.VerifiedType, &u.IsPrivate, &u.CreatedAt, &u.UpdatedAt, &u.DisplayName, &u.AvatarURL, &u.NameStyle); err != nil {
+		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Role, &u.IsVerified, &u.VerifiedType, &u.IsPrivate, &u.CreatedAt, &u.UpdatedAt, &u.DeletedAt, &u.DisplayName, &u.AvatarURL, &u.NameStyle); err != nil {
 			return nil, 0, err
 		}
 		users = append(users, u)
