@@ -233,7 +233,7 @@ export function PostModal({
   return createPortal(
     <div
       onClick={(e) => e.stopPropagation()}
-      className="fixed inset-0 z-[100] flex items-start justify-center pt-12 sm:pt-16 p-4"
+      className="fixed inset-0 z-[100] flex sm:items-start items-stretch justify-center sm:pt-12 md:pt-16 sm:p-4 p-0 overflow-y-auto"
     >
       {/* Dimmed Backdrop */}
       <div
@@ -241,13 +241,13 @@ export function PostModal({
         className="fixed inset-0 bg-[#5b7083]/40 dark:bg-black/65 backdrop-blur-sm transition-opacity"
       />
 
-      {/* Modal Dialog Card */}
+      {/* Modal Dialog Card: full screen on mobile, floating dialog on desktop */}
       <div
         style={{ backgroundColor: "var(--background, #000000)" }}
-        className="relative w-full max-w-[600px] bg-[#ffffff] dark:bg-[#000000] bg-background border border-border rounded-2xl shadow-2xl z-10 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+        className="relative w-full sm:max-w-[600px] min-h-full sm:min-h-0 bg-[#ffffff] dark:bg-[#000000] bg-background sm:border border-border sm:rounded-2xl rounded-none shadow-2xl z-10 flex flex-col overflow-hidden animate-in fade-in sm:zoom-in-95 duration-150"
       >
         {/* Header: Close Button & Drafts Button (Screenshot) */}
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center justify-between px-4 py-3 border-b sm:border-b-0 border-border">
           <button
             onClick={onClose}
             className="p-2 hover:bg-subtle rounded-full text-foreground transition-colors"
@@ -265,7 +265,7 @@ export function PostModal({
         </div>
 
         {/* Content Body */}
-        <div className="px-4 pb-3 flex flex-col">
+        <div className="px-4 pb-3 flex flex-col flex-1">
           {/* If replying to a post: render parent post context with connecting line (Screenshot layout) */}
           {replyToPost && (
             <div className="flex gap-3 mb-2 relative">
@@ -305,7 +305,7 @@ export function PostModal({
           )}
 
           {/* User Input & Compose Row */}
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-1">
             <img
               src={
                 currentUser?.avatar_url ||
@@ -315,21 +315,22 @@ export function PostModal({
               className="w-10 h-10 rounded-full object-cover shrink-0 border border-border"
             />
 
-            <div className="flex-1 min-w-0 flex flex-col">
-              <textarea
-                ref={textareaRef}
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder={
-                  replyToPost
-                    ? "Post your reply"
-                    : quotedPost
-                    ? "Add a comment"
-                    : "What is happening?!"
-                }
-                rows={quotedPost ? 2 : replyToPost ? 3 : 4}
-                className="w-full bg-transparent text-[19px] sm:text-[20px] text-foreground placeholder:text-muted outline-none resize-none leading-normal font-normal min-h-[56px]"
-              />
+            <div className="flex-1 min-w-0 flex flex-col justify-between">
+              <div>
+                <textarea
+                  ref={textareaRef}
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder={
+                    replyToPost
+                      ? "Post your reply"
+                      : quotedPost
+                      ? "Add a comment"
+                      : "What is happening?!"
+                  }
+                  rows={quotedPost ? 2 : replyToPost ? 3 : 5}
+                  className="w-full bg-transparent text-[18px] sm:text-[20px] text-foreground placeholder:text-muted outline-none resize-none leading-normal font-normal min-h-[90px] sm:min-h-[110px]"
+                />
 
               {/* Staged Attachments Grid */}
               {stagedFiles.length > 0 && (
@@ -460,6 +461,8 @@ export function PostModal({
                 </div>
               )}
 
+              </div>
+
               {/* Audience Pill: Everyone can reply (Screenshot) */}
               <div className="flex items-center gap-1.5 text-brand font-bold text-[13px] hover:bg-brand/10 py-1 px-3 rounded-full w-fit cursor-pointer transition-colors -ml-3 mb-2">
                 <Globe className="w-4 h-4 stroke-[2.2]" />
@@ -467,9 +470,9 @@ export function PostModal({
               </div>
 
               {/* Bottom Toolbar & Post Action */}
-              <div className="border-t border-border pt-3 flex items-center justify-between">
+              <div className="border-t border-border pt-3 mt-auto flex items-center justify-between flex-wrap gap-2 pb-safe">
                 {/* Media Action Icons */}
-                <div className="flex items-center gap-1 -ml-2 text-brand">
+                <div className="flex items-center gap-0.5 sm:gap-1 -ml-2 text-brand flex-wrap">
                   <input
                     type="file"
                     ref={fileInputRef}

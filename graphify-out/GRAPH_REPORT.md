@@ -1,41 +1,40 @@
-# Graph Report - .  (2026-11-14)
+# Graph Report - .  (2026-11-16)
 
 ## Corpus Check
 - cluster-only mode — file stats not available
 
 ## Summary
-- 1312 nodes · 3470 edges · 158 communities (48 shown, 110 thin omitted)
+- 1312 nodes · 3469 edges · 157 communities (48 shown, 109 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 117 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `22baf4d2`
+- Built from commit: `af257ded`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - writeJSON
 - T
+- Context
 - models.go
 - Context
 - CryptoGateway
 - Context
-- Context
 - .CheckoutSubscription
 - dependencies
-- [postId]/page.tsx
-- index.ts
 - MemoryRepository
-- api.ts
-- PostgresRepository
+- [postId]/page.tsx
 - notifications/page.tsx
+- index.ts
+- api.ts
 - compilerOptions
-- app/page.tsx
 - Hub
 - Post
 - search/page.tsx
 - UserNameWithRole.tsx
 - Post
+- app/page.tsx
 - MediaService
 - User
 - FeedSkeleton.tsx
@@ -54,18 +53,18 @@
 - RankingWeights
 - Role
 - .GetPlanEntitlements
-- .DismissUserRecommendation
+- PostgresRepository
 - EncodeCursor
 - route.ts
 - TopLoadingBar.tsx
 - EvaluateFeed
+- .DismissUserRecommendation
 - .GetActiveSubscription
 - .GetNotifications
 - .GetNotifications
 - middleware.ts
-- .GetConversationByID
-- .GetFollowRequests
 - .GetUserBadges
+- .MarkOutboxEventFailed
 - test_all_apis.py
 - next.config.js
 - next-env.d.ts
@@ -190,7 +189,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (158 total, 110 thin omitted)
+## Communities (157 total, 109 thin omitted)
 
 ### Community 0 - "writeJSON"
 Cohesion: 0.09
@@ -200,21 +199,21 @@ Nodes (10): Context, PaymentOrder, Handler, Request, ResponseWriter, Handler, Re
 Cohesion: 0.07
 Nodes (62): Client, CryptoGateway, Hub, MediaService, Mux, Repository, Repository, setupTestFullAdminRouter() (+54 more)
 
-### Community 2 - "models.go"
+### Community 2 - "Context"
+Cohesion: 0.07
+Nodes (5): Context, Conversation, SocialRelationship, UserRecommendation, UUID
+
+### Community 3 - "models.go"
 Cohesion: 0.08
 Nodes (58): AdminOverview, AuditLog, Conversation, CounterMismatchDetail, CounterReconciliationResult, DatabaseHealth, Entitlements, FeedFeedback (+50 more)
 
-### Community 3 - "Context"
+### Community 4 - "Context"
 Cohesion: 0.06
 Nodes (5): PaymentOrder, Context, SocialRelationship, UserRecommendation, UUID
 
-### Community 4 - "CryptoGateway"
+### Community 5 - "CryptoGateway"
 Cohesion: 0.07
 Nodes (37): Config, Duration, Handler, mfaTokenPayload, memoryLimiter, Mutex, CryptoCurrency, CryptoGateway (+29 more)
-
-### Community 5 - "Context"
-Cohesion: 0.07
-Nodes (5): Context, SocialRelationship, Time, UserRecommendation, UUID
 
 ### Community 6 - "Context"
 Cohesion: 0.10
@@ -228,131 +227,131 @@ Nodes (29): CryptoInvoice, CryptoOperation, Handler, CheckoutRequest, Logger, co
 Cohesion: 0.05
 Nodes (42): dependencies, clsx, lucide-react, next, next-auth, react, react-dom, tailwind-merge (+34 more)
 
-### Community 9 - "[postId]/page.tsx"
-Cohesion: 0.12
-Nodes (21): StagedFile, PostCard(), PostCardProps, MediaDetailSidebar(), MediaDetailSidebarProps, MediaViewerContext, MediaViewerContextType, useMediaViewer() (+13 more)
-
-### Community 10 - "index.ts"
-Cohesion: 0.12
-Nodes (19): AdminTab, TIER_PRESENTATION, TierBadge(), TierBadgeProps, TierKey, AdminOverview, AuditLog, Entitlements (+11 more)
-
-### Community 11 - "MemoryRepository"
+### Community 9 - "MemoryRepository"
 Cohesion: 0.07
 Nodes (12): MemoryRepository, RWMutex, AuditLog, Conversation, FollowRequest, MediaObject, Message, Permission (+4 more)
 
-### Community 12 - "api.ts"
-Cohesion: 0.11
-Nodes (29): SettingsSection, AuthModal(), AuthModalProps, ComposerContext, ComposerContextValue, ComposerProvider(), LeftNavRail(), RightSidebar() (+21 more)
+### Community 10 - "[postId]/page.tsx"
+Cohesion: 0.12
+Nodes (22): StagedFile, PostModal(), PostCard(), PostCardProps, MediaDetailSidebar(), MediaDetailSidebarProps, MediaViewerContext, MediaViewerContextType (+14 more)
 
-### Community 13 - "PostgresRepository"
-Cohesion: 0.09
-Nodes (9): DB, categorizeTopic(), Duration, MediaObject, Message, PostgresRepository, SubscriptionPlan, TrendingTopic (+1 more)
-
-### Community 14 - "notifications/page.tsx"
+### Community 11 - "notifications/page.tsx"
 Cohesion: 0.10
 Nodes (20): VerifiedBadge(), VerifiedBadgeProps, MobileBottomNav(), MobileBottomNavProps, MobileDrawer(), MobileDrawerProps, UpgradeModalContext, UpgradeModalContextType (+12 more)
 
-### Community 15 - "compilerOptions"
+### Community 12 - "index.ts"
+Cohesion: 0.12
+Nodes (19): AdminTab, TIER_PRESENTATION, TierBadge(), TierBadgeProps, TierKey, AdminOverview, AuditLog, Entitlements (+11 more)
+
+### Community 13 - "api.ts"
+Cohesion: 0.11
+Nodes (29): SettingsSection, AuthModal(), AuthModalProps, ComposerContext, ComposerContextValue, ComposerProvider(), LeftNavRail(), RightSidebar() (+21 more)
+
+### Community 14 - "compilerOptions"
 Cohesion: 0.07
 Nodes (26): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+18 more)
 
-### Community 16 - "app/page.tsx"
-Cohesion: 0.14
-Nodes (21): encodeFeedCursor(), FeedResponse, HomePage(), MediaUrlInputModal(), MediaUrlInputModalProps, MobileComposerModal(), MobileComposerModalProps, StagedAttachment (+13 more)
-
-### Community 17 - "Hub"
+### Community 15 - "Hub"
 Cohesion: 0.16
 Nodes (13): RawMessage, Client, Hub, InboundEvent, OutboundEvent, Conn, Context, Request (+5 more)
 
-### Community 18 - "Post"
+### Community 16 - "Post"
 Cohesion: 0.17
 Nodes (3): Rows, FeedCursor, Post
 
-### Community 19 - "search/page.tsx"
+### Community 17 - "search/page.tsx"
 Cohesion: 0.18
 Nodes (11): ExploreCategory, SearchPageContent(), SearchPostsResponse, SearchTab, SearchUsersResponse, RecentSearchItem, SearchBarDropdown(), SearchBarDropdownProps (+3 more)
 
-### Community 20 - "UserNameWithRole.tsx"
+### Community 18 - "UserNameWithRole.tsx"
 Cohesion: 0.21
 Nodes (10): EditProfileModal(), EditProfileModalProps, NAME_STYLE_PRESETS, buildCustomNameInlineStyle(), parseCustomNameStyle(), UserNameWithRole(), UserNameWithRoleProps, CustomNameStyle (+2 more)
 
-### Community 22 - "MediaService"
+### Community 20 - "app/page.tsx"
+Cohesion: 0.14
+Nodes (20): encodeFeedCursor(), FeedResponse, HomePage(), MediaUrlInputModal(), MediaUrlInputModalProps, MobileComposerModal(), MobileComposerModalProps, StagedAttachment (+12 more)
+
+### Community 21 - "MediaService"
 Cohesion: 0.18
 Nodes (12): Config, Image, MediaService, Reader, getEnv(), getEnvInt(), Load(), Client (+4 more)
 
-### Community 24 - "FeedSkeleton.tsx"
+### Community 23 - "FeedSkeleton.tsx"
 Cohesion: 0.19
 Nodes (4): FeedSkeleton(), PostCardSkeleton(), PostDetailSkeleton(), ProfileSkeleton()
 
-### Community 25 - "engine_test.go"
+### Community 24 - "engine_test.go"
 Cohesion: 0.20
 Nodes (11): B, DiversityReranker, NewDiversityReranker(), BenchmarkDiversityReranker(), BenchmarkScoringEngine(), T, TestDiversityReranking(), TestFeedEvaluator() (+3 more)
 
-### Community 26 - "admin.go"
+### Community 25 - "admin.go"
 Cohesion: 0.16
 Nodes (13): AdminDeletePostRequest, AssignMembershipRequest, CreateRoleRequest, SetPermissionsRequest, SetPlanEntitlementsRequest, UpdatePlanRequest, UpdatePostModerationRequest, UpdateRoleRequest (+5 more)
 
-### Community 27 - "MockCandidateProvider"
+### Community 26 - "MockCandidateProvider"
 Cohesion: 0.40
 Nodes (4): MockCandidateProvider, Context, Post, UUID
 
-### Community 28 - "OtherSkeletons.tsx"
+### Community 27 - "OtherSkeletons.tsx"
 Cohesion: 0.23
 Nodes (3): ExploreSkeleton(), MessagesSkeleton(), NotificationsSkeleton()
 
-### Community 29 - "qrcode.tsx"
+### Community 28 - "qrcode.tsx"
 Cohesion: 0.24
 Nodes (11): ALIGNMENT_PATTERNS, EC_CODEWORDS_L, encodeQRMatrix(), GF_EXP, GF_LOG, gfMul(), NUM_BLOCKS_L, QRCodeSVG() (+3 more)
 
-### Community 31 - "handler.go"
+### Community 30 - "handler.go"
 Cohesion: 0.22
 Nodes (10): CreatePostRequest, FeedFeedbackRequest, FeedImpressionsRequest, GoogleAuthRequest, LoginRequest, RegisterRequest, SimulatePaymentRequest, UpdatePostRequest (+2 more)
 
-### Community 32 - "types.go"
+### Community 31 - "types.go"
 Cohesion: 0.25
 Nodes (9): Candidate, CandidateSource, Features, FeedCursor, FeedOptions, FeedResult, Post, Time (+1 more)
 
-### Community 33 - "VideoControls.tsx"
+### Community 32 - "VideoControls.tsx"
 Cohesion: 0.31
 Nodes (7): formatTime(), SPEED_OPTIONS, VideoControls(), VideoControlsProps, formatTime(), VideoProgressBar(), VideoProgressBarProps
 
-### Community 34 - "Engine"
+### Community 33 - "Engine"
 Cohesion: 0.31
 Nodes (7): DiversityReranker, FeedOptions, FeedResult, CandidateProvider, Engine, Context, NewEngine()
 
-### Community 35 - ".GetActiveSubscription"
+### Community 34 - ".GetActiveSubscription"
 Cohesion: 0.22
 Nodes (3): Entitlements, Subscription, UserMembership
 
-### Community 36 - "LeftNavRail.tsx"
+### Community 35 - "LeftNavRail.tsx"
 Cohesion: 0.18
 Nodes (10): metadata, ConfirmModal(), ConfirmModalProps, useComposer(), AppShell(), LeftNavRailProps, RouteTransition(), AppProviders() (+2 more)
 
-### Community 37 - "RankingWeights"
+### Community 36 - "RankingWeights"
 Cohesion: 0.29
 Nodes (3): RankingWeights, DefaultRankingWeights(), CalculateLinearScore()
 
-### Community 41 - "EncodeCursor"
+### Community 39 - "PostgresRepository"
+Cohesion: 0.08
+Nodes (10): DB, categorizeTopic(), Duration, FollowRequest, MediaObject, Message, PostgresRepository, SubscriptionPlan (+2 more)
+
+### Community 40 - "EncodeCursor"
 Cohesion: 0.40
 Nodes (5): DecodeCursor(), EncodeCursor(), Time, UUID, TestCursorRoundtrip()
 
-### Community 42 - "route.ts"
+### Community 41 - "route.ts"
 Cohesion: 0.60
 Nodes (3): getDynamicAuthOptions(), handler(), authOptions
 
-### Community 44 - "EvaluateFeed"
+### Community 43 - "EvaluateFeed"
 Cohesion: 0.50
 Nodes (4): FeedMetrics, EvaluateFeed(), Post, Time
 
 ## Knowledge Gaps
 - **131 isolated node(s):** `name`, `version`, `private`, `dev`, `build` (+126 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **110 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **109 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `MemoryRepository` connect `MemoryRepository` to `T`, `models.go`, `.GetActiveSubscription`, `Context`, `RankingWeights`, `Role`, `.GetPlanEntitlements`, `.DismissUserRecommendation`, `.GetNotifications`, `Post`, `User`?**
+- **Why does `MemoryRepository` connect `MemoryRepository` to `T`, `.GetActiveSubscription`, `models.go`, `Context`, `RankingWeights`, `Role`, `.GetPlanEntitlements`, `.DismissUserRecommendation`, `.GetNotifications`, `Post`, `User`?**
   _High betweenness centrality (0.135) - this node is a cross-community bridge._
 - **Why does `NewMemoryRepository()` connect `T` to `MemoryRepository`, `RankingWeights`, `.CheckoutSubscription`?**
   _High betweenness centrality (0.096) - this node is a cross-community bridge._
