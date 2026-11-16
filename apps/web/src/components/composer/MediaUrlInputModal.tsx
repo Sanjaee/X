@@ -55,9 +55,9 @@ export function MediaUrlInputModal({
   const hasUrl = url.trim().length > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
       <div
-        className="relative w-full max-w-[500px] bg-[#000000] border border-border text-foreground rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        className="relative w-full max-w-[500px] max-h-[90vh] overflow-y-auto bg-[#000000] border border-border text-foreground rounded-2xl shadow-2xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
