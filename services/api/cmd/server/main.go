@@ -194,6 +194,12 @@ func main() {
 			pub.Get("/explore/trending", h.GetTrendingTopics)
 			pub.Get("/users/recommendations", h.GetWhoToFollow)
 			pub.Post("/feed/impressions", h.RecordFeedImpressions)
+
+			// Community Discovery & Public Feeds
+			pub.Get("/communities", h.GetCommunities)
+			pub.Get("/communities/{slug}", h.GetCommunityBySlug)
+			pub.Get("/communities/{slug}/members", h.GetCommunityMembers)
+			pub.Get("/communities/{slug}/posts", h.GetCommunityPosts)
 		})
 
 		// Authenticated protected routes
@@ -263,6 +269,15 @@ func main() {
 			auth.Patch("/notifications/read", h.MarkNotificationsRead)
 			auth.Get("/notifications/unread-count", h.GetUnreadNotificationsCount)
 			auth.Post("/notifications/{notificationId}/read", h.MarkNotificationRead)
+
+			// Community Management & Participation
+			auth.Get("/communities/me", h.GetUserCommunities)
+			auth.Post("/communities", h.CreateCommunity)
+			auth.Patch("/communities/{slug}", h.UpdateCommunity)
+			auth.Post("/communities/{slug}/join", h.JoinCommunity)
+			auth.Post("/communities/{slug}/leave", h.LeaveCommunity)
+			auth.Get("/communities/{slug}/requests", h.GetCommunityJoinRequests)
+			auth.Post("/communities/{slug}/requests/{requestId}/review", h.ReviewCommunityJoinRequest)
 
 			// Media Upload (with automatic compression and R2 storage)
 			auth.Post("/media/upload", h.UploadMedia)

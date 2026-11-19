@@ -333,5 +333,58 @@ export interface NewPostsResponse {
   posts?: Post[];
 }
 
+export interface CommunityRule {
+  id?: string;
+  community_id?: string;
+  rule_number?: number;
+  title: string;
+  description: string;
+  created_at?: string;
+}
+
+export interface Community {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  avatar_url: string;
+  banner_url: string;
+  access_model: 'open' | 'restricted';
+  visibility: 'public' | 'unlisted';
+  owner_id: string;
+  owner?: User;
+  members_count: number;
+  posts_count: number;
+  created_at: string;
+  updated_at?: string;
+  viewer_role?: 'owner' | 'admin' | 'moderator' | 'member' | '';
+  viewer_status?: 'active' | 'suspended' | 'banned' | 'pending' | '';
+}
+
+export interface CommunityMember {
+  id: string;
+  community_id: string;
+  user_id: string;
+  user?: User;
+  role: 'owner' | 'admin' | 'moderator' | 'member';
+  status: 'active' | 'suspended' | 'banned';
+  suspended_until?: string | null;
+  joined_at: string;
+}
+
+export interface CommunityJoinRequest {
+  id: string;
+  community_id: string;
+  community?: Community;
+  user_id: string;
+  user?: User;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  response_note?: string;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
+  created_at: string;
+}
+
+
 
 

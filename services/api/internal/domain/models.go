@@ -660,6 +660,90 @@ type CounterMismatchDetail struct {
 	Fixed         bool      `json:"fixed"`
 }
 
+// ==========================================
+// COMMUNITY & USER RELATIONSHIPS
+// ==========================================
+
+type Community struct {
+	ID           uuid.UUID  `json:"id"`
+	Slug         string     `json:"slug"`
+	Name         string     `json:"name"`
+	Description  string     `json:"description"`
+	AvatarURL    string     `json:"avatar_url"`
+	BannerURL    string     `json:"banner_url"`
+	AccessModel  string     `json:"access_model"` // "open", "restricted"
+	Visibility   string     `json:"visibility"`   // "public", "unlisted"
+	OwnerID      uuid.UUID  `json:"owner_id"`
+	Owner        *User      `json:"owner,omitempty"`
+	MembersCount int        `json:"members_count"`
+	PostsCount   int        `json:"posts_count"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+	DeletedAt    *time.Time `json:"deleted_at,omitempty"`
+
+	// Relational context for viewer
+	ViewerRole   string `json:"viewer_role,omitempty"`   // "owner", "admin", "moderator", "member", ""
+	ViewerStatus string `json:"viewer_status,omitempty"` // "active", "suspended", "banned", "pending", ""
+}
+
+type CommunityMember struct {
+	ID             uuid.UUID  `json:"id"`
+	CommunityID    uuid.UUID  `json:"community_id"`
+	UserID         uuid.UUID  `json:"user_id"`
+	User           *User      `json:"user,omitempty"`
+	Role           string     `json:"role"` // "owner", "admin", "moderator", "member"
+	Status         string     `json:"status"` // "active", "suspended", "banned"
+	SuspendedUntil *time.Time `json:"suspended_until,omitempty"`
+	JoinedAt       time.Time  `json:"joined_at"`
+}
+
+type CommunityRule struct {
+	ID          uuid.UUID `json:"id"`
+	CommunityID uuid.UUID `json:"community_id"`
+	RuleNumber  int       `json:"rule_number"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+type CommunityJoinRequest struct {
+	ID           uuid.UUID  `json:"id"`
+	CommunityID  uuid.UUID  `json:"community_id"`
+	Community    *Community `json:"community,omitempty"`
+	UserID       uuid.UUID  `json:"user_id"`
+	User         *User      `json:"user,omitempty"`
+	Status       string     `json:"status"` // "pending", "approved", "rejected", "cancelled"
+	ResponseNote string     `json:"response_note"`
+	ReviewedAt   *time.Time `json:"reviewed_at,omitempty"`
+	ReviewedBy   *uuid.UUID `json:"reviewed_by,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+}
+
+type CommunityInvitation struct {
+	ID          uuid.UUID  `json:"id"`
+	CommunityID uuid.UUID  `json:"community_id"`
+	Community   *Community `json:"community,omitempty"`
+	InviterID   uuid.UUID  `json:"inviter_id"`
+	Inviter     *User      `json:"inviter,omitempty"`
+	InviteeID   uuid.UUID  `json:"invitee_id"`
+	Invitee     *User      `json:"invitee,omitempty"`
+	Status      string     `json:"status"` // "pending", "accepted", "declined", "expired"
+	ExpiresAt   time.Time  `json:"expires_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+}
+
+type CommunityPost struct {
+	ID          uuid.UUID  `json:"id"`
+	PostID      uuid.UUID  `json:"post_id"`
+	Post        *Post      `json:"post,omitempty"`
+	CommunityID uuid.UUID  `json:"community_id"`
+	IsPinned    bool       `json:"is_pinned"`
+	PinnedAt    *time.Time `json:"pinned_at,omitempty"`
+	PinnedBy    *uuid.UUID `json:"pinned_by,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+}
+
+
 
 
 

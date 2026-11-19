@@ -69,6 +69,14 @@ type MemoryRepository struct {
 	userMemberships map[uuid.UUID]*domain.UserMembership
 	usageCounters   map[string]int // "userID:periodKey" -> count
 	auditLogs       []domain.AuditLog
+
+	// Community & Relationships
+	communities       map[uuid.UUID]*domain.Community
+	communityMembers   map[string]*domain.CommunityMember     // "commID:userID" -> member
+	communityRules     map[uuid.UUID][]domain.CommunityRule   // commID -> rules
+	communityJoinReqs  map[uuid.UUID]*domain.CommunityJoinRequest
+	communityPosts     map[uuid.UUID]uuid.UUID                // postID -> commID
+	pinnedPosts        map[string]bool                        // "commID:postID" -> bool
 }
 
 func NewMemoryRepository() *MemoryRepository {
@@ -113,6 +121,12 @@ func NewMemoryRepository() *MemoryRepository {
 		userMemberships: make(map[uuid.UUID]*domain.UserMembership),
 		usageCounters:   make(map[string]int),
 		auditLogs:       make([]domain.AuditLog, 0),
+		communities:     make(map[uuid.UUID]*domain.Community),
+		communityMembers: make(map[string]*domain.CommunityMember),
+		communityRules:   make(map[uuid.UUID][]domain.CommunityRule),
+		communityJoinReqs: make(map[uuid.UUID]*domain.CommunityJoinRequest),
+		communityPosts:   make(map[uuid.UUID]uuid.UUID),
+		pinnedPosts:      make(map[string]bool),
 	}
 	repo.seedInitialData()
 	return repo

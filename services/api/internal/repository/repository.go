@@ -208,5 +208,34 @@ type Repository interface {
 
 	// Counter Reconciliation Maintenance
 	ReconcileCounters(ctx context.Context, dryRun bool, batchSize int) (*domain.CounterReconciliationResult, error)
+
+	// Community & Community Relationships
+	CreateCommunity(ctx context.Context, c *domain.Community, rules []domain.CommunityRule) error
+	GetCommunityByID(ctx context.Context, id uuid.UUID, viewerID *uuid.UUID) (*domain.Community, error)
+	GetCommunityBySlug(ctx context.Context, slug string, viewerID *uuid.UUID) (*domain.Community, error)
+	GetCommunities(ctx context.Context, search string, limit, offset int, viewerID *uuid.UUID) ([]domain.Community, int, error)
+	GetUserCommunities(ctx context.Context, userID uuid.UUID) ([]domain.Community, error)
+	UpdateCommunity(ctx context.Context, c *domain.Community) error
+	DeleteCommunity(ctx context.Context, id uuid.UUID) error
+
+	// Community Membership
+	GetCommunityMember(ctx context.Context, commID, userID uuid.UUID) (*domain.CommunityMember, error)
+	AddCommunityMember(ctx context.Context, m *domain.CommunityMember) error
+	RemoveCommunityMember(ctx context.Context, commID, userID uuid.UUID) error
+	UpdateCommunityMemberRole(ctx context.Context, commID, userID uuid.UUID, role string) error
+	UpdateCommunityMemberStatus(ctx context.Context, commID, userID uuid.UUID, status string, suspendedUntil *time.Time) error
+	GetCommunityMembers(ctx context.Context, commID uuid.UUID, limit, offset int) ([]domain.CommunityMember, int, error)
+
+	// Community Join Requests & Invites
+	CreateCommunityJoinRequest(ctx context.Context, req *domain.CommunityJoinRequest) error
+	GetCommunityJoinRequests(ctx context.Context, commID uuid.UUID, status string, limit, offset int) ([]domain.CommunityJoinRequest, error)
+	ReviewCommunityJoinRequest(ctx context.Context, reqID, reviewerID uuid.UUID, status, note string) error
+	CancelCommunityJoinRequest(ctx context.Context, commID, userID uuid.UUID) error
+
+	// Community Rules & Posts
+	GetCommunityRules(ctx context.Context, commID uuid.UUID) ([]domain.CommunityRule, error)
+	LinkPostToCommunity(ctx context.Context, postID, commID uuid.UUID) error
+	GetCommunityPosts(ctx context.Context, commID uuid.UUID, limit, offset int, viewerID *uuid.UUID) ([]domain.Post, error)
+	PinCommunityPost(ctx context.Context, commID, postID, modID uuid.UUID, isPinned bool) error
 }
 

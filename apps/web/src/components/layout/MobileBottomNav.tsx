@@ -10,6 +10,7 @@ import {
   Bell,
   MessageCircle,
   Feather,
+  Users,
 } from "lucide-react";
 import { useRealtime } from "@/lib/useRealtime";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ export function MobileBottomNav({ onOpenComposer }: MobileBottomNavProps) {
 
   const isHome = pathname === "/";
   const isSearch = pathname.startsWith("/search") || pathname.startsWith("/explore");
+  const isCommunities = pathname.startsWith("/communities");
   const isNotifs = pathname.startsWith("/notifications");
   const isMessages = pathname.startsWith("/messages");
 
@@ -69,6 +71,20 @@ export function MobileBottomNav({ onOpenComposer }: MobileBottomNavProps) {
             className={cn(
               "w-[26px] h-[26px]",
               isSearch ? "stroke-[2.8] text-foreground" : "stroke-[1.8] text-foreground/80"
+            )}
+          />
+        </Link>
+
+        {/* 3. Communities */}
+        <Link
+          href="/communities"
+          className="flex-1 flex flex-col items-center justify-center h-full relative text-foreground hover:opacity-80 transition-opacity"
+          aria-label="Communities"
+        >
+          <Users
+            className={cn(
+              "w-[26px] h-[26px]",
+              isCommunities ? "stroke-[2.8] text-foreground" : "stroke-[1.8] text-foreground/80"
             )}
           />
         </Link>

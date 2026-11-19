@@ -17,6 +17,7 @@ import {
   Shield,
   Check,
   Plus,
+  Users,
 } from "lucide-react";
 import { User } from "@/types";
 import { cn } from "@/lib/utils";
@@ -86,6 +87,7 @@ export function LeftNavRail({
     { label: "Notifications", href: "/notifications", icon: Bell },
     { label: "Messages", href: "/messages", icon: Mail },
     { label: "Bookmarks", href: "/bookmarks", icon: Bookmark },
+    { label: "Communities", href: "/communities", icon: Users },
     { label: "Premium", href: "/premium", icon: BadgeCheck },
     ...(isAdmin ? [{ label: "Admin", href: "/admin", icon: Shield }] : []),
     {
