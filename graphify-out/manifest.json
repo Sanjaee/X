@@ -220,9 +220,9 @@
     "semantic_hash": "2b6130eb5c74947dfd50243cab161368"
   },
   "services/api/internal/media/media.go": {
-    "mtime": 1792334068.3691268,
-    "ast_hash": "25f76cb281c675dd5eb281519da9d552",
-    "semantic_hash": "25f76cb281c675dd5eb281519da9d552"
+    "mtime": 1795359872.5988936,
+    "ast_hash": "ed7aef5a7dbaf5281b1b0d7ba55df289",
+    "semantic_hash": "ed7aef5a7dbaf5281b1b0d7ba55df289"
   },
   "services/api/internal/middleware/concurrency.go": {
     "mtime": 1793372297.2254262,
@@ -415,9 +415,9 @@
     "semantic_hash": "b11f4a1898f3e963b4db57e5ef502b22"
   },
   "services/api/cmd/server/main.go": {
-    "mtime": 1795102555.8265493,
-    "ast_hash": "8e98f754ffe64ea4b67657027af1d963",
-    "semantic_hash": "8e98f754ffe64ea4b67657027af1d963"
+    "mtime": 1795360005.8229525,
+    "ast_hash": "c4fd0a7f64da95e8419f16e80e84bb49",
+    "semantic_hash": "c4fd0a7f64da95e8419f16e80e84bb49"
   },
   "scripts/test-auth-flow.ps1": {
     "mtime": 1792082013.9908762,
@@ -745,9 +745,9 @@
     "semantic_hash": "2fdde429458097bc4625c313a24de99a"
   },
   "apps/web/src/app/communities/[slug]/page.tsx": {
-    "mtime": 1795358100.5337389,
-    "ast_hash": "a1a8020d5b8d754109fbeb9f6f5ccc55",
-    "semantic_hash": "a1a8020d5b8d754109fbeb9f6f5ccc55"
+    "mtime": 1795360404.1659923,
+    "ast_hash": "bae26cc3b6b5e0bdbfb677721212496d",
+    "semantic_hash": "bae26cc3b6b5e0bdbfb677721212496d"
   },
   "apps/web/src/app/communities/page.tsx": {
     "mtime": 1795102716.788411,
@@ -755,9 +755,9 @@
     "semantic_hash": "f61aecfd14598e119a01ff90051b2783"
   },
   "services/api/internal/handler/community.go": {
-    "mtime": 1795102521.4447758,
-    "ast_hash": "870e4e311aad9b0dcdab476409f4817f",
-    "semantic_hash": "870e4e311aad9b0dcdab476409f4817f"
+    "mtime": 1795359965.1262796,
+    "ast_hash": "fb41cc51ac46eadcfd6de825fc275d1e",
+    "semantic_hash": "fb41cc51ac46eadcfd6de825fc275d1e"
   },
   "services/api/internal/repository/memory_community.go": {
     "mtime": 1795102294.0685315,

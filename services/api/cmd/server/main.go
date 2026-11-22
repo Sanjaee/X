@@ -278,6 +278,7 @@ func main() {
 			auth.Post("/communities/{slug}/leave", h.LeaveCommunity)
 			auth.Get("/communities/{slug}/requests", h.GetCommunityJoinRequests)
 			auth.Post("/communities/{slug}/requests/{requestId}/review", h.ReviewCommunityJoinRequest)
+			auth.Delete("/communities/{slug}", h.DeleteCommunity)
 
 			// Media Upload (with automatic compression and R2 storage)
 			auth.Post("/media/upload", h.UploadMedia)

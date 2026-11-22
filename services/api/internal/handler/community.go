@@ -198,8 +198,24 @@ func (h *Handler) UpdateCommunity(w http.ResponseWriter, r *http.Request) {
 		comm.Name = strings.TrimSpace(req.Name)
 	}
 	comm.Description = req.Description
-	comm.AvatarURL = req.AvatarURL
-	comm.BannerURL = req.BannerURL
+
+	// Check if old avatar or banner was replaced or removed -> Clean up from R2
+	oldAvatar := comm.AvatarURL
+	oldBanner := comm.BannerURL
+
+	if req.AvatarURL != oldAvatar {
+		if oldAvatar != "" && h.mediaSvc != nil {
+			_ = h.mediaSvc.DeleteByStorageKeyOrURL(r.Context(), oldAvatar)
+		}
+		comm.AvatarURL = req.AvatarURL
+	}
+	if req.BannerURL != oldBanner {
+		if oldBanner != "" && h.mediaSvc != nil {
+			_ = h.mediaSvc.DeleteByStorageKeyOrURL(r.Context(), oldBanner)
+		}
+		comm.BannerURL = req.BannerURL
+	}
+
 	if req.AccessModel == "open" || req.AccessModel == "restricted" {
 		comm.AccessModel = req.AccessModel
 	}
@@ -451,5 +467,46 @@ func (h *Handler) ReviewCommunityJoinRequest(w http.ResponseWriter, r *http.Requ
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"message": "Join request reviewed successfully",
 		"status":  payload.Status,
+	})
+}
+
+// DeleteCommunity deletes a community and cleans up its media from R2 (Owner only)
+func (h *Handler) DeleteCommunity(w http.ResponseWriter, r *http.Request) {
+	u := middleware.GetUserFromContext(r.Context())
+	if u == nil {
+		writeError(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+	slug := chi.URLParam(r, "slug")
+
+	comm, err := h.repo.GetCommunityBySlug(r.Context(), slug, &u.ID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "Community not found")
+		return
+	}
+
+	if comm.ViewerRole != "owner" && !middleware.IsOwnerAccount(u) {
+		writeError(w, http.StatusForbidden, "Only the community owner can delete this community")
+		return
+	}
+
+	// 1. Delete community from DB
+	if err := h.repo.DeleteCommunity(r.Context(), comm.ID); err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to delete community")
+		return
+	}
+
+	// 2. Clean up Avatar and Banner from Cloudflare R2
+	if h.mediaSvc != nil {
+		if comm.AvatarURL != "" {
+			_ = h.mediaSvc.DeleteByStorageKeyOrURL(r.Context(), comm.AvatarURL)
+		}
+		if comm.BannerURL != "" {
+			_ = h.mediaSvc.DeleteByStorageKeyOrURL(r.Context(), comm.BannerURL)
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"message": "Community deleted successfully",
 	})
 }

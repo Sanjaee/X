@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -17,6 +17,9 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  Camera,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { Community, CommunityRule, CommunityMember, CommunityJoinRequest, Post } from "@/types";
@@ -40,6 +43,90 @@ export default function CommunityDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [isUploadingMedia, setIsUploadingMedia] = useState<"avatar" | "banner" | null>(null);
+  const [isDeletingCommunity, setIsDeletingCommunity] = useState(false);
+
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+
+  const handleMediaUpload = async (type: "avatar" | "banner", file: File) => {
+    if (!community) return;
+    setIsUploadingMedia(type);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const uploadRes = await apiRequest<{ url: string }>("/media/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!uploadRes.url) {
+        throw new Error("Failed to upload image");
+      }
+
+      // Update community
+      const payload = type === "avatar"
+        ? { avatar_url: uploadRes.url }
+        : { banner_url: uploadRes.url };
+
+      const updatedComm = await apiRequest<Community>(`/communities/${slug}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+
+      setCommunity(updatedComm);
+    } catch (err: any) {
+      alert(err.message || `Failed to update ${type}`);
+    } finally {
+      setIsUploadingMedia(null);
+    }
+  };
+
+  const handleRemoveMedia = async (type: "avatar" | "banner") => {
+    if (!community) return;
+    if (!confirm(`Are you sure you want to remove the community ${type}?`)) return;
+
+    setIsUploadingMedia(type);
+    try {
+      const payload = type === "avatar"
+        ? { avatar_url: "" }
+        : { banner_url: "" };
+
+      const updatedComm = await apiRequest<Community>(`/communities/${slug}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+
+      setCommunity(updatedComm);
+    } catch (err: any) {
+      alert(err.message || `Failed to remove ${type}`);
+    } finally {
+      setIsUploadingMedia(null);
+    }
+  };
+
+  const handleDeleteCommunity = async () => {
+    if (!community) return;
+    if (
+      !confirm(
+        `Are you sure you want to permanently delete the community "${community.name}"? This action cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    setIsDeletingCommunity(true);
+    try {
+      await apiRequest(`/communities/${slug}`, {
+        method: "DELETE",
+      });
+      router.push("/communities");
+    } catch (err: any) {
+      alert(err.message || "Failed to delete community");
+      setIsDeletingCommunity(false);
+    }
+  };
 
   const loadCommunityData = async () => {
     if (!slug) return;
@@ -216,7 +303,7 @@ export default function CommunityDetailPage() {
       </header>
 
       {/* Banner / Header Image */}
-      <div className="h-36 sm:h-44 w-full bg-gradient-to-r from-brand/20 via-brand/10 to-subtle relative overflow-hidden">
+      <div className="h-36 sm:h-44 w-full bg-gradient-to-r from-brand/20 via-brand/10 to-subtle relative overflow-hidden group">
         {community.banner_url ? (
           <img
             src={community.banner_url}
@@ -228,12 +315,53 @@ export default function CommunityDetailPage() {
             <Users className="w-24 h-24 text-brand" />
           </div>
         )}
+
+        {/* Banner Controls for Owner */}
+        {community.viewer_role === "owner" && (
+          <div className="absolute top-3 right-3 flex items-center gap-2">
+            <input
+              type="file"
+              ref={bannerInputRef}
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleMediaUpload("banner", file);
+                e.target.value = "";
+              }}
+            />
+            <button
+              onClick={() => bannerInputRef.current?.click()}
+              disabled={isUploadingMedia !== null}
+              className="p-2 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-md transition-all shadow-md"
+              title="Upload Banner"
+              aria-label="Upload Banner"
+            >
+              {isUploadingMedia === "banner" ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Camera className="w-4 h-4" />
+              )}
+            </button>
+            {community.banner_url && (
+              <button
+                onClick={() => handleRemoveMedia("banner")}
+                disabled={isUploadingMedia !== null}
+                className="p-2 rounded-full bg-black/60 hover:bg-red-600/80 text-white backdrop-blur-md transition-all shadow-md"
+                title="Remove Banner"
+                aria-label="Remove Banner"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Community Info Header */}
       <div className="px-4 pb-4 border-b border-border">
         <div className="flex items-end justify-between -mt-12 mb-3">
-          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-background border-4 border-background overflow-hidden shadow-lg flex items-center justify-center text-brand font-bold text-2xl shrink-0">
+          <div className="relative group w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-background border-4 border-background overflow-hidden shadow-lg flex items-center justify-center text-brand font-bold text-2xl shrink-0">
             {community.avatar_url ? (
               <img
                 src={community.avatar_url}
@@ -242,6 +370,47 @@ export default function CommunityDetailPage() {
               />
             ) : (
               community.name.slice(0, 2).toUpperCase()
+            )}
+
+            {/* Avatar Controls for Owner */}
+            {community.viewer_role === "owner" && (
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity">
+                <input
+                  type="file"
+                  ref={avatarInputRef}
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleMediaUpload("avatar", file);
+                    e.target.value = "";
+                  }}
+                />
+                <button
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={isUploadingMedia !== null}
+                  className="p-1.5 rounded-full bg-black/70 hover:bg-black text-white transition-transform active:scale-90"
+                  title="Upload Avatar"
+                  aria-label="Upload Avatar"
+                >
+                  {isUploadingMedia === "avatar" ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Camera className="w-3.5 h-3.5" />
+                  )}
+                </button>
+                {community.avatar_url && (
+                  <button
+                    onClick={() => handleRemoveMedia("avatar")}
+                    disabled={isUploadingMedia !== null}
+                    className="p-1.5 rounded-full bg-black/70 hover:bg-red-600 text-white transition-transform active:scale-90"
+                    title="Remove Avatar"
+                    aria-label="Remove Avatar"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             )}
           </div>
 
@@ -447,6 +616,29 @@ export default function CommunityDetailPage() {
                 {community.description || "No description provided for this community."}
               </p>
             </div>
+
+            {community.viewer_role === "owner" && (
+              <div className="p-4 rounded-2xl border border-destructive/20 bg-destructive/5 space-y-3">
+                <h3 className="font-bold text-base text-destructive flex items-center gap-2">
+                  <Shield className="w-4 h-4" /> Danger Zone
+                </h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Permanently delete this community and remove all associated media from storage. This action cannot be reversed.
+                </p>
+                <button
+                  onClick={handleDeleteCommunity}
+                  disabled={isDeletingCommunity}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                >
+                  {isDeletingCommunity ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-3.5 h-3.5" />
+                  )}
+                  Delete Community
+                </button>
+              </div>
+            )}
 
             <div>
               <h3 className="font-bold text-base mb-3">Community Rules</h3>

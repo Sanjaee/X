@@ -338,3 +338,61 @@ func resizeIfNeeded(img image.Image, maxDim int) image.Image {
 	return dst
 }
 
+// DeleteByStorageKeyOrURL deletes an asset from Cloudflare R2 and/or local storage fallback
+func (s *MediaService) DeleteByStorageKeyOrURL(ctx context.Context, keyOrURL string) error {
+	raw := strings.TrimSpace(keyOrURL)
+	if raw == "" {
+		return nil
+	}
+
+	// Extract storage key from URL if full CDN or upload URL is provided
+	var key string
+	if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
+		idx := strings.Index(raw, "/media/")
+		if idx != -1 {
+			key = raw[idx+1:] // e.g. "media/uuid.ext"
+		}
+	} else if strings.HasPrefix(raw, "/uploads/") {
+		key = "media/" + strings.TrimPrefix(raw, "/uploads/")
+	} else if strings.HasPrefix(raw, "media/") {
+		key = raw
+	}
+
+	if key == "" {
+		// Not our managed media object or external link
+		return nil
+	}
+
+	var deleteErr error
+
+	// 1. Delete from Cloudflare R2
+	if s.useR2 && s.s3Client != nil {
+		_, err := s.s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
+			Bucket: aws.String(s.cfg.R2Bucket),
+			Key:    aws.String(key),
+		})
+		if err != nil {
+			slog.Error("Failed to delete object from Cloudflare R2", "key", key, "error", err)
+			deleteErr = err
+		} else {
+			slog.Info("Successfully deleted object from Cloudflare R2", "key", key)
+		}
+	}
+
+	// 2. Delete from local storage fallback
+	baseFilename := filepath.Base(key)
+	localPath := filepath.Join(s.storageDir, baseFilename)
+	if _, err := os.Stat(localPath); err == nil {
+		if err := os.Remove(localPath); err != nil {
+			slog.Error("Failed to delete local storage media file", "path", localPath, "error", err)
+			if deleteErr == nil {
+				deleteErr = err
+			}
+		} else {
+			slog.Info("Successfully deleted local media file", "path", localPath)
+		}
+	}
+
+	return deleteErr
+}
+
