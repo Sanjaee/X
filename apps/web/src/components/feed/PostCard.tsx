@@ -16,6 +16,7 @@ import {
   Trash2,
   Loader2,
   Users,
+  ChevronRight,
 } from "lucide-react";
 import { Post, User } from "@/types";
 import { formatRelativeTime, formatNumber, cn } from "@/lib/utils";
@@ -279,7 +280,7 @@ export function PostCard({
             <Link
               href={`/${post.author?.username || "user"}`}
               onClick={(e) => e.stopPropagation()}
-              className="hover:underline inline-flex items-baseline min-w-0 max-w-full"
+              className="hover:underline inline-flex items-baseline min-w-0 max-w-full font-bold text-foreground"
             >
               <UserNameWithRole
                 displayName={post.author?.display_name || post.author?.username || "User"}
@@ -289,15 +290,18 @@ export function PostCard({
             </Link>
 
             {post.community_name && post.community_slug && (
-              <Link
-                href={`/communities/${post.community_slug}`}
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-brand/10 hover:bg-brand/20 text-brand text-[11px] font-semibold tracking-tight transition-colors"
-                title={`Community: ${post.community_name}`}
-              >
-                <Users className="w-3 h-3 shrink-0" />
-                <span className="truncate max-w-[120px]">{post.community_name}</span>
-              </Link>
+              <span className="inline-flex items-center gap-1 min-w-0">
+                <ChevronRight className="w-3.5 h-3.5 text-muted shrink-0" />
+                <Link
+                  href={`/communities/${post.community_slug}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="hover:underline font-bold text-foreground hover:text-brand inline-flex items-center gap-1 transition-colors min-w-0"
+                  title={`Community: ${post.community_name}`}
+                >
+                  <Users className="w-3.5 h-3.5 text-brand shrink-0" />
+                  <span className="truncate max-w-[140px] sm:max-w-[200px]">{post.community_name}</span>
+                </Link>
+              </span>
             )}
 
             <span className="text-muted">@{post.author?.username || "user"}</span>
