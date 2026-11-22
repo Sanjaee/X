@@ -94,6 +94,11 @@ type Post struct {
 	// Reposter context (for timeline repost attribution and Repost tab)
 	Reposter   *User      `json:"reposter,omitempty"`
 	RepostedAt *time.Time `json:"reposted_at,omitempty"`
+
+	// Community context (when posted in a community)
+	CommunityID   *uuid.UUID `json:"community_id,omitempty"`
+	CommunityName string     `json:"community_name,omitempty"`
+	CommunitySlug string     `json:"community_slug,omitempty"`
 }
 
 // Follow represents a directional social connection

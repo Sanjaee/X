@@ -22,6 +22,7 @@ import { apiRequest } from "@/lib/api";
 import { Community, CommunityRule, CommunityMember, CommunityJoinRequest, Post } from "@/types";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { PostCard } from "@/components/feed/PostCard";
+import { PostComposer } from "@/components/composer/PostComposer";
 import { cn } from "@/lib/utils";
 
 export default function CommunityDetailPage() {
@@ -375,16 +376,66 @@ export default function CommunityDetailPage() {
       {/* Tab Panels */}
       <div className="flex-1">
         {activeTab === "feed" && (
-          <div className="divide-y divide-border">
-            {posts.length === 0 ? (
-              <div className="p-12 text-center text-muted-foreground">
-                <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p className="font-semibold text-foreground">No posts yet</p>
-                <p className="text-sm mt-1">Be the first to post in this community!</p>
+          <div>
+            {/* Community Post Composer: active members and moderators can post directly to community */}
+            {currentUser && community.viewer_status === "active" ? (
+              <div className="border-b border-border">
+                <PostComposer
+                  currentUser={currentUser}
+                  placeholder={`Post to ${community.name}...`}
+                  communityId={community.id}
+                  communitySlug={community.slug}
+                  onPostSuccess={(newPost) => {
+                    const enriched = {
+                      ...newPost,
+                      community_id: community.id,
+                      community_name: community.name,
+                      community_slug: community.slug,
+                    };
+                    setPosts((prev) => [enriched, ...prev]);
+                    setCommunity((prev) =>
+                      prev ? { ...prev, posts_count: prev.posts_count + 1 } : prev
+                    );
+                  }}
+                  onOpenAuth={() => router.push("/login")}
+                />
               </div>
-            ) : (
-              posts.map((post) => <PostCard key={post.id} post={post} />)
-            )}
+            ) : currentUser && community.viewer_status !== "active" ? (
+              <div className="p-4 bg-subtle/30 border-b border-border flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Users className="w-4 h-4 text-brand" />
+                  <span>Join this community to share posts and discuss with members.</span>
+                </div>
+                <button
+                  onClick={handleJoinOrLeave}
+                  disabled={actionLoading}
+                  className="px-4 py-1 rounded-full bg-brand text-white text-xs font-bold hover:bg-brand/90 transition-all shrink-0 ml-3"
+                >
+                  {community.access_model === "restricted" ? "Request" : "Join"}
+                </button>
+              </div>
+            ) : null}
+
+            <div className="divide-y divide-border">
+              {posts.length === 0 ? (
+                <div className="p-12 text-center text-muted-foreground">
+                  <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p className="font-semibold text-foreground">No posts yet</p>
+                  <p className="text-sm mt-1">Be the first to post in this community!</p>
+                </div>
+              ) : (
+                posts.map((post) => (
+                  <PostCard
+                    key={post.id}
+                    post={{
+                      ...post,
+                      community_name: post.community_name || community.name,
+                      community_slug: post.community_slug || community.slug,
+                    }}
+                  />
+                ))
+              )}
+            </div>
           </div>
         )}
 

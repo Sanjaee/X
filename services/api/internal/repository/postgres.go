@@ -470,6 +470,9 @@ func (r *PostgresRepository) GetPostByID(ctx context.Context, postID uuid.UUID, 
 	single := []domain.Post{p}
 	_ = r.attachMediaToPosts(ctx, single)
 	p.Media = single[0].Media
+	p.CommunityID = single[0].CommunityID
+	p.CommunityName = single[0].CommunityName
+	p.CommunitySlug = single[0].CommunitySlug
 	return &p, nil
 }
 
@@ -1331,6 +1334,30 @@ func (r *PostgresRepository) attachMediaToPosts(ctx context.Context, posts []dom
 			}
 		}
 	}
+
+	// Also attach community context if any post belongs to a community
+	commQuery := `
+		SELECT cp.post_id, c.id, c.name, c.slug
+		FROM community_posts cp
+		JOIN communities c ON cp.community_id = c.id
+		WHERE cp.post_id = ANY($1);
+	`
+	cRows, cErr := r.db.QueryContext(ctx, commQuery, pq.Array(postIDs))
+	if cErr == nil {
+		defer cRows.Close()
+		for cRows.Next() {
+			var postID, commID uuid.UUID
+			var commName, commSlug string
+			if err := cRows.Scan(&postID, &commID, &commName, &commSlug); err == nil {
+				if idx, ok := postIndexMap[postID]; ok {
+					posts[idx].CommunityID = &commID
+					posts[idx].CommunityName = commName
+					posts[idx].CommunitySlug = commSlug
+				}
+			}
+		}
+	}
+
 	return nil
 }
 

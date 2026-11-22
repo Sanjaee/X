@@ -31,6 +31,8 @@ interface PostModalProps {
   currentUser: User | null;
   quotedPost?: Post | null;
   replyToPost?: Post | null;
+  communityId?: string;
+  communitySlug?: string;
   onPostSuccess: (newPost: Post) => void;
   onOpenAuth: () => void;
 }
@@ -48,6 +50,8 @@ export function PostModal({
   currentUser,
   quotedPost,
   replyToPost,
+  communityId,
+  communitySlug,
   onPostSuccess,
   onOpenAuth,
 }: PostModalProps) {
@@ -209,6 +213,8 @@ export function PostModal({
         media: inlineMedia,
         quote_post_id: quotedPost ? quotedPost.id : null,
         reply_to_id: replyToPost ? replyToPost.id : null,
+        community_id: communityId || null,
+        community_slug: communitySlug || null,
       };
 
       const res = await apiRequest<Post>("/posts", {

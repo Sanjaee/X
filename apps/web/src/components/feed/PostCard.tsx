@@ -15,6 +15,7 @@ import {
   Pencil,
   Trash2,
   Loader2,
+  Users,
 } from "lucide-react";
 import { Post, User } from "@/types";
 import { formatRelativeTime, formatNumber, cn } from "@/lib/utils";
@@ -286,6 +287,18 @@ export function PostCard({
                 nameStyle={post.author?.name_style}
               />
             </Link>
+
+            {post.community_name && post.community_slug && (
+              <Link
+                href={`/communities/${post.community_slug}`}
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-brand/10 hover:bg-brand/20 text-brand text-[11px] font-semibold tracking-tight transition-colors"
+                title={`Community: ${post.community_name}`}
+              >
+                <Users className="w-3 h-3 shrink-0" />
+                <span className="truncate max-w-[120px]">{post.community_name}</span>
+              </Link>
+            )}
 
             <span className="text-muted">@{post.author?.username || "user"}</span>
             <span className="text-muted">·</span>

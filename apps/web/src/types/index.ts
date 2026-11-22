@@ -70,6 +70,9 @@ export interface Post {
   is_bookmarked: boolean;
   reposter?: User | null;
   reposted_at?: string | null;
+  community_id?: string | null;
+  community_name?: string | null;
+  community_slug?: string | null;
   created_at: string;
   updated_at?: string;
   deleted_at?: string | null;

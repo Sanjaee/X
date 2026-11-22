@@ -631,8 +631,10 @@ func (r *PostgresRepository) GetCommunityPosts(ctx context.Context, commID uuid.
 		       p.created_at, p.updated_at,
 		       u.username, u.role, u.is_verified, u.verified_type,
 		       COALESCE(prof.display_name, u.username), COALESCE(prof.avatar_url, ''), COALESCE(prof.name_style, ''),
-		       cp.is_pinned
+		       cp.is_pinned,
+		       c.id, c.name, c.slug
 		FROM community_posts cp
+		JOIN communities c ON cp.community_id = c.id
 		JOIN posts p ON cp.post_id = p.id
 		JOIN users u ON p.author_id = u.id
 		LEFT JOIN user_profiles prof ON u.id = prof.user_id
@@ -670,6 +672,8 @@ func (r *PostgresRepository) GetCommunityPosts(ctx context.Context, commID uuid.
 		var p domain.Post
 		var author domain.User
 		var isPinned bool
+		var cID uuid.UUID
+		var cName, cSlug string
 		if err := rows.Scan(
 			&p.ID, &p.AuthorID, &p.Content, &p.Visibility, &p.ModerationStatus,
 			&p.RepliesCount, &p.RepostsCount, &p.LikesCount, &p.ViewsCount,
@@ -677,11 +681,15 @@ func (r *PostgresRepository) GetCommunityPosts(ctx context.Context, commID uuid.
 			&author.Username, &author.Role, &author.IsVerified, &author.VerifiedType,
 			&author.DisplayName, &author.AvatarURL, &author.NameStyle,
 			&isPinned,
+			&cID, &cName, &cSlug,
 		); err != nil {
 			return nil, err
 		}
 		author.ID = p.AuthorID
 		p.Author = &author
+		p.CommunityID = &cID
+		p.CommunityName = cName
+		p.CommunitySlug = cSlug
 
 		// Load media objects for post
 		mRows, _ := r.db.QueryContext(ctx, `
@@ -704,15 +712,15 @@ func (r *PostgresRepository) GetCommunityPosts(ctx context.Context, commID uuid.
 		// Viewer engagement flags
 		if viewerID != nil {
 			_ = r.db.QueryRowContext(ctx, `
-				SELECT EXISTS(SELECT 1 FROM likes WHERE post_id = $1 AND user_id = $2);
+				SELECT EXISTS(SELECT 1 FROM post_likes WHERE post_id = $1 AND user_id = $2);
 			`, p.ID, *viewerID).Scan(&p.IsLiked)
 
 			_ = r.db.QueryRowContext(ctx, `
-				SELECT EXISTS(SELECT 1 FROM reposts WHERE post_id = $1 AND user_id = $2);
+				SELECT EXISTS(SELECT 1 FROM post_reposts WHERE post_id = $1 AND user_id = $2);
 			`, p.ID, *viewerID).Scan(&p.IsReposted)
 
 			_ = r.db.QueryRowContext(ctx, `
-				SELECT EXISTS(SELECT 1 FROM bookmarks WHERE post_id = $1 AND user_id = $2);
+				SELECT EXISTS(SELECT 1 FROM post_bookmarks WHERE post_id = $1 AND user_id = $2);
 			`, p.ID, *viewerID).Scan(&p.IsBookmarked)
 		}
 

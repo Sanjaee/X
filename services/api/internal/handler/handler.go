@@ -616,11 +616,13 @@ func (h *Handler) setSessionCookie(w http.ResponseWriter, token string) {
 // POSTS & FEED
 // ==========================================
 type CreatePostRequest struct {
-	Content     string               `json:"content"`
-	MediaIDs    []uuid.UUID          `json:"media_ids"`
-	Media       []domain.MediaObject `json:"media"`
-	ReplyToID   *uuid.UUID           `json:"reply_to_id"`
-	QuotePostID *uuid.UUID           `json:"quote_post_id"`
+	Content       string               `json:"content"`
+	MediaIDs      []uuid.UUID          `json:"media_ids"`
+	Media         []domain.MediaObject `json:"media"`
+	ReplyToID     *uuid.UUID           `json:"reply_to_id"`
+	QuotePostID   *uuid.UUID           `json:"quote_post_id"`
+	CommunityID   *uuid.UUID           `json:"community_id"`
+	CommunitySlug string               `json:"community_slug"`
 }
 
 func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
@@ -768,6 +770,26 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 	if err := h.repo.CreatePost(r.Context(), post); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create post")
 		return
+	}
+
+	// Link to community if specified
+	targetCommID := req.CommunityID
+	if targetCommID == nil && req.CommunitySlug != "" {
+		if comm, err := h.repo.GetCommunityBySlug(r.Context(), req.CommunitySlug, nil); err == nil && comm != nil {
+			targetCommID = &comm.ID
+			post.CommunityID = &comm.ID
+			post.CommunityName = comm.Name
+			post.CommunitySlug = comm.Slug
+		}
+	} else if targetCommID != nil {
+		if comm, err := h.repo.GetCommunityByID(r.Context(), *targetCommID, nil); err == nil && comm != nil {
+			post.CommunityID = &comm.ID
+			post.CommunityName = comm.Name
+			post.CommunitySlug = comm.Slug
+		}
+	}
+	if targetCommID != nil {
+		_ = h.repo.LinkPostToCommunity(r.Context(), post.ID, *targetCommID)
 	}
 
 	var notifiedRecipients = map[uuid.UUID]bool{

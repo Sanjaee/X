@@ -27,6 +27,8 @@ interface PostComposerProps {
   currentUser: User | null;
   placeholder?: string;
   replyToId?: string;
+  communityId?: string;
+  communitySlug?: string;
   onPostSuccess?: (newPost: any) => void;
   onOpenAuth?: () => void;
 }
@@ -42,6 +44,8 @@ export function PostComposer({
   currentUser,
   placeholder = "What is happening?!",
   replyToId,
+  communityId,
+  communitySlug,
   onPostSuccess,
   onOpenAuth,
 }: PostComposerProps) {
@@ -186,6 +190,8 @@ export function PostComposer({
         media_ids: uploadedMediaIds,
         media: inlineMedia,
         reply_to_id: replyToId || null,
+        community_id: communityId || null,
+        community_slug: communitySlug || null,
       };
 
       const res = await apiRequest("/posts", {
