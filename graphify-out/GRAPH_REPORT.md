@@ -1,4 +1,4 @@
-# Graph Report - .  (2026-11-19)
+# Graph Report - .  (2026-11-22)
 
 ## Corpus Check
 - cluster-only mode — file stats not available
@@ -9,7 +9,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `22bb0e55`
+- Built from commit: `31d63bea`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -357,11 +357,11 @@ Nodes (3): getDynamicAuthOptions(), handler(), authOptions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `MemoryRepository` connect `MemoryRepository` to `T`, `models.go`, `.GetActiveSubscription`, `MembershipPlan`, `MockCandidateProvider`, `Context`, `Role`, `.GetTrendingTopics`, `.GetNotifications`, `Duration`, `Post`, `User`?**
-  _High betweenness centrality (0.203) - this node is a cross-community bridge._
+  _High betweenness centrality (0.197) - this node is a cross-community bridge._
 - **Why does `NewMemoryRepository()` connect `T` to `MemoryRepository`, `Handler`, `MockCandidateProvider`?**
-  _High betweenness centrality (0.076) - this node is a cross-community bridge._
+  _High betweenness centrality (0.074) - this node is a cross-community bridge._
 - **Why does `PaymentOrder` connect `MemoryRepository` to `models.go`, `PostgresRepository`, `.CheckoutSubscription`?**
-  _High betweenness centrality (0.065) - this node is a cross-community bridge._
+  _High betweenness centrality (0.067) - this node is a cross-community bridge._
 - **What connects `name`, `version`, `private` to the rest of the system?**
   _133 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `writeJSON` be split into smaller, more focused modules?**

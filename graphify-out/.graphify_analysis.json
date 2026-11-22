@@ -514,7 +514,6 @@
       "repository_memoryrepository_reconcilecounters",
       "repository_memoryrepository_recordfeedfeedback",
       "repository_memoryrepository_recordfeedimpressions",
-      "repository_memoryrepository_removebookmark",
       "repository_memoryrepository_removerolefromuser",
       "repository_memoryrepository_repostpost",
       "repository_memoryrepository_resetpersonalization",
@@ -531,6 +530,7 @@
       "repository_memoryrepository_updatepostmoderation",
       "repository_memoryrepository_updateuserstatus",
       "repository_memoryrepository_updateusertopicpreference",
+      "repository_memoryrepository_updateusertotp",
       "repository_memoryrepository_updateuserverification",
       "services_api_internal_repository_memory_go_context",
       "services_api_internal_repository_memory_go_uuid",
@@ -660,7 +660,7 @@
       "repository_memoryrepository_getunreadnotificationscount",
       "repository_memoryrepository_getuserbadges",
       "repository_memoryrepository_markoutboxeventfailed",
-      "repository_memoryrepository_updateusertotp",
+      "repository_memoryrepository_removebookmark",
       "rwmutex",
       "services_api_internal_repository_memory_go_community",
       "services_api_internal_repository_memory_go_communityjoinrequest",
@@ -2040,17 +2040,17 @@
     {
       "type": "bridge_node",
       "question": "Why does `MemoryRepository` connect `MemoryRepository` to `T`, `models.go`, `.GetActiveSubscription`, `MembershipPlan`, `MockCandidateProvider`, `Context`, `Role`, `.GetTrendingTopics`, `.GetNotifications`, `Duration`, `Post`, `User`?",
-      "why": "High betweenness centrality (0.203) - this node is a cross-community bridge."
+      "why": "High betweenness centrality (0.197) - this node is a cross-community bridge."
     },
     {
       "type": "bridge_node",
       "question": "Why does `NewMemoryRepository()` connect `T` to `MemoryRepository`, `Handler`, `MockCandidateProvider`?",
-      "why": "High betweenness centrality (0.076) - this node is a cross-community bridge."
+      "why": "High betweenness centrality (0.074) - this node is a cross-community bridge."
     },
     {
       "type": "bridge_node",
       "question": "Why does `PaymentOrder` connect `MemoryRepository` to `models.go`, `PostgresRepository`, `.CheckoutSubscription`?",
-      "why": "High betweenness centrality (0.065) - this node is a cross-community bridge."
+      "why": "High betweenness centrality (0.067) - this node is a cross-community bridge."
     },
     {
       "type": "isolated_nodes",
