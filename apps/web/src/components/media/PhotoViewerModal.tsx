@@ -158,10 +158,10 @@ export function PhotoViewerModal() {
       role="dialog"
       aria-modal="true"
       aria-label="Media viewer"
-      className="fixed inset-0 z-50 bg-black flex flex-col lg:flex-row select-none animate-in fade-in duration-150 overflow-hidden"
+      className="fixed inset-0 z-50 bg-black flex flex-col lg:flex-row select-none animate-in fade-in duration-150 overflow-y-auto lg:overflow-hidden"
     >
       {/* LEFT / CENTER MEDIA STAGE (Observable X Canvas) */}
-      <div className="relative flex-1 h-full flex flex-col bg-black overflow-hidden">
+      <div className="relative w-full h-[55vh] shrink-0 lg:h-full lg:flex-1 flex flex-col bg-black overflow-hidden">
         {/* Top-Left Close Button (X) */}
         <div className="absolute top-3 left-3 z-40 flex items-center gap-2">
           <button
