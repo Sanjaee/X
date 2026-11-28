@@ -671,12 +671,25 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		maxLen = int(v)
 	}
 
-	// Platform Owner has unlimited posting quota
-	if middleware.IsOwnerAccount(user) {
+	// Platform Owner, Admin, and Moderator elevated limits
+	if middleware.IsOwnerAccount(user) || user.Role == "owner" {
 		maxPosts = 0
-		maxImages = 10
-		maxVideos = 5
+		maxImages = 50
+		maxVideos = 50
 		maxLen = 10000
+	} else if user.Role == "admin" || user.Role == "moderator" {
+		if maxPosts > 0 && maxPosts < 50 {
+			maxPosts = 50
+		}
+		if maxImages < 50 {
+			maxImages = 50
+		}
+		if maxVideos < 50 {
+			maxVideos = 50
+		}
+		if maxLen < 10000 {
+			maxLen = 10000
+		}
 	}
 
 	if len([]rune(req.Content)) > maxLen {

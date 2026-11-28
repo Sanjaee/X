@@ -195,9 +195,9 @@
     "semantic_hash": "e5e53fd14293be2986244570f3152a84"
   },
   "services/api/internal/handler/handler.go": {
-    "mtime": 1795357649.6759925,
-    "ast_hash": "148a6b90221ec6376dd3bbbf191c8de5",
-    "semantic_hash": "148a6b90221ec6376dd3bbbf191c8de5"
+    "mtime": 1795870611.567957,
+    "ast_hash": "dd5d141909959c7815a00a7ab32b229f",
+    "semantic_hash": "dd5d141909959c7815a00a7ab32b229f"
   },
   "services/api/internal/handler/handler_test.go": {
     "mtime": 1791995513.6245914,
