@@ -85,9 +85,9 @@
     "semantic_hash": "d01d4d0e2bec416558789aa168c2064d"
   },
   "apps/web/src/components/composer/PostComposer.tsx": {
-    "mtime": 1795870988.7968504,
-    "ast_hash": "57f3ca604a34740b3cfb3acb394e9283",
-    "semantic_hash": "57f3ca604a34740b3cfb3acb394e9283"
+    "mtime": 1795871616.0547833,
+    "ast_hash": "89211fbe3d7754ddec8cae72ea11ae92",
+    "semantic_hash": "89211fbe3d7754ddec8cae72ea11ae92"
   },
   "apps/web/src/components/feed/PostCard.tsx": {
     "mtime": 1795359010.9832723,
@@ -195,9 +195,9 @@
     "semantic_hash": "e5e53fd14293be2986244570f3152a84"
   },
   "services/api/internal/handler/handler.go": {
-    "mtime": 1795870611.567957,
-    "ast_hash": "dd5d141909959c7815a00a7ab32b229f",
-    "semantic_hash": "dd5d141909959c7815a00a7ab32b229f"
+    "mtime": 1795871562.3352466,
+    "ast_hash": "81730cb861795f81d8a68a2ecb4ed857",
+    "semantic_hash": "81730cb861795f81d8a68a2ecb4ed857"
   },
   "services/api/internal/handler/handler_test.go": {
     "mtime": 1791995513.6245914,
@@ -778,5 +778,10 @@
     "mtime": 1795101646.6448495,
     "ast_hash": "1117dd4043b87b702842e6fe1ea8178f",
     "semantic_hash": "1117dd4043b87b702842e6fe1ea8178f"
+  },
+  "apps/web/src/components/composer/ComposerErrorModal.tsx": {
+    "mtime": 1795871574.0548646,
+    "ast_hash": "8bed1c5b866183f9eb0544bde0c611a0",
+    "semantic_hash": "8bed1c5b866183f9eb0544bde0c611a0"
   }
 }

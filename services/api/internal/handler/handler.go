@@ -671,13 +671,13 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		maxLen = int(v)
 	}
 
-	// Platform Owner, Admin, and Moderator elevated limits
-	if middleware.IsOwnerAccount(user) || user.Role == "owner" {
+	// Platform Owner and God have unlimited posting and upload quota
+	if middleware.IsOwnerAccount(user) || user.Role == "owner" || user.Role == "god" {
 		maxPosts = 0
-		maxImages = 50
-		maxVideos = 50
-		maxLen = 10000
-	} else if user.Role == "admin" || user.Role == "moderator" {
+		maxImages = 999999
+		maxVideos = 999999
+		maxLen = 100000
+	} else if user.Role == "admin" || user.Role == "moderator" || user.Role == "mod" {
 		if maxPosts > 0 && maxPosts < 50 {
 			maxPosts = 50
 		}

@@ -22,6 +22,7 @@ import {
 import { useUpgradeModal } from "@/components/subscription/UpgradeModalContext";
 import { checkIsPremiumUser } from "@/lib/premium";
 import { MediaUrlInputModal } from "./MediaUrlInputModal";
+import { ComposerErrorModal } from "./ComposerErrorModal";
 
 interface PostComposerProps {
   currentUser: User | null;
@@ -54,6 +55,7 @@ export function PostComposer({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stagedFiles, setStagedFiles] = useState<StagedAttachment[]>([]);
   const [urlModalOpen, setUrlModalOpen] = useState(false);
+  const [errorPopup, setErrorPopup] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isPremium = checkIsPremiumUser(currentUser);
@@ -81,7 +83,7 @@ export function PostComposer({
 
     const { valid, rejected } = filterValidMediaFiles(rawFiles);
     if (rejected.length > 0) {
-      alert("Unsupported file format. Please select valid images or videos (*.pjp, *.jfif, *.jpe, *.pjpeg, *.jpeg, *.jpg, *.png, *.webp, *.gif, *.m4v, *.mp4, *.mov).");
+      setErrorPopup("Unsupported file format. Please select valid images or videos (*.pjp, *.jfif, *.jpe, *.pjpeg, *.jpeg, *.jpg, *.png, *.webp, *.gif, *.m4v, *.mp4, *.mov).");
     }
 
     if (!valid.length) {
@@ -207,7 +209,7 @@ export function PostComposer({
       setStagedFiles([]);
       if (onPostSuccess) onPostSuccess(res);
     } catch (err: any) {
-      alert(err.message || "Failed to post");
+      setErrorPopup(err.message || "Failed to post");
     } finally {
       setIsSubmitting(false);
     }
@@ -416,6 +418,12 @@ export function PostComposer({
         isOpen={urlModalOpen}
         onClose={() => setUrlModalOpen(false)}
         onAddMedia={handleAddMediaUrl}
+      />
+
+      {/* Error Popup Modal */}
+      <ComposerErrorModal
+        message={errorPopup}
+        onClose={() => setErrorPopup(null)}
       />
     </div>
   );
