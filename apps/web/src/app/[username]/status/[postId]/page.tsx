@@ -486,17 +486,29 @@ export default function PostDetailPage() {
                             className="relative w-full h-full overflow-hidden bg-muted/30 cursor-pointer group"
                           >
                             {m.media_type === "video" ? (
-                              <VideoPlayer
-                                src={m.url}
-                                mode="in_feed"
-                                onOpenViewer={() => openMedia(post, idx)}
-                              />
+                              <div className={cn("w-full h-full", idx === 3 && post.media && post.media.length > 4 && "blur-sm scale-105 brightness-50 pointer-events-none")}>
+                                <VideoPlayer
+                                  src={m.url}
+                                  mode="in_feed"
+                                  onOpenViewer={() => openMedia(post, idx)}
+                                />
+                              </div>
                             ) : (
                               <img
                                 src={m.url}
                                 alt="Attachment"
-                                className="w-full h-full object-cover group-hover:opacity-95 transition-opacity"
+                                className={cn(
+                                  "w-full h-full object-cover group-hover:opacity-95 transition-opacity",
+                                  idx === 3 && post.media && post.media.length > 4 && "blur-sm scale-105 brightness-50"
+                                )}
                               />
+                            )}
+                            {idx === 3 && post.media && post.media.length > 4 && (
+                              <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center pointer-events-none z-10">
+                                <span className="text-white text-3xl font-extrabold tracking-tight">
+                                  +{post.media.length - 4}
+                                </span>
+                              </div>
                             )}
                           </div>
                         ))}
