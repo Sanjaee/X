@@ -272,9 +272,13 @@ export function VideoPlayer({
         </div>
       )}
 
-      {/* Small Play Button Overlay when Paused */}
+      {/* Small Play Button Overlay when Paused (only visible on hover) */}
       {!isPlaying && !isBuffering && !error && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+        <div
+          className={`absolute inset-0 flex items-center justify-center pointer-events-none z-10 transition-opacity duration-200 ${
+            showControls ? "opacity-100" : "opacity-0"
+          }`}
+        >
           <div className="w-10 h-10 rounded-full bg-brand/90 hover:bg-brand text-white flex items-center justify-center shadow-lg transition-transform transform group-hover:scale-110">
             <Play className="w-4 h-4 fill-white text-white ml-0.5" />
           </div>
