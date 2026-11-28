@@ -969,7 +969,10 @@ export default function PostDetailPage() {
                         onClick={() => setAuthModalOpen(true)}
                         className="w-full max-w-[560px] bg-white hover:bg-neutral-200 text-black font-bold py-3 px-6 rounded-full text-[15px] transition-all flex items-center justify-center gap-2 shadow-md active:scale-[0.99]"
                       >
-                        <span>Continue to 𝕏</span>
+                        <span className="inline-flex items-center gap-1.5">
+                          Continue to{" "}
+                          <img src="/LM.png" alt="LM" className="w-4 h-4 object-contain" />
+                        </span>
                       </button>
                     </div>
                   )
@@ -994,7 +997,10 @@ export default function PostDetailPage() {
                           onClick={() => setAuthModalOpen(true)}
                           className="w-full max-w-[560px] bg-white hover:bg-neutral-200 text-black font-bold py-3 px-6 rounded-full text-[15px] transition-all flex items-center justify-center gap-2 shadow-md active:scale-[0.99]"
                         >
-                          <span>Continue to 𝕏</span>
+                          <span className="inline-flex items-center gap-1.5">
+                          Continue to{" "}
+                          <img src="/LM.png" alt="LM" className="w-4 h-4 object-contain" />
+                        </span>
                         </button>
                       </div>
                     )}
