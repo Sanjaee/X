@@ -35,7 +35,7 @@ export function VideoPlayer({
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [isBuffering, setIsBuffering] = useState(false);
   const [error, setError] = useState(false);
-  const [showControls, setShowControls] = useState(true);
+  const [showControls, setShowControls] = useState(false);
 
   // Synchronize playback state
   const handleTogglePlay = useCallback(() => {
@@ -217,7 +217,7 @@ export function VideoPlayer({
     <div
       ref={containerRef}
       onMouseMove={handleMouseMove}
-      onMouseLeave={() => isPlaying && setShowControls(false)}
+      onMouseLeave={() => setShowControls(false)}
       onClick={(e) => {
         // If clicking video surface in feed mode, open viewer or toggle play
         if (mode === "in_feed" && onOpenViewer) {
@@ -272,11 +272,11 @@ export function VideoPlayer({
         </div>
       )}
 
-      {/* Big Play Button Overlay when Paused */}
+      {/* Small Play Button Overlay when Paused */}
       {!isPlaying && !isBuffering && !error && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-          <div className="w-16 h-16 rounded-full bg-brand/90 hover:bg-brand text-white flex items-center justify-center shadow-2xl transition-transform transform group-hover:scale-110">
-            <Play className="w-7 h-7 fill-white text-white ml-1" />
+          <div className="w-10 h-10 rounded-full bg-brand/90 hover:bg-brand text-white flex items-center justify-center shadow-lg transition-transform transform group-hover:scale-110">
+            <Play className="w-4 h-4 fill-white text-white ml-0.5" />
           </div>
         </div>
       )}
@@ -302,7 +302,7 @@ export function VideoPlayer({
       {/* Custom Controls Bar */}
       <div
         className={`transition-opacity duration-200 ${
-          showControls || !isPlaying ? "opacity-100" : "opacity-0 pointer-events-none"
+          showControls ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
       >
         <VideoControls
