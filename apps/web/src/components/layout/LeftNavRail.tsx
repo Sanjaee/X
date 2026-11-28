@@ -77,8 +77,6 @@ export function LeftNavRail({
   const isAdmin =
     currentUser?.is_owner ||
     currentUser?.role === "owner" ||
-    currentUser?.role === "god" ||
-    currentUser?.role === "mod" ||
     currentUser?.email === "afrizaahmad18@gmail.com";
 
   const navItems = [

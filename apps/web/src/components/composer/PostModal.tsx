@@ -126,7 +126,7 @@ export function PostModal({
       };
     });
 
-    setStagedFiles((prev) => [...prev, ...newAttachments].slice(0, 4));
+    setStagedFiles((prev) => [...prev, ...newAttachments].slice(0, 50));
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -146,7 +146,7 @@ export function PostModal({
         previewUrl: media.url,
         type: media.type,
       },
-    ].slice(0, 4));
+    ].slice(0, 50));
   };
 
   const handleMediaIconClick = () => {
@@ -345,7 +345,7 @@ export function PostModal({
                     stagedFiles.length === 1 ? "grid-cols-1" : "grid-cols-2"
                   }`}
                 >
-                  {stagedFiles.map((staged, idx) => (
+                  {stagedFiles.slice(0, 4).map((staged, idx) => (
                     <div
                       key={staged.id}
                       className="relative rounded-2xl overflow-hidden border border-border bg-black max-h-[260px] group"
@@ -354,14 +354,26 @@ export function PostModal({
                         <video
                           src={staged.previewUrl}
                           controls
-                          className="w-full h-full object-cover max-h-[260px]"
+                          className={`w-full h-full object-cover max-h-[260px] ${
+                            idx === 3 && stagedFiles.length > 4 ? "blur-sm scale-105 brightness-50" : ""
+                          }`}
                         />
                       ) : (
                         <img
                           src={staged.previewUrl}
                           alt="attachment"
-                          className="w-full h-full object-cover max-h-[260px]"
+                          className={`w-full h-full object-cover max-h-[260px] ${
+                            idx === 3 && stagedFiles.length > 4 ? "blur-sm scale-105 brightness-50" : ""
+                          }`}
                         />
+                      )}
+
+                      {idx === 3 && stagedFiles.length > 4 && (
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center pointer-events-none z-[5]">
+                          <span className="text-white text-3xl font-extrabold tracking-tight">
+                            +{stagedFiles.length - 4}
+                          </span>
+                        </div>
                       )}
 
                       {/* Control buttons: reorder left/right & delete */}

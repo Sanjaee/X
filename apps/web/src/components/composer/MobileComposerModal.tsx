@@ -104,7 +104,7 @@ export function MobileComposerModal({
       };
     });
 
-    setStagedFiles((prev) => [...prev, ...newAttachments].slice(0, 4));
+    setStagedFiles((prev) => [...prev, ...newAttachments].slice(0, 50));
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -124,7 +124,7 @@ export function MobileComposerModal({
         previewUrl: media.url,
         type: media.type,
       },
-    ].slice(0, 4));
+    ].slice(0, 50));
   };
 
   const handleMediaIconClick = () => {
@@ -275,12 +275,14 @@ export function MobileComposerModal({
                 stagedFiles.length === 1 ? "grid-cols-1" : "grid-cols-2"
               }`}
             >
-              {stagedFiles.map((file, idx) => (
-                <div key={file.id} className="relative aspect-video bg-black/30">
+              {stagedFiles.slice(0, 4).map((file, idx) => (
+                <div key={file.id} className="relative aspect-video bg-black/30 overflow-hidden">
                   {file.type === "video" ? (
                     <video
                       src={file.previewUrl}
-                      className="w-full h-full object-cover"
+                      className={`w-full h-full object-cover ${
+                        idx === 3 && stagedFiles.length > 4 ? "blur-sm scale-105 brightness-50" : ""
+                      }`}
                       muted
                       autoPlay
                       loop
@@ -289,8 +291,18 @@ export function MobileComposerModal({
                     <img
                       src={file.previewUrl}
                       alt="attachment preview"
-                      className="w-full h-full object-cover"
+                      className={`w-full h-full object-cover ${
+                        idx === 3 && stagedFiles.length > 4 ? "blur-sm scale-105 brightness-50" : ""
+                      }`}
                     />
+                  )}
+
+                  {idx === 3 && stagedFiles.length > 4 && (
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center pointer-events-none z-[5]">
+                      <span className="text-white text-3xl font-extrabold tracking-tight">
+                        +{stagedFiles.length - 4}
+                      </span>
+                    </div>
                   )}
 
                   {/* Control buttons: reorder left/right & delete */}

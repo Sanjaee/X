@@ -104,8 +104,8 @@ export function PostComposer({
       };
     });
 
-    // Limit to max 4 media attachments per post (X standard)
-    setStagedFiles((prev) => [...prev, ...newAttachments].slice(0, 4));
+    // Allow up to 50 media attachments per post
+    setStagedFiles((prev) => [...prev, ...newAttachments].slice(0, 50));
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -125,7 +125,7 @@ export function PostComposer({
         previewUrl: media.url,
         type: media.type,
       },
-    ].slice(0, 4));
+    ].slice(0, 50));
   };
 
   const handleMediaIconClick = () => {
@@ -247,7 +247,7 @@ export function PostComposer({
               stagedFiles.length === 1 ? "grid-cols-1" : "grid-cols-2"
             )}
           >
-            {stagedFiles.map((staged, idx) => (
+            {stagedFiles.slice(0, 4).map((staged, idx) => (
               <div
                 key={staged.id}
                 className={cn(
@@ -259,14 +259,28 @@ export function PostComposer({
                   <video
                     src={staged.previewUrl}
                     controls
-                    className="w-full h-full object-cover"
+                    className={cn(
+                      "w-full h-full object-cover",
+                      idx === 3 && stagedFiles.length > 4 && "blur-sm scale-105 brightness-50"
+                    )}
                   />
                 ) : (
                   <img
                     src={staged.previewUrl}
                     alt="Draft Attachment"
-                    className="w-full h-full object-cover"
+                    className={cn(
+                      "w-full h-full object-cover",
+                      idx === 3 && stagedFiles.length > 4 && "blur-sm scale-105 brightness-50"
+                    )}
                   />
+                )}
+
+                {idx === 3 && stagedFiles.length > 4 && (
+                  <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center pointer-events-none z-[5]">
+                    <span className="text-white text-3xl font-extrabold tracking-tight">
+                      +{stagedFiles.length - 4}
+                    </span>
+                  </div>
                 )}
 
                 {/* Control buttons: reorder left/right & delete */}
