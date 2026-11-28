@@ -233,10 +233,10 @@ export function StandalonePhotoView() {
       role="dialog"
       aria-modal="true"
       aria-label="Direct media viewer"
-      className="fixed inset-0 z-50 bg-black flex flex-col lg:flex-row select-none overflow-y-auto lg:overflow-hidden"
+      className="fixed inset-0 z-50 bg-black flex flex-col lg:flex-row select-none overflow-hidden"
     >
       {/* LEFT / CENTER MEDIA STAGE (Observable X Canvas) */}
-      <div className="relative w-full h-[55vh] shrink-0 lg:h-full lg:flex-1 flex flex-col bg-black overflow-hidden">
+      <div className="relative flex-1 h-full flex flex-col bg-black overflow-hidden">
         {/* Top-Left Close Button (X) */}
         <div className="absolute top-3 left-3 z-40 flex items-center gap-2">
           <button
@@ -392,9 +392,10 @@ export function StandalonePhotoView() {
         </div>
       </div>
 
-      {/* RIGHT SIDEBAR (Full Tweet Details & Live Conversation Thread) */}
+      {/* RIGHT SIDEBAR (Full Tweet Details & Live Conversation Thread - hidden on mobile for full-screen media) */}
       {showSidebar && (
-        <MediaDetailSidebar
+        <div className="hidden lg:flex h-full">
+          <MediaDetailSidebar
           post={post}
           currentUser={currentUser}
           isLiked={isLiked}
@@ -410,6 +411,7 @@ export function StandalonePhotoView() {
           onReplySuccess={(newReply) => setReplies((prev) => [newReply, ...prev])}
           onOpenAuth={() => setAuthModalOpen(true)}
         />
+        </div>
       )}
 
       {/* Auth Modal for Unauthenticated Users */}
